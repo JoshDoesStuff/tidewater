@@ -1,4 +1,36 @@
+import '../lyrics/lrc_parser.dart';
+import '../lyrics/lyrics.dart';
 import '../models/album.dart';
+import '../models/track.dart';
+
+/// One track per album, 3:20 each like the demo, in album order.
+final fakeTracks = <Track>[
+  for (final a in fakeAlbums)
+    Track(
+      id: 't-${a.id}',
+      title: a.track,
+      artist: a.artist,
+      albumId: a.id,
+      albumTitle: a.title,
+      duration: const Duration(seconds: 200),
+    ),
+];
+
+const _fakeLrc = '''
+[ar:Placeholder]
+[00:08.00]Streetlights fold into the river,
+[00:28.00]and the bridge keeps count of us
+[00:48.00]I know the name of every lamp,
+[01:08.00]Every window hums one song
+[01:28.00]I only know the one in blue
+[01:48.00]Slow the tram, leave the lamps on,
+[02:08.00]we will find the long way home
+[02:28.00]Hold the quiet like a lantern,
+[02:48.00]till the morning takes it too
+''';
+
+/// Synced lyrics shown for every fake track until real lyrics are fetched.
+final Lyrics fakeLyrics = parseLrc(_fakeLrc);
 
 /// Fake data for milestone 1, taken from the demo. Replaced by the
 /// OpenSubsonic client in milestone 2.
