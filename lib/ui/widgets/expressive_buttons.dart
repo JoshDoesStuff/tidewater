@@ -204,20 +204,24 @@ class ExpressiveChip extends StatelessWidget {
             curve: Motion.curve(context, Motion.spring),
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            alignment: Alignment.center,
             decoration: BoxDecoration(
               color: selected
                   ? scheme.primary
                   : (s.hovered ? scheme.surfaceContainerHighest : scheme.surfaceContainerHigh),
               borderRadius: BorderRadius.circular(selected ? 20 : 12),
             ),
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontSize: 14,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    color: selected ? scheme.onPrimary : scheme.onSurface,
-                  ),
+            // widthFactor keeps the chip hugging its label (an `alignment` on
+            // the container would stretch it to the full row).
+            child: Center(
+              widthFactor: 1,
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontSize: 14,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: selected ? scheme.onPrimary : scheme.onSurface,
+                    ),
+              ),
             ),
           ),
         );

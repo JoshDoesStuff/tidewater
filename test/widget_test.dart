@@ -27,6 +27,16 @@ void main() {
     }
   });
 
+  testWidgets('filter chips hug their labels and sit in one row', (tester) async {
+    await _pumpApp(tester);
+    final all = tester.getRect(find.ancestor(of: find.text('All'), matching: find.byType(AnimatedContainer)).first);
+    final albums = tester.getRect(find.ancestor(of: find.text('Albums'), matching: find.byType(AnimatedContainer)).first);
+    expect(all.width, lessThan(200));
+    expect(albums.width, lessThan(200));
+    expect(albums.top, all.top);
+    expect(albums.left, greaterThan(all.right));
+  });
+
   testWidgets('rail navigates to Library and back', (tester) async {
     await _pumpApp(tester);
     await tester.tap(find.text('Library'));
