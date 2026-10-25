@@ -2,7 +2,8 @@ import 'dart:ui' show PathMetric;
 
 import 'package:flutter/material.dart';
 
-/// The Lucide "house" icon (ISC license, https://lucide.dev), drawn in code
+/// The Lucide "house" icon (ISC, https://lucide.dev) with its Lucide Animated
+/// door animation (MIT, pqoqubbw; see third-party-licenses), drawn in code
 /// because its animated version is a React component with no Lottie file.
 /// The door draws itself on as [progress] runs 0 to 1; at 0 and 1 the icon is
 /// complete, so it can sit in the rail at rest.

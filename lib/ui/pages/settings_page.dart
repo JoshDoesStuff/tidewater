@@ -126,7 +126,7 @@ class _Credits extends StatelessWidget {
     ),
     (
       'Home icon',
-      'Lucide (https://lucide.dev), ISC License. Translated into code by Claude.',
+      'Lucide (https://lucide.dev) icon, animation from Lucide Animated (https://lucide-animated.com) by pqoqubbw, MIT License. Translated into code by Claude.',
     ),
   ];
 
