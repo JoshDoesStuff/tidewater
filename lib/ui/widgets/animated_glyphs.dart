@@ -34,7 +34,7 @@ mixin _PlayOnEdge<T extends StatefulWidget> on State<T>, SingleTickerProviderSta
   }
 }
 
-enum GlyphKind { list, cards, sort, filter, next, previous, shuffle, menu, repeat, repeatOne, lyrics, queue, back, search, close, collapse, visualizer }
+enum GlyphKind { list, cards, sort, filter, next, previous, shuffle, menu, repeat, repeatOne, lyrics, queue, back, search, close, collapse, visualizer, aurora, shapes, ring, off }
 
 /// A small 24 x 24 stroke icon drawn in code, with its own one-shot motion:
 /// list rows retract and return, card tiles pop in a wave, sort bars retract
@@ -233,6 +233,64 @@ class _GlyphPainter extends CustomPainter {
             ..lineTo(18.5 - d, 14 - d),
           line,
         );
+      case GlyphKind.aurora:
+        // A soft cluster of dots that breathes outward from the middle.
+        final fill = Paint()..color = color;
+        final breath = _running ? math.sin(math.pi * t) : 0.0;
+        canvas.drawCircle(const Offset(12, 12), 1.5 + .5 * breath, fill);
+        for (final (ring, count, radius) in const [(1, 6, 5.0), (2, 12, 9.0)]) {
+          final lag = _bump((ring - 1) * .16, .7);
+          for (var i = 0; i < count; i++) {
+            final a = 2 * math.pi * i / count + ring * .4;
+            final r = radius * (1 + .22 * lag);
+            canvas.drawCircle(
+              Offset(12 + r * math.cos(a), 12 + r * math.sin(a)),
+              (ring == 1 ? 1.25 : 1.0) + .3 * lag,
+              fill,
+            );
+          }
+        }
+      case GlyphKind.shapes:
+        // A star that turns one point and pops; five-fold symmetry hides the seam.
+        canvas.translate(12, 12);
+        canvas.rotate(_running ? 2 * math.pi / 5 * Curves.easeOutBack.transform(t) : 0);
+        final pop = 1 + .2 * _bump(0, .7);
+        canvas.scale(pop);
+        final star = Path();
+        for (var i = 0; i < 10; i++) {
+          final r = i.isEven ? 9.5 : 4.2;
+          final a = -math.pi / 2 + i * math.pi / 5;
+          final p = Offset(r * math.cos(a), r * math.sin(a));
+          i == 0 ? star.moveTo(p.dx, p.dy) : star.lineTo(p.dx, p.dy);
+        }
+        canvas.drawPath(star..close(), line);
+      case GlyphKind.ring:
+        // A circle with rays that stretch outward in a wave, turning one ray.
+        canvas.translate(12, 12);
+        canvas.rotate(_running ? math.pi / 4 * Curves.easeInOut.transform(t) : 0);
+        canvas.drawCircle(Offset.zero, 4.5, line);
+        for (var i = 0; i < 8; i++) {
+          final a = i * math.pi / 4;
+          final reach = 1 + .5 * _bump(i * .06, .6);
+          canvas.drawLine(
+            Offset(7.5 * math.cos(a), 7.5 * math.sin(a)),
+            Offset(7.5 * reach * math.cos(a) + 2 * math.cos(a), 7.5 * reach * math.sin(a) + 2 * math.sin(a)),
+            line,
+          );
+        }
+      case GlyphKind.off:
+        // The circle traces itself, then the slash cuts through.
+        final circle = Path()..addOval(Rect.fromCircle(center: const Offset(12, 12), radius: 8.5));
+        final slash = Path()
+          ..moveTo(6, 6)
+          ..lineTo(18, 18);
+        if (_running) {
+          _trace(canvas, circle, Curves.easeOut.transform((t / .6).clamp(0.0, 1.0)), line);
+          _trace(canvas, slash, Curves.easeOut.transform(((t - .4) / .5).clamp(0.0, 1.0)), line);
+        } else {
+          canvas.drawPath(circle, line);
+          canvas.drawPath(slash, line);
+        }
       case GlyphKind.visualizer:
         // A little equalizer: four bars that dance, each on its own beat.
         const base = [9.0, 15.0, 11.0, 6.0];
@@ -306,43 +364,46 @@ class _GlyphPainter extends CustomPainter {
     }
   }
 
-  /// Two rounded arrow loops. The loop is symmetric under a half turn, so it
-  /// spins 180 degrees and lands looking the same; the "1" stays put.
+  /// Two rounded arrow loops that draw themselves on, one after the other,
+  /// with their arrowheads popping at the end. Repeat-one adds a small "1"
+  /// between the loops, which fades in last.
   void _repeat(Canvas canvas, Paint line, {required bool one}) {
-    canvas.save();
-    canvas.translate(12, 12);
-    canvas.rotate(_running ? math.pi * Curves.easeInOutCubic.transform(t) : 0);
-    canvas.translate(-12, -12);
-    canvas.drawPath(
-      Path()
-        ..moveTo(4, 12)
-        ..lineTo(4, 11)
-        ..arcToPoint(const Offset(8, 7), radius: const Radius.circular(4))
-        ..lineTo(20, 7)
-        ..moveTo(17, 4)
-        ..lineTo(20, 7)
-        ..lineTo(17, 10),
-      line,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(20, 12)
-        ..lineTo(20, 13)
-        ..arcToPoint(const Offset(16, 17), radius: const Radius.circular(4))
-        ..lineTo(4, 17)
-        ..moveTo(7, 14)
-        ..lineTo(4, 17)
-        ..lineTo(7, 20),
-      line,
-    );
-    canvas.restore();
+    final top = Path()
+      ..moveTo(4, 11)
+      ..lineTo(4, 9)
+      ..arcToPoint(const Offset(7.5, 5.5), radius: const Radius.circular(3.5))
+      ..lineTo(20, 5.5);
+    final bottom = Path()
+      ..moveTo(20, 13)
+      ..lineTo(20, 15)
+      ..arcToPoint(const Offset(16.5, 18.5), radius: const Radius.circular(3.5))
+      ..lineTo(4, 18.5);
+    final heads = [
+      (Offset(20, 5.5), const [Offset(-3, -3), Offset(-3, 3)]),
+      (Offset(4, 18.5), const [Offset(3, -3), Offset(3, 3)]),
+    ];
+    for (final (i, path) in [top, bottom].indexed) {
+      final p = _running ? Curves.easeInOut.transform(((t - i * .14) / .65).clamp(0.0, 1.0)) : 1.0;
+      _trace(canvas, path, p, line);
+      final head = _running ? ((p - .7) / .3).clamp(0.0, 1.0) : 1.0;
+      if (head > 0) {
+        final h = Paint.from(line)..color = color.withValues(alpha: head);
+        final (tip, arms) = heads[i];
+        for (final arm in arms) {
+          canvas.drawLine(tip, tip + arm, h);
+        }
+      }
+    }
     if (one) {
+      final fade = _running ? ((t - .6) / .4).clamp(0.0, 1.0) : 1.0;
       canvas.drawPath(
         Path()
-          ..moveTo(10.5, 10.5)
-          ..lineTo(12.5, 9)
-          ..lineTo(12.5, 15),
-        line..strokeWidth = 1.8,
+          ..moveTo(10.6, 10.6)
+          ..lineTo(12.4, 9.3)
+          ..lineTo(12.4, 14.7),
+        Paint.from(line)
+          ..strokeWidth = 1.6
+          ..color = color.withValues(alpha: fade),
       );
     }
   }
@@ -416,8 +477,67 @@ class _LottieGlyphState extends State<LottieGlyph> with SingleTickerProviderStat
 Widget castGlyph(BuildContext context, Color color, bool hovered, bool pressed) =>
     LottieGlyph(asset: 'assets/icons/cast.json', color: color, hovered: hovered);
 
-/// Builds a [GlyphKind] for an icon button: it plays on hover, or on press
-/// when [onPress] (transport buttons that fire an action).
-Widget Function(BuildContext, Color, bool, bool) glyphFor(GlyphKind kind, {double size = 22, bool onPress = false}) =>
-    (context, color, hovered, pressed) =>
-        AnimatedGlyph(kind: kind, color: color, size: size, hovered: !onPress && hovered, active: onPress && pressed);
+/// Builds a [GlyphKind] for an icon button: it plays when the pointer enters
+/// and again on each press.
+Widget Function(BuildContext, Color, bool, bool) glyphFor(GlyphKind kind, {double size = 22}) =>
+    (context, color, hovered, pressed) => AnimatedGlyph(kind: kind, color: color, size: size, hovered: hovered, active: pressed);
+
+/// The volume speaker: UseAnimations' "volume" file scrubbed between its
+/// states. At [level] 0 (loud) the waves are out, at 1 (quiet) one wave has
+/// folded away, at 2 (muted) both are gone and the slash is drawn.
+class VolumeGlyph extends StatefulWidget {
+  const VolumeGlyph({super.key, required this.level, required this.color, this.size = 22});
+
+  final int level;
+  final Color color;
+  final double size;
+
+  @override
+  State<VolumeGlyph> createState() => _VolumeGlyphState();
+}
+
+class _VolumeGlyphState extends State<VolumeGlyph> with SingleTickerProviderStateMixin {
+  static const _stops = [0.0, .3, 1.0];
+  late final AnimationController _c = AnimationController(vsync: this, value: _stops[widget.level]);
+  LottieComposition? _composition;
+
+  @override
+  void initState() {
+    super.initState();
+    IconComposition.load('assets/icons/volume.json').then((c) {
+      if (mounted) setState(() => _composition = c);
+    });
+  }
+
+  @override
+  void didUpdateWidget(VolumeGlyph old) {
+    super.didUpdateWidget(old);
+    if (old.level == widget.level) return;
+    final target = _stops[widget.level];
+    if (Motion.reduced(context)) {
+      _c.value = target;
+    } else {
+      _c.animateTo(target, duration: Motion.of(context, Motion.slow), curve: Curves.easeOutCubic);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final box = widget.size * 1.3;
+    final c = _composition;
+    if (c == null) return SizedBox.square(dimension: box);
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) => ColorFiltered(
+        colorFilter: ColorFilter.mode(widget.color, BlendMode.srcATop),
+        child: RawLottie(composition: c, progress: _c.value, width: box, height: box, fit: BoxFit.contain),
+      ),
+    );
+  }
+}

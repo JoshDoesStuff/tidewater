@@ -17,6 +17,19 @@ void main() {
     });
   }
 
+  testWidgets('the volume speaker loads and scrubs between its three states', (tester) async {
+    Widget glyph(int level) => _host(VolumeGlyph(level: level, color: Colors.white));
+    await tester.pumpWidget(glyph(0));
+    await tester.runAsync(() => IconComposition.load('assets/icons/volume.json'));
+    await tester.pump();
+    for (final level in [1, 2, 0]) {
+      await tester.pumpWidget(glyph(level));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(tester.takeException(), isNull);
+      await tester.pump(const Duration(seconds: 1));
+    }
+  });
+
   testWidgets('the cast icon loads and plays on hover', (tester) async {
     Widget glyph(bool hovered) => _host(LottieGlyph(asset: 'assets/icons/cast.json', color: Colors.white, hovered: hovered));
     await tester.pumpWidget(glyph(false));

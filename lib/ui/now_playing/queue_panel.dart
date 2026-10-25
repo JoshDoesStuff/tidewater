@@ -16,7 +16,11 @@ import '../widgets/pressable.dart';
 /// what is playing, what comes next, tap to jump, drag the handle to reorder,
 /// X to remove, plus shuffle and repeat.
 class QueuePanel extends ConsumerStatefulWidget {
-  const QueuePanel({super.key});
+  const QueuePanel({super.key, this.docked = false});
+
+  /// Docked beside the player (slides in from the window edge) rather than
+  /// floating over it (scales out of the top right).
+  final bool docked;
 
   @override
   ConsumerState<QueuePanel> createState() => _QueuePanelState();
@@ -58,13 +62,19 @@ class _QueuePanelState extends ConsumerState<QueuePanel> {
     return IgnorePointer(
       ignoring: !open,
       child: AnimatedSlide(
-        offset: open ? Offset.zero : const Offset(.12, 0),
+        offset: open ? Offset.zero : (widget.docked ? const Offset(1.12, 0) : const Offset(.05, -.02)),
         duration: Motion.of(context, Motion.slow),
-        curve: Motion.curve(context, Motion.emphasized),
-        child: AnimatedOpacity(
-          opacity: open ? 1 : 0,
-          duration: Motion.of(context, Motion.medium),
-          child: Container(
+        curve: Motion.curve(context, widget.docked ? Motion.emphasized : Motion.spring),
+        child: AnimatedScale(
+          scale: open || widget.docked ? 1 : .92,
+          alignment: Alignment.topRight,
+          duration: Motion.of(context, Motion.slow),
+          curve: Motion.curve(context, Motion.spring),
+          child: AnimatedOpacity(
+            opacity: open ? 1 : 0,
+            duration: Motion.of(context, widget.docked ? Motion.slow : Motion.medium),
+            curve: Motion.standard,
+            child: Container(
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(36),
@@ -150,6 +160,7 @@ class _QueuePanelState extends ConsumerState<QueuePanel> {
           ),
         ),
       ),
+    ),
     );
   }
 }
@@ -184,6 +195,7 @@ class _ToggleChip extends StatelessWidget {
               kind: glyph,
               size: 20,
               color: selected ? scheme.onPrimary : scheme.onSurface,
+              hovered: s.hovered,
               active: s.pressed,
             ),
           ),

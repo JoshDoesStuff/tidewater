@@ -41,7 +41,7 @@ Widget railIconMotion(Destination d, double t, Color color, {LottieComposition? 
   // The gear's file only nudges it, so it turns a clear half revolution here
   // (its teeth repeat every 45 degrees, so it lands looking unchanged).
   if (d == Destination.settings) {
-    art = Transform.rotate(angle: math.pi * Curves.easeInOutCubic.transform((t / .8).clamp(0.0, 1.0)), child: art);
+    art = Transform.rotate(angle: math.pi * Curves.easeOutCubic.transform((t / .7).clamp(0.0, 1.0)), child: art);
   }
   return ColorFiltered(colorFilter: ColorFilter.mode(color, BlendMode.srcATop), child: art);
 }

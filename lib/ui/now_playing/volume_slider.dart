@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers/playback_providers.dart';
 import '../../app/theme/motion.dart';
+import '../widgets/animated_glyphs.dart';
 import '../widgets/pressable.dart';
 
 /// Volume: pill track with a gap-less filled part and a separate vertical
@@ -59,7 +60,7 @@ class _VolumeSliderState extends ConsumerState<VolumeSlider> with SingleTickerPr
                     scale: (s.hovered ? 1.12 : 1) * (1 + .3 * (_bump.value < .4 ? _bump.value / .4 : 1 - (_bump.value - .4) / .6)),
                     child: child,
                   ),
-                  child: Icon(level.icon, size: 22, color: scheme.primary),
+                  child: VolumeGlyph(level: level.index, color: scheme.primary),
                 ),
               ),
             ),
@@ -199,11 +200,5 @@ class _VolumeSliderState extends ConsumerState<VolumeSlider> with SingleTickerPr
   }
 }
 
-enum _Level {
-  muted(Icons.volume_off_rounded),
-  quiet(Icons.volume_down_rounded),
-  loud(Icons.volume_up_rounded);
-
-  const _Level(this.icon);
-  final IconData icon;
-}
+/// Speaker states; the index is the [VolumeGlyph] level (0 loud, 2 muted).
+enum _Level { loud, quiet, muted }

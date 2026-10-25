@@ -46,10 +46,13 @@ class _MiniPlayerBody extends ConsumerWidget {
               BoxShadow(color: scheme.shadow.withValues(alpha: .4), blurRadius: 24, offset: const Offset(0, 8)),
             ],
           ),
-          child: LayoutBuilder(
-            builder: (context, box) {
-              final showProgress = box.maxWidth >= 600;
+          // Hugs its content (up to the width the shell allows), so a short title
+          // gives a snug pill instead of empty space.
+          child: Builder(
+            builder: (context) {
+              final showProgress = MediaQuery.sizeOf(context).width >= 760;
               return Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox.square(
                     key: miniCoverKey,
@@ -97,7 +100,7 @@ class _MiniPlayerBody extends ConsumerWidget {
                   const SizedBox(width: 10),
                   ExpressiveIconButton(
                     icon: Icons.skip_previous_rounded,
-                    glyph: glyphFor(GlyphKind.previous, onPress: true),
+                    glyph: glyphFor(GlyphKind.previous),
                     tone: ButtonTone.ghost,
                     size: 40,
                     iconSize: 22,
@@ -109,7 +112,7 @@ class _MiniPlayerBody extends ConsumerWidget {
                   const SizedBox(width: 10),
                   ExpressiveIconButton(
                     icon: Icons.skip_next_rounded,
-                    glyph: glyphFor(GlyphKind.next, onPress: true),
+                    glyph: glyphFor(GlyphKind.next),
                     tone: ButtonTone.ghost,
                     size: 40,
                     iconSize: 22,
@@ -118,8 +121,8 @@ class _MiniPlayerBody extends ConsumerWidget {
                   ),
                   if (showProgress) ...[
                     const SizedBox(width: 24),
-                    // The bar takes whatever room the title and buttons leave.
-                    const Expanded(child: SizedBox(height: 30, child: WavyScrubber())),
+                    // A comfortable bar that gives way when the window is narrow.
+                    const Flexible(child: SizedBox(width: 260, height: 30, child: WavyScrubber())),
                     const SizedBox(width: 14),
                     SizedBox(
                       width: 34,
@@ -131,8 +134,7 @@ class _MiniPlayerBody extends ConsumerWidget {
                         ),
                       ),
                     ),
-                  ] else
-                    const Spacer(),
+                  ],
                   const SizedBox(width: 4),
                   HeartButton(
                     liked: ref.watch(likedProvider.select((l) => l.contains(track.id))),

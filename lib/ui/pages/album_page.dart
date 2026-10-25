@@ -68,7 +68,7 @@ class _AlbumPageState extends ConsumerState<AlbumPage> {
           children: [
             ExpressiveIconButton(
               icon: Icons.arrow_back_rounded,
-              glyph: glyphFor(GlyphKind.back, onPress: true),
+              glyph: glyphFor(GlyphKind.back),
               tooltip: 'Back',
               tone: ButtonTone.ghost,
               onPressed: () => goBack(context),

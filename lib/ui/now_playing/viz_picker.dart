@@ -4,14 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers/settings_providers.dart';
 import '../../app/providers/ui_providers.dart';
 import '../../app/theme/motion.dart';
+import '../widgets/animated_glyphs.dart';
 import '../widgets/pressable.dart';
 
-const _icons = {
-  VizMode.aurora: Icons.blur_on_rounded,
-  VizMode.shapes: Icons.star_rounded,
-  VizMode.bars: Icons.equalizer_rounded,
-  VizMode.ring: Icons.brightness_low_rounded,
-  VizMode.off: Icons.block_rounded,
+const _glyphs = {
+  VizMode.aurora: GlyphKind.aurora,
+  VizMode.shapes: GlyphKind.shapes,
+  VizMode.bars: GlyphKind.visualizer,
+  VizMode.ring: GlyphKind.ring,
+  VizMode.off: GlyphKind.off,
 };
 
 /// The ✨ popup: scales and fades from the top right (the button) on the
@@ -73,7 +74,13 @@ class VizPicker extends ConsumerWidget {
                           ),
                           child: Row(
                             children: [
-                              Icon(_icons[m], size: 20, color: selected ? scheme.onPrimary : scheme.onSurface),
+                              AnimatedGlyph(
+                                kind: _glyphs[m]!,
+                                size: 22,
+                                color: selected ? scheme.onPrimary : scheme.onSurface,
+                                hovered: s.hovered,
+                                active: selected,
+                              ),
                               const SizedBox(width: 12),
                               Text(
                                 m.label,

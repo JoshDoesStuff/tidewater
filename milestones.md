@@ -216,7 +216,8 @@ Credits live in Settings and `third-party-licenses/`; add an entry for any new a
 Done: sidebar (Home, Library, Artists, Liked, Lists, Radio, Settings), cast button, list/cards toggle, sort and filter.
 
 Also done: Next and Previous, Shuffle (straight lines), Menu, Repeat (rounded), Lyrics, Queue, Back, Search, Close,
-Visualizer (mini bars), Collapse. Still static: the volume speaker (has its own swap), title bar buttons, play on cards,
+Visualizer (mini bars), Collapse, the volume speaker (UseAnimations "volume", scrubbed between loud/quiet/muted) and the
+visualizer picker options. Still static: title bar buttons, play on cards,
 login page icons. The queue also became a docked side panel (Settings switches it back to a popup).
 
 ## M6 — Now Playing (remaining)

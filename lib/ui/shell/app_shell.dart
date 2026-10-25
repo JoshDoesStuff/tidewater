@@ -158,7 +158,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                   left: 0,
                   right: 0,
                   bottom: 24,
-                  child: Center(child: SizedBox(width: miniWidth, child: const MiniPlayer())),
+                  child: Center(child: ConstrainedBox(constraints: BoxConstraints(maxWidth: miniWidth), child: const MiniPlayer())),
                 ),
                 Positioned(
                   right: 32,

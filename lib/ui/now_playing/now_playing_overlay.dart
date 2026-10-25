@@ -349,7 +349,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
                   ),
                 ),
               ),
-              if (docked) const Positioned(right: 20, top: 20, bottom: 20, width: _dockWidth, child: QueuePanel()),
+              if (docked) const Positioned(right: 20, top: 20, bottom: 20, width: _dockWidth, child: QueuePanel(docked: true)),
               _idleProgress(context, idle),
             ],
           ),
@@ -574,7 +574,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
       children: [
         ExpressiveIconButton(
           icon: Icons.close_fullscreen_rounded,
-          glyph: glyphFor(GlyphKind.collapse, size: 24, onPress: true),
+          glyph: glyphFor(GlyphKind.collapse, size: 24),
           size: 56,
           squareRadius: 18,
           tooltip: 'Close (Esc)',
@@ -603,7 +603,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
         const SizedBox(width: 16),
         ExpressiveIconButton(
           icon: Icons.queue_music_rounded,
-          glyph: glyphFor(GlyphKind.queue, size: 26, onPress: true),
+          glyph: glyphFor(GlyphKind.queue, size: 26),
           size: 56,
           squareRadius: 18,
           selected: ref.watch(queueOpenProvider),
@@ -728,7 +728,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
             children: [
               ExpressiveIconButton(
                 icon: Icons.shuffle_rounded,
-                glyph: glyphFor(GlyphKind.shuffle, size: 26, onPress: true),
+                glyph: glyphFor(GlyphKind.shuffle, size: 26),
                 size: 56,
                 squareRadius: 18,
                 selected: state.shuffle,
@@ -744,7 +744,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
               const SizedBox(width: 12),
               ExpressiveIconButton(
                 icon: state.repeat == LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
-                glyph: glyphFor(state.repeat == LoopMode.one ? GlyphKind.repeatOne : GlyphKind.repeat, size: 26, onPress: true),
+                glyph: glyphFor(state.repeat == LoopMode.one ? GlyphKind.repeatOne : GlyphKind.repeat, size: 26),
                 size: 56,
                 squareRadius: 18,
                 selected: state.repeat != LoopMode.off,
@@ -759,7 +759,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
                 const SizedBox(width: 12),
                 ExpressiveIconButton(
                   icon: Icons.lyrics_rounded,
-                  glyph: glyphFor(GlyphKind.lyrics, size: 26, onPress: true),
+                  glyph: glyphFor(GlyphKind.lyrics, size: 26),
                   size: 56,
                   squareRadius: 18,
                   selected: lyricsOn,
@@ -968,7 +968,7 @@ class _WideButton extends StatelessWidget {
           child: Ripple(
             color: scheme.onSecondaryContainer,
             child: Center(
-              child: AnimatedGlyph(kind: glyph, size: 26, color: scheme.onSecondaryContainer, active: s.pressed),
+              child: AnimatedGlyph(kind: glyph, size: 26, color: scheme.onSecondaryContainer, hovered: s.hovered, active: s.pressed),
             ),
           ),
         ),
@@ -1067,7 +1067,7 @@ class _LyricsCard extends ConsumerWidget {
               top: 14,
               child: ExpressiveIconButton(
                 icon: Icons.lyrics_rounded,
-                glyph: glyphFor(GlyphKind.lyrics, size: 22, onPress: true),
+                glyph: glyphFor(GlyphKind.lyrics, size: 22),
                 size: 48,
                 iconSize: 20,
                 squareRadius: 14,

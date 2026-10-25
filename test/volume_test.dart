@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
 import 'package:tidewater/app/providers/ui_providers.dart';
+import 'package:tidewater/ui/widgets/animated_glyphs.dart' show VolumeGlyph;
 
 import 'support/fake_library.dart';
 import 'support/pump.dart';
@@ -15,12 +15,12 @@ void main() {
     await c.read(playbackProvider.notifier).setVolume(.3);
     c.read(nowPlayingOpenProvider.notifier).set(true);
     await advance(tester, const Duration(seconds: 2));
-    expect(find.byIcon(Icons.volume_down_rounded), findsOneWidget);
+    expect(find.byWidgetPredicate((w) => w is VolumeGlyph && w.level == 1), findsOneWidget, reason: 'quiet');
 
     await tester.tap(find.byTooltip('Mute (M)'));
     await advance(tester, const Duration(milliseconds: 500));
     expect(c.read(playbackProvider).volume, 0);
-    expect(find.byIcon(Icons.volume_off_rounded), findsOneWidget);
+    expect(find.byWidgetPredicate((w) => w is VolumeGlyph && w.level == 2), findsOneWidget, reason: 'muted');
 
     await tester.tap(find.byTooltip('Unmute (M)'));
     await advance(tester, const Duration(milliseconds: 500));
