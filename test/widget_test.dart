@@ -242,6 +242,61 @@ void main() {
     expect(lobed.width, lessThanOrEqualTo(100 * ShapeKind.clover.params.base * (1 + ShapeKind.clover.params.amp) + 1));
     });
 
+  test('no morph shape pokes outside its box (flat-clipped lobes)', () {
+    const size = Size(440, 440);
+    const halo = ShapeParams(lobes: 12, amp: .05, base: .97);
+    const ambient = ShapeParams(lobes: 7, amp: .09, base: .95);
+    final all = [for (final k in ShapeKind.values) k.params, halo, ambient];
+    for (final params in all) {
+      for (final m in [0.0, .5, 1.0]) {
+        for (final rot in [0.0, .3, 1.1, 2.9]) {
+          for (final squareBase in [true, false]) {
+            final b = morphPath(size, m: m, params: params, rot: rot, squareBase: squareBase).getBounds();
+            final why = '$params m=$m rot=$rot squareBase=$squareBase $b';
+            expect(b.left, greaterThanOrEqualTo(-.01), reason: why);
+            expect(b.top, greaterThanOrEqualTo(-.01), reason: why);
+            expect(b.right, lessThanOrEqualTo(440.01), reason: why);
+            expect(b.bottom, lessThanOrEqualTo(440.01), reason: why);
+          }
+        }
+      }
+    }
+  });
+
+  testWidgets('track title swap speed setting scales the animation and persists', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(overrides: [sharedPreferencesProvider.overrideWithValue(prefs)]);
+    addTearDown(container.dispose);
+    expect(container.read(letterSpeedProvider), 1);
+    container.read(letterSpeedProvider.notifier).set(2.5);
+    expect(prefs.getDouble('letter_speed'), 2.5);
+    container.read(letterSpeedProvider.notifier).set(99);
+    expect(container.read(letterSpeedProvider), LetterSpeedNotifier.max);
+
+    // (old title gone, new title showing) 300 ms after the text changes.
+    Future<(bool, bool)> run(double speed) async {
+      final text = ValueNotifier('ab');
+      await tester.pumpWidget(MaterialApp(
+        home: ValueListenableBuilder<String>(
+          valueListenable: text,
+          builder: (context, t, _) => Center(child: LetterSwap(text: t, speed: speed, style: const TextStyle(fontSize: 20))),
+        ),
+      ));
+      await _advance(tester, const Duration(seconds: 3));
+      text.value = 'xy';
+      await _advance(tester, const Duration(milliseconds: 300));
+      final result = (find.text('a').evaluate().isEmpty, find.text('x').evaluate().isNotEmpty);
+      await tester.pumpWidget(const SizedBox());
+      return result;
+    }
+
+    final slow = await run(.5);
+    final fast = await run(3);
+    expect(slow, (false, false), reason: 'at 0.5x the old title is still leaving after 300 ms');
+    expect(fast, (true, true), reason: 'at 3x the swap has already happened after 300 ms');
+  });
+
   test('motion tokens match the spec', () {
     expect(Motion.fast.inMilliseconds, 150);
     expect(Motion.medium.inMilliseconds, 300);

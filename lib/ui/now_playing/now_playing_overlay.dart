@@ -175,9 +175,14 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
       });
       return;
     }
+    // The whole track-change choreography follows the title-swap speed
+    // setting. Progress maths in _slideSwap/_cover is relative, so only the
+    // controller length and the swap moment scale.
+    final speed = ref.read(letterSpeedProvider);
+    _trackFx.duration = Duration(milliseconds: (600 / speed).round());
     _trackFx.forward(from: 0);
     _swapTimer?.cancel();
-    _swapTimer = Timer(const Duration(milliseconds: 190), () {
+    _swapTimer = Timer(Duration(milliseconds: (190 / speed).round()), () {
       if (!mounted) return;
       setState(() {
         _shownIndex = index;
@@ -593,6 +598,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
             // pops out as soon as the track changes, then the new one pops in.
             child: LetterSwap(
               text: ref.watch(currentTrackProvider).title,
+              speed: ref.watch(letterSpeedProvider),
               style: text.displayMedium?.copyWith(
                 fontSize: 58,
                 fontWeight: FontWeight.w700,

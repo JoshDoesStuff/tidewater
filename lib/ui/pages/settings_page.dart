@@ -48,6 +48,8 @@ class SettingsPage extends ConsumerWidget {
                     value: dark,
                     onChanged: ref.read(darkThemeProvider.notifier).set,
                   ),
+                  const SizedBox(height: 8),
+                  const _SpeedRow(),
                   const SizedBox(height: 22),
                   Text('Visualizer style', style: text.titleLarge),
                   const SizedBox(height: 4),
@@ -69,6 +71,56 @@ class SettingsPage extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Speed of the Now Playing title swap and track-change choreography.
+class _SpeedRow extends ConsumerWidget {
+  const _SpeedRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final speed = ref.watch(letterSpeedProvider);
+    final notifier = ref.read(letterSpeedProvider.notifier);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+      decoration: BoxDecoration(color: scheme.surfaceContainerLow, borderRadius: BorderRadius.circular(24)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text('Track change speed', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+              ),
+              Text(
+                '${speed.toStringAsFixed(1)}×',
+                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: scheme.primary),
+              ),
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: speed == 1 ? null : () => notifier.set(1),
+                child: const Text('Reset'),
+              ),
+            ],
+          ),
+          Text(
+            'How fast the old title pops out and the new one pops in on Now Playing.',
+            style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          Slider(
+            value: speed,
+            min: LetterSpeedNotifier.min,
+            max: LetterSpeedNotifier.max,
+            divisions: 25,
+            label: '${speed.toStringAsFixed(1)}×',
+            onChanged: notifier.set,
+          ),
+        ],
       ),
     );
   }

@@ -25,6 +25,24 @@ class ReduceMotionNotifier extends Notifier<bool> {
 
 final reduceMotionProvider = NotifierProvider<ReduceMotionNotifier, bool>(ReduceMotionNotifier.new);
 
+/// Speed of the Now Playing title swap (old title pops out, new one pops in).
+/// A multiplier: 1 is the default pace, 2 is twice as fast.
+class LetterSpeedNotifier extends Notifier<double> {
+  static const key = 'letter_speed';
+  static const min = .5;
+  static const max = 3.0;
+
+  @override
+  double build() => (ref.watch(sharedPreferencesProvider).getDouble(key) ?? 1).clamp(min, max);
+
+  void set(double value) {
+    state = value.clamp(min, max);
+    ref.read(sharedPreferencesProvider).setDouble(key, state);
+  }
+}
+
+final letterSpeedProvider = NotifierProvider<LetterSpeedNotifier, double>(LetterSpeedNotifier.new);
+
 /// Dark is the default; light is supported.
 class DarkThemeNotifier extends Notifier<bool> {
   static const _key = 'dark_theme';

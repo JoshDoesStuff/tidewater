@@ -52,12 +52,16 @@ Path morphPath(
   final r = size.shortestSide / 2;
   final center = size.center(Offset.zero);
   final e = 2 / exponent;
+  // Lobe tips reach base * (1 + amp) * R. When that is above 1 (cookie, clover,
+  // the halo) the widget's box would slice the tips flat, so shrink the lobed
+  // outline just enough to stay inside it.
+  final fit = math.min(1.0, 1 / (params.base * (1 + params.amp)));
   final path = Path();
   for (var k = 0; k < points; k++) {
     final th = k / points * 2 * math.pi - math.pi / 2;
     final co = math.cos(th);
     final si = math.sin(th);
-    final pr = r * params.base * (1 + params.amp * math.cos(params.lobes * th + rot));
+    final pr = r * fit * params.base * (1 + params.amp * math.cos(params.lobes * th + rot));
     final px = pr * co;
     final py = pr * si;
     double x;

@@ -122,14 +122,14 @@ class LetterSwap extends StatefulWidget {
     super.key,
     required this.text,
     required this.style,
-    this.outStagger = const Duration(milliseconds: 12),
-    this.inStagger = const Duration(milliseconds: 26),
+    this.speed = 1,
   });
 
   final String text;
   final TextStyle? style;
-  final Duration outStagger;
-  final Duration inStagger;
+
+  /// Pace multiplier (Settings): 2 plays the whole swap twice as fast.
+  final double speed;
 
   @override
   State<LetterSwap> createState() => _LetterSwapState();
@@ -138,8 +138,11 @@ class LetterSwap extends StatefulWidget {
 enum _Phase { entering, exiting }
 
 class _LetterSwapState extends State<LetterSwap> with SingleTickerProviderStateMixin {
-  static const _inPer = Duration(milliseconds: 720);
-  static const _outPer = Duration(milliseconds: 380);
+  // Base pace at speed 1: snappy exit, then a springy entrance.
+  static const _baseInPer = Duration(milliseconds: 520);
+  static const _baseOutPer = Duration(milliseconds: 260);
+  static const _baseInStagger = Duration(milliseconds: 18);
+  static const _baseOutStagger = Duration(milliseconds: 8);
 
   late final AnimationController _c = AnimationController(vsync: this);
   late String _shown = widget.text;
@@ -147,8 +150,14 @@ class _LetterSwapState extends State<LetterSwap> with SingleTickerProviderStateM
   bool _reduced = false;
   bool _started = false;
 
-  Duration _enterTotal(String s) => widget.inStagger * (s.length - 1).clamp(0, 1000) + _inPer;
-  Duration _exitTotal(String s) => widget.outStagger * (s.length - 1).clamp(0, 1000) + _outPer;
+  Duration _scaled(Duration d) => d * (1 / widget.speed.clamp(.1, 10.0));
+  Duration get _inPer => _scaled(_baseInPer);
+  Duration get _outPer => _scaled(_baseOutPer);
+  Duration get _inStagger => _scaled(_baseInStagger);
+  Duration get _outStagger => _scaled(_baseOutStagger);
+
+  Duration _enterTotal(String s) => _inStagger * (s.length - 1).clamp(0, 1000) + _inPer;
+  Duration _exitTotal(String s) => _outStagger * (s.length - 1).clamp(0, 1000) + _outPer;
 
   @override
   void didChangeDependencies() {
@@ -209,7 +218,7 @@ class _LetterSwapState extends State<LetterSwap> with SingleTickerProviderStateM
         final exiting = _phase == _Phase.exiting;
         final total = exiting ? _exitTotal(_shown) : _enterTotal(_shown);
         final elapsed = _c.value * total.inMicroseconds / 1000;
-        final stagger = exiting ? widget.outStagger : widget.inStagger;
+        final stagger = exiting ? _outStagger : _inStagger;
         final per = (exiting ? _outPer : _inPer).inMicroseconds / 1000;
         return _letterRow(chars, widget.style, em, (i) {
           final start = (stagger * i).inMicroseconds / 1000;
