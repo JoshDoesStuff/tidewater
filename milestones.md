@@ -166,6 +166,11 @@ janky). Current profile baseline (60 Hz, this machine): build ≈ 1 ms, raster �
     transform and color): position jitter 0.070 → 0.006 px, ink shimmer 0.46 → 0.06 %. Per-glyph `drawImageRect`
     with a color filter was NOT acceptable: it made the GPU do an off-screen pass per glyph per frame and
     stalled raster (40 ms frames) while the theme recolored. Use `GlyphRun` for any future animated headline.
+  - When porting CSS transitions, port them literally (`ui/now_playing/lyrics_motion.dart`): each property with its
+    own duration and curve (lyrics: opacity/blur .8 s, scale/slide .9 s, color .6 s default `ease`), retargeting
+    from the value currently shown, fixed anchors instead of measuring. Never swap widget structure while an
+    animation is running (a blur wrapper that appeared/disappeared reset the line's scale and color animations,
+    which read as jumps). Scaled/slid text is baked to textures too (`LyricsList`).
 - Add golden tests for key screens once the design settles; add an integration test for login → play.
 - CI: analyze + test on every push.
 

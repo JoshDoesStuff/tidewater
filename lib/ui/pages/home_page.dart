@@ -148,6 +148,7 @@ class _CarouselState extends State<_Carousel> {
                           title: widget.heroes[i].$2,
                           subtitle: widget.heroes[i].$3,
                           hovered: _hover == i,
+                          weight: w[i],
                         ),
                       ),
                     ),
@@ -181,12 +182,27 @@ class _WeightsTween extends Tween<List<double>> {
 }
 
 class _HeroCard extends ConsumerWidget {
-  const _HeroCard({required this.index, required this.title, required this.subtitle, required this.hovered});
+  const _HeroCard({
+    required this.index,
+    required this.title,
+    required this.subtitle,
+    required this.hovered,
+    required this.weight,
+  });
 
   final int index;
   final String title;
   final String subtitle;
   final bool hovered;
+
+  /// The card's current (animated) share of the carousel: 1 at rest, 2.2 when
+  /// hovered, .55 when another card is.
+  final double weight;
+
+  /// Label visibility: fully shown at rest or expanded, gone once the card is
+  /// squeezed to its narrowest (the label no longer fits there; the demo just
+  /// sliced it off at the card edge).
+  double get _labelOpacity => ((weight - .6) / .35).clamp(0.0, 1.0);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -225,19 +241,23 @@ class _HeroCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Overflowing text fades out softly instead of being sliced.
                     Text(
                       title,
                       maxLines: 1,
-                      overflow: TextOverflow.clip,
+                      overflow: TextOverflow.fade,
                       softWrap: false,
-                      style: text.titleLarge?.copyWith(color: AppTheme.onArt),
+                      style: text.titleLarge?.copyWith(color: AppTheme.onArt.withValues(alpha: _labelOpacity)),
                     ),
                     Text(
                       subtitle,
                       maxLines: 1,
-                      overflow: TextOverflow.clip,
+                      overflow: TextOverflow.fade,
                       softWrap: false,
-                      style: text.bodySmall?.copyWith(fontSize: 13, color: AppTheme.onArt.withValues(alpha: .85)),
+                      style: text.bodySmall?.copyWith(
+                        fontSize: 13,
+                        color: AppTheme.onArt.withValues(alpha: .85 * _labelOpacity),
+                      ),
                     ),
                   ],
                 ),

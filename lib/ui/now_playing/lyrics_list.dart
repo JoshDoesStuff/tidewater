@@ -1,96 +1,85 @@
-import 'dart:ui' show ImageFilter;
+import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers/playback_providers.dart';
 import '../../app/theme/motion.dart';
 import '../../core/lyrics/lyrics.dart';
+import 'lyrics_motion.dart';
 
-/// Sizing/dimming recipe for [LyricsList]. [card] is the small list in the
-/// lyrics card; [idle] is the big one shown beside the cover in idle mode.
-class LyricsStyle {
-  const LyricsStyle({
-    required this.fontSize,
-    required this.activeScale,
-    required this.nearScale,
-    required this.farScale,
-    required this.spacing,
-    required this.nearOpacity,
-    required this.midOpacity,
-    required this.nearBlur,
-    required this.midBlur,
-    required this.farBlur,
-    required this.fade,
-  });
+export 'lyrics_motion.dart' show LyricsStyle;
 
-  final double fontSize;
-  final double activeScale;
-  final double nearScale;
-  final double farScale;
-  final double spacing;
-  final double nearOpacity; // distance 1
-  final double midOpacity; // distance 2
-  final double nearBlur;
-  final double midBlur;
-  final double farBlur;
-
-  /// Fraction of the height faded at each edge.
-  final double fade;
-
-  static const card = LyricsStyle(
-    fontSize: 22,
-    activeScale: 1.3,
-    nearScale: 1,
-    farScale: .92,
-    spacing: 12,
-    nearOpacity: .45,
-    midOpacity: .25,
-    nearBlur: .8,
-    midBlur: 1.5,
-    farBlur: 2,
-    fade: .25,
-  );
-
-  static const idle = LyricsStyle(
-    fontSize: 36,
-    activeScale: 1.28,
-    nearScale: .95,
-    farScale: .86,
-    spacing: 26,
-    nearOpacity: .5,
-    midOpacity: .28,
-    nearBlur: 1,
-    midBlur: 2,
-    farBlur: 3,
-    fade: .22,
-  );
-}
-
-/// A single scrolling list of every lyric line. The active line is large,
-/// accent colored and kept vertically centered by translating the whole list;
-/// other lines dim and blur with distance. Lines are never removed, they
-/// animate. Unsynced lyrics are a plain scrollable list with no highlight.
+/// A single scrolling list of every lyric line, ported closely from the demo's
+/// `.ll` / `.il` CSS.
+///
+/// The active line is large, accent colored and kept at a fixed anchor by
+/// translating the whole list (900 ms, emphasized); other lines dim, shrink and
+/// blur with distance. Each property has its own CSS transition (opacity and
+/// blur 800 ms, scale 900 ms, color 600 ms `ease`) that, when retargeted
+/// mid-flight, continues from the value currently shown. Lines never leave the
+/// list, they only animate.
+///
+/// Like the title letters, each line is baked into a texture once and then
+/// scaled/faded/slid as an image, so moving text doesn't shimmer. Unsynced
+/// lyrics are a plain scrollable list with no highlight.
 class LyricsList extends ConsumerStatefulWidget {
   const LyricsList({super.key, required this.style, this.layoutWidth});
 
   final LyricsStyle style;
 
-  /// Width lines wrap at (before scaling). Defaults to available width over
-  /// the active scale so the enlarged line still fits.
+  /// Width lines wrap at (before scaling). Defaults to the available width
+  /// over the active scale so the enlarged line still fits.
   final double? layoutWidth;
 
   @override
   ConsumerState<LyricsList> createState() => _LyricsListState();
 }
 
-class _LyricsListState extends ConsumerState<LyricsList> {
-  final _columnKey = GlobalKey();
-  List<GlobalKey> _keys = const [];
+class _LineTex {
+  _LineTex(this.size, this.image, this.top);
+
+  /// Laid-out (unscaled) text size in logical px.
+  final Size size;
+
+  /// White text on transparent, baked at `dpr * activeScale`; null if empty.
+  final ui.Image? image;
+
+  /// Top of the line in the list (logical px, before the slide).
+  final double top;
+}
+
+class _LineAnim {
+  _LineAnim(LineTarget t)
+      : opacity = CssTransition(t.opacity),
+        blur = CssTransition(t.blur),
+        scale = CssTransition(t.scale),
+        accent = CssTransition(t.accent);
+
+  final CssTransition opacity;
+  final CssTransition blur;
+  final CssTransition scale;
+  final CssTransition accent;
+
+  bool isActive(Duration now) =>
+      opacity.isActive(now) || blur.isActive(now) || scale.isActive(now) || accent.isActive(now);
+}
+
+class _LyricsListState extends ConsumerState<LyricsList> with SingleTickerProviderStateMixin {
+  final _clock = Stopwatch()..start();
+  final _frame = ValueNotifier<int>(0);
+  late final Ticker _ticker = createTicker((_) => _onTick());
+  final _slide = CssTransition(0);
+
+  List<_LineTex> _lines = const [];
+  List<_LineAnim> _anims = const [];
+  double _pad = 0;
+  Object? _sheetKey;
   int _active = 0;
-  double _offset = 0;
-  bool _measured = false;
-  double _height = 0;
+  bool _reduced = false;
   ValueNotifier<Duration>? _position;
 
   @override
@@ -106,36 +95,104 @@ class _LyricsListState extends ConsumerState<LyricsList> {
   @override
   void dispose() {
     _position?.removeListener(_onPosition);
+    _ticker.dispose();
+    _disposeImages();
+    _frame.dispose();
     super.dispose();
+  }
+
+  void _disposeImages() {
+    for (final l in _lines) {
+      l.image?.dispose();
+    }
   }
 
   void _onPosition() {
     final lyrics = ref.read(lyricsProvider);
-    if (!lyrics.synced) return;
+    if (!lyrics.synced || _lines.isEmpty) return;
     final i = lyrics.activeIndexAt(_position!.value);
-    if (i != _active) {
-      setState(() => _active = i);
-      _scheduleMeasure();
-    }
+    if (i == _active) return;
+    _active = i;
+    _applyTargets(animate: true);
+    // Repainting is driven by the ticker; rebuild only so the accessibility
+    // value (the active line) follows. This happens once per line.
+    setState(() {});
   }
 
-  void _scheduleMeasure() {
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+  void _onTick() {
+    _frame.value++;
+    final now = _clock.elapsed;
+    if (!_slide.isActive(now) && !_anims.any((a) => a.isActive(now))) _ticker.stop();
   }
 
-  void _measure() {
-    if (!mounted || _active >= _keys.length) return;
-    final columnBox = _columnKey.currentContext?.findRenderObject() as RenderBox?;
-    final lineBox = _keys[_active].currentContext?.findRenderObject() as RenderBox?;
-    if (columnBox == null || lineBox == null || !columnBox.attached || !lineBox.attached) return;
-    final top = lineBox.localToGlobal(Offset.zero, ancestor: columnBox).dy;
-    final target = _height / 2 - (top + lineBox.size.height / 2);
-    if (target != _offset || !_measured) {
-      setState(() {
-        _offset = target;
-        _measured = true;
-      });
+  /// Sets every line's (and the list's) target for the current active line,
+  /// either snapping (first layout) or starting the CSS transitions.
+  void _applyTargets({required bool animate}) {
+    if (_lines.isEmpty) return;
+    final now = _clock.elapsed;
+    final style = widget.style;
+    final speed = animate && !_reduced;
+    Duration d(Duration x) => speed ? x : Duration.zero;
+    for (var i = 0; i < _lines.length; i++) {
+      final t = lineTarget((i - _active).abs(), style);
+      final a = _anims[i];
+      if (!animate) {
+        a.opacity.snap(t.opacity);
+        a.blur.snap(t.blur);
+        a.scale.snap(t.scale);
+        a.accent.snap(t.accent);
+      } else {
+        a.opacity.retarget(t.opacity, now, d(LyricTiming.opacity), LyricTiming.emphasized);
+        a.blur.retarget(t.blur, now, d(LyricTiming.blur), LyricTiming.emphasized);
+        a.scale.retarget(t.scale, now, d(LyricTiming.scale), LyricTiming.emphasized);
+        a.accent.retarget(t.accent, now, d(LyricTiming.color), LyricTiming.colorCurve);
+      }
     }
+    final active = _lines[_active.clamp(0, _lines.length - 1)];
+    final target = listOffsetFor(lineTop: active.top, lineHeight: active.size.height, style: style);
+    if (animate) {
+      _slide.retarget(target, now, d(LyricTiming.slide), LyricTiming.emphasized);
+    } else {
+      _slide.snap(target);
+    }
+    if (animate && speed && !_ticker.isActive) _ticker.start();
+    _frame.value++;
+  }
+
+  /// (Re)bakes the line textures when lyrics, width, style or pixel ratio change.
+  void _ensureSheet(Lyrics lyrics, double width, double dpr, TextStyle textStyle) {
+    final key = (identityHashCode(lyrics), width, dpr, textStyle.fontSize, textStyle.height, textStyle.fontFamily);
+    if (_sheetKey == key) return;
+    _sheetKey = key;
+    _disposeImages();
+
+    final st = widget.style;
+    final mask = textStyle.copyWith(color: const Color(0xFFFFFFFF));
+    final bake = dpr * st.activeScale;
+    _pad = st.fontSize * .35; // room for overhangs and the blur spreading out
+    final lines = <_LineTex>[];
+    var top = 0.0;
+    for (final line in lyrics.lines) {
+      final tp = TextPainter(
+        text: TextSpan(text: line.text.isEmpty ? ' ' : line.text, style: mask),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: width);
+      ui.Image? image;
+      if (line.text.trim().isNotEmpty) {
+        final recorder = ui.PictureRecorder();
+        final canvas = Canvas(recorder)..scale(bake);
+        tp.paint(canvas, Offset(_pad, _pad));
+        final picture = recorder.endRecording();
+        image = picture.toImageSync(((tp.width + _pad * 2) * bake).ceil(), ((tp.height + _pad * 2) * bake).ceil());
+        picture.dispose();
+      }
+      lines.add(_LineTex(Size(tp.width, tp.height), image, top));
+      top += tp.height + st.spacing;
+      tp.dispose();
+    }
+    _lines = lines;
+    _anims = [for (var i = 0; i < lines.length; i++) _LineAnim(lineTarget((i - _active).abs(), st))];
+    _applyTargets(animate: false);
   }
 
   @override
@@ -143,59 +200,51 @@ class _LyricsListState extends ConsumerState<LyricsList> {
     final lyrics = ref.watch(lyricsProvider);
     final scheme = Theme.of(context).colorScheme;
     final st = widget.style;
+    _reduced = Motion.reduced(context);
     if (lyrics.isEmpty) return const SizedBox.shrink();
-    if (_keys.length != lyrics.lines.length) {
-      _keys = List.generate(lyrics.lines.length, (_) => GlobalKey());
-      _scheduleMeasure();
-    }
     if (!lyrics.synced) return _PlainList(lyrics: lyrics, style: st);
+
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final base = Theme.of(context).textTheme.bodyLarge!;
+    final textStyle = base.copyWith(fontSize: st.fontSize, fontWeight: FontWeight.w700, height: st.lineHeight);
 
     return LayoutBuilder(
       builder: (context, box) {
-        if (box.maxHeight != _height) {
-          _height = box.maxHeight;
-          _scheduleMeasure();
-        }
         final width = widget.layoutWidth ?? box.maxWidth / st.activeScale;
-        final animate = _measured && !Motion.reduced(context);
-        return ShaderMask(
-          blendMode: BlendMode.dstIn,
-          shaderCallback: (r) => LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              scheme.onSurface.withValues(alpha: 0),
-              scheme.onSurface,
-              scheme.onSurface,
-              scheme.onSurface.withValues(alpha: 0),
-            ],
-            stops: [0, st.fade, 1 - st.fade, 1],
-          ).createShader(r),
-          child: ClipRect(
-            child: OverflowBox(
-              alignment: Alignment.topLeft,
-              minHeight: 0,
-              maxHeight: double.infinity,
-              minWidth: 0,
-              maxWidth: width,
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(end: _offset),
-                duration: animate ? const Duration(milliseconds: 900) : Duration.zero,
-                curve: Motion.emphasized,
-                builder: (context, y, child) => Transform.translate(offset: Offset(0, y), child: child),
-                child: Column(
-                  key: _columnKey,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final (i, line) in lyrics.lines.indexed)
-                      _Line(
-                        key: _keys[i],
-                        line: line,
-                        distance: (i - _active).abs(),
-                        style: st,
-                      ),
-                  ],
+        _ensureSheet(lyrics, width, dpr, textStyle);
+        final activeText = lyrics.lines[_active.clamp(0, lyrics.lines.length - 1)].text;
+        return Semantics(
+          label: 'Lyrics',
+          value: activeText,
+          child: ExcludeSemantics(
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (r) => LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  scheme.onSurface.withValues(alpha: 0),
+                  scheme.onSurface,
+                  scheme.onSurface,
+                  scheme.onSurface.withValues(alpha: 0),
+                ],
+                stops: [0, st.fade, 1 - st.fade, 1],
+              ).createShader(r),
+              child: ClipRect(
+                child: CustomPaint(
+                  size: Size(box.maxWidth, box.maxHeight),
+                  painter: _LyricsPainter(
+                    repaint: _frame,
+                    clock: _clock,
+                    lines: _lines,
+                    anims: _anims,
+                    slide: _slide,
+                    pad: _pad,
+                    dpr: dpr,
+                    bakeScale: st.activeScale,
+                    normal: scheme.onSurface,
+                    accent: scheme.primary,
+                  ),
                 ),
               ),
             ),
@@ -206,60 +255,77 @@ class _LyricsListState extends ConsumerState<LyricsList> {
   }
 }
 
-class _Line extends StatelessWidget {
-  const _Line({super.key, required this.line, required this.distance, required this.style});
+class _LyricsPainter extends CustomPainter {
+  _LyricsPainter({
+    required Listenable repaint,
+    required this.clock,
+    required this.lines,
+    required this.anims,
+    required this.slide,
+    required this.pad,
+    required this.dpr,
+    required this.bakeScale,
+    required this.normal,
+    required this.accent,
+  }) : super(repaint: repaint);
 
-  final LyricLine line;
-  final int distance;
-  final LyricsStyle style;
+  final Stopwatch clock;
+  final List<_LineTex> lines;
+  final List<_LineAnim> anims;
+  final CssTransition slide;
+  final double pad;
+  final double dpr;
+  final double bakeScale;
+  final Color normal;
+  final Color accent;
 
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final d = distance;
-    final opacity = d == 0 ? 1.0 : d == 1 ? style.nearOpacity : d == 2 ? style.midOpacity : .2;
-    final blur = d == 0 ? 0.0 : d == 1 ? style.nearBlur : d == 2 ? style.midBlur : style.farBlur;
-    final scale = d == 0 ? style.activeScale : d == 1 ? style.nearScale : style.farScale;
-    final reduced = Motion.reduced(context);
-    final slow = reduced ? Duration.zero : const Duration(milliseconds: 800);
-    final scaleDur = reduced ? Duration.zero : const Duration(milliseconds: 900);
-    return Padding(
-      padding: EdgeInsets.only(bottom: style.spacing),
-      child: AnimatedOpacity(
-        opacity: opacity,
-        duration: slow,
-        curve: Motion.emphasized,
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(end: blur),
-          duration: slow,
-          curve: Motion.emphasized,
-          builder: (context, sigma, child) => sigma < .05
-              ? child!
-              : ImageFiltered(
-                  imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma, tileMode: TileMode.decal),
-                  child: child,
-                ),
-          child: AnimatedScale(
-            scale: scale,
-            alignment: Alignment.centerLeft,
-            duration: scaleDur,
-            curve: Motion.emphasized,
-            child: AnimatedDefaultTextStyle(
-              duration: reduced ? Duration.zero : const Duration(milliseconds: 600),
-              curve: Motion.standard,
-              style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                    fontSize: style.fontSize,
-                    fontWeight: FontWeight.w700,
-                    height: 1.18,
-                    color: d == 0 ? scheme.primary : scheme.onSurface,
-                  ),
-              child: Text(line.text),
-            ),
-          ),
-        ),
-      ),
-    );
+  void paint(Canvas canvas, Size size) {
+    final now = clock.elapsed;
+    final dy = slide.at(now);
+    final k0 = 1 / (dpr * bakeScale); // sprite pixels -> logical px at scale 1
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final image = line.image;
+      if (image == null) continue;
+      final a = anims[i];
+      final scale = a.scale.at(now);
+      final opacity = a.opacity.at(now);
+      final blur = a.blur.at(now);
+      final accentT = a.accent.at(now);
+
+      // Skip lines that are entirely outside the viewport (with blur margin).
+      final h = line.size.height;
+      final cy = line.top + dy + h / 2;
+      final reach = h * scale / 2 + pad * scale + blur * 3 + 4;
+      if (cy + reach < 0 || cy - reach > size.height) continue;
+
+      // CSS: transform-origin left center, so scale about (0, line center).
+      final k = k0 * scale;
+      final ax = pad * dpr * bakeScale; // left edge of the text inside the sprite
+      final ay = (pad + h / 2) * dpr * bakeScale; // its vertical center
+      final transforms = Float32List.fromList([k, 0, 0 - k * ax, cy - k * ay]);
+      final rect = Float32List.fromList([0, 0, image.width.toDouble(), image.height.toDouble()]);
+      final color = Color.lerp(normal, accent, accentT)!.withValues(alpha: opacity.clamp(0.0, 1.0));
+      final paint = Paint()..filterQuality = FilterQuality.medium;
+      final sigma = blur * scale;
+      if (sigma > .05) {
+        paint.imageFilter = ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma, tileMode: TileMode.decal);
+      }
+      canvas.drawRawAtlas(
+        image,
+        transforms,
+        rect,
+        Int32List.fromList([color.toARGB32()]),
+        BlendMode.modulate,
+        null,
+        paint,
+      );
+    }
   }
+
+  @override
+  bool shouldRepaint(_LyricsPainter old) => true;
 }
 
 class _PlainList extends StatelessWidget {
@@ -275,7 +341,7 @@ class _PlainList extends StatelessWidget {
       children: [
         for (final l in lyrics.lines)
           Padding(
-            padding: EdgeInsets.only(bottom: style.spacing),
+            padding: EdgeInsets.only(bottom: math.max(8, style.spacing / 2)),
             child: Text(
               l.text,
               style: Theme.of(context).textTheme.bodyLarge!.copyWith(

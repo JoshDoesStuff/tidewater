@@ -17,6 +17,10 @@ abstract final class Motion {
   static const emphasized = PreciseCubic(.05, .7, .1, 1);
   static const spring = PreciseCubic(.34, 1.56, .64, 1);
 
+  /// CSS's default timing function, `ease`: used by transitions that don't
+  /// name one (the lyric color fade in the demo).
+  static const cssEase = PreciseCubic(.25, .1, .25, 1);
+
   /// CSS `ease-in` / `ease-in-cubic` equivalents for exits (letters dropping away).
   static const exitMotion = PreciseCubic(.55, .055, .675, .19);
   static const exitFade = PreciseCubic(.42, 0, 1, 1);

@@ -105,6 +105,19 @@ Future<void> _scenario(ProviderContainer c) async {
   _phase = 'Now Playing steady';
   await _wait(3);
 
+  // Lyrics change every ~20 s of playback; seek just before a boundary so the
+  // transition (slide, scale, blur, color) happens in the measured window.
+  final engine = c.read(playbackEngineProvider);
+  Future<void> lyricChanges() async {
+    for (final s in [27, 47, 67, 87]) {
+      await engine.seek(Duration(seconds: s, milliseconds: 400));
+      await _wait(2.2);
+    }
+  }
+
+  _phase = 'lyric line changes (card)';
+  await lyricChanges();
+
   _phase = 'track skips (title swap + recolor)';
   for (var i = 0; i < 4; i++) {
     await player.next();
@@ -112,7 +125,12 @@ Future<void> _scenario(ProviderContainer c) async {
   }
 
   _phase = 'Now Playing idle mode';
-  await _wait(8);
+  await _wait(5);
+
+  _phase = 'lyric line changes (idle list)';
+  await engine.seek(const Duration(seconds: 1));
+  await _wait(1);
+  await lyricChanges();
 
   _report();
   await Future<void>.delayed(const Duration(milliseconds: 300));
