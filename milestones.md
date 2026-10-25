@@ -5,6 +5,16 @@ source of truth for design and behavior); this file is the working plan.
 
 Legend: ✅ done · 🟡 done against **fake/simulated** data, needs the real thing · ⬜ not started
 
+## Milestone 1 wrap-up (done)
+
+Window chrome, theme + motion tokens, rail, header, mini player, FAB, Home and Library, delivered, then taken well
+past the original "static" scope to demo parity with a simulated player (recolor, morph shapes, card behaviors,
+Now Playing with lyrics/volume/idle/visualizers, Settings). Quality at wrap-up: `flutter analyze` clean, 44 tests
+passing, `flutter build windows --release` succeeds, zero console errors on launch, no frame over 33 ms in the
+profile scenarios (`tool/perf_main.dart`). Working notes for future sessions: `docs/dev-notes.md`.
+
+Next up is **M2 (Server)**; start by replacing the fakes listed below.
+
 ## Where we are
 
 The original plan was shell → server → playback → color/shapes → Now Playing → polish. We deliberately built
