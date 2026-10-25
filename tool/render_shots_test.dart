@@ -3,7 +3,7 @@
 //
 //   flutter test tool/render_shots_test.dart
 //
-// Writes PNGs to `build/shots/`. Uses Flutter's bundled Roboto + Material
+// Writes PNGs to build/shots (or build/shots-light). Uses Flutter's bundled Roboto + Material
 // Icons so text and icons look like the real app.
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -46,13 +46,17 @@ Future<void> _advance(WidgetTester t, Duration total) async {
   }
 }
 
+/// TW_LIGHT=true renders the light theme into build/shots-light.
+const _light = bool.fromEnvironment('TW_LIGHT');
+final _dir = _light ? 'build/shots-light' : 'build/shots';
+
 void main() {
   loginShots();
   testWidgets('render shots', (tester) async {
     debugPrint('step: fonts');
     await tester.runAsync(_loadFonts);
     debugPrint('step: fonts done');
-    final overrides = await testOverrides();
+    final overrides = await testOverrides(prefs: _light ? {'dark_theme': false} : {});
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -66,14 +70,14 @@ void main() {
       ),
     ));
     final container = ProviderScope.containerOf(tester.element(find.byType(TidewaterApp)));
-    Directory('build/shots').createSync(recursive: true);
+    Directory(_dir).createSync(recursive: true);
 
     Future<void> shot(String name) async {
       await tester.runAsync(() async {
         final boundary = boundaryKey.currentContext!.findRenderObject()! as RenderRepaintBoundary;
         final image = await boundary.toImage();
         final data = await image.toByteData(format: ui.ImageByteFormat.png);
-        File('build/shots/$name.png').writeAsBytesSync(data!.buffer.asUint8List());
+        File('$_dir/$name.png').writeAsBytesSync(data!.buffer.asUint8List());
       });
     }
 
@@ -146,7 +150,7 @@ void main() {
 void loginShots() {
   testWidgets('render login shots', (tester) async {
     await tester.runAsync(_loadFonts);
-    final overrides = await testOverrides(signedIn: false, api: FakeLibraryApi(failWith: const ApiException(ApiErrorKind.badCredentials, 'Wrong username or password.')));
+    final overrides = await testOverrides(prefs: _light ? {'dark_theme': false} : {}, signedIn: false, api: FakeLibraryApi(failWith: const ApiException(ApiErrorKind.badCredentials, 'Wrong username or password.')));
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -155,14 +159,14 @@ void loginShots() {
       key: boundaryKey,
       child: ProviderScope(retry: (_, _) => null, overrides: overrides, child: const TidewaterApp()),
     ));
-    Directory('build/shots').createSync(recursive: true);
+    Directory(_dir).createSync(recursive: true);
 
     Future<void> shot(String name) async {
       await tester.runAsync(() async {
         final boundary = boundaryKey.currentContext!.findRenderObject()! as RenderRepaintBoundary;
         final image = await boundary.toImage();
         final data = await image.toByteData(format: ui.ImageByteFormat.png);
-        File('build/shots/$name.png').writeAsBytesSync(data!.buffer.asUint8List());
+        File('$_dir/$name.png').writeAsBytesSync(data!.buffer.asUint8List());
       });
     }
 

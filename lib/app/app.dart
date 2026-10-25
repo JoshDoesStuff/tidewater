@@ -23,6 +23,8 @@ final routerProvider = Provider<GoRouter>((ref) {
   return router;
 });
 
+final _themeMemo = ThemeMemo();
+
 class TidewaterApp extends ConsumerWidget {
   const TidewaterApp({super.key});
 
@@ -51,7 +53,7 @@ class TidewaterApp extends ConsumerWidget {
             tween: ColorSchemeTween(end: scheme),
             duration: reduced ? Duration.zero : Motion.recolor,
             curve: Curves.easeInOut,
-            builder: (context, animated, child) => Theme(data: AppTheme.fromScheme(animated), child: child!),
+            builder: (context, animated, child) => Theme(data: _themeMemo.of(animated, AppTheme.fromScheme), child: child!),
             child: Listener(
               behavior: HitTestBehavior.translucent,
               onPointerDown: (e) => ref.read(pointerOriginProvider).value = e.position,
