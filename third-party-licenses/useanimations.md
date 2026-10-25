@@ -1,6 +1,7 @@
 # useAnimations
 
-Used for the Artists, Lists, Radio and Settings sidebar icons (`assets/icons/`).
+Used for the Library, Artists, Lists, Radio and Settings sidebar icons (`assets/icons/`), and for
+the heart outline of the Liked icon (the shape is from its "heart-v2" file; the animation is drawn in code).
 Source: https://useanimations.com
 
 MIT License

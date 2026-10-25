@@ -117,7 +117,7 @@ class _Credits extends StatelessWidget {
 
   static const _entries = [
     (
-      'Artists, Lists, Radio and Settings icons',
+      'Library, Artists, Lists, Radio and Settings icons',
       'UseAnimations (https://useanimations.com), MIT License',
     ),
     (
@@ -125,8 +125,8 @@ class _Credits extends StatelessWidget {
       'Lucide (https://lucide.dev) icon, animation from Lucide Animated (https://lucide-animated.com) by pqoqubbw, MIT License. Translated into code by Claude.',
     ),
     (
-      'Library and Liked icons',
-      'Drawn in code by Claude in the Lucide style (https://lucide.dev).',
+      'Liked icon',
+      'Heart shape from UseAnimations (https://useanimations.com), MIT License. Animated in code by Claude.',
     ),
   ];
 

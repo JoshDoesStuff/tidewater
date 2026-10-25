@@ -3,8 +3,8 @@ import 'dart:ui' show PathMetric;
 
 import 'package:flutter/material.dart';
 
-/// Sidebar icons drawn in code, in the same 24 x 24, 2 px round-stroke style
-/// as the Lucide house. At progress 0 and 1 each is the complete resting icon.
+/// Sidebar icon drawn in code, in the same 24 x 24, 2 px round-stroke style
+/// as the Lucide house. At progress 0 and 1 it is the complete resting icon.
 Paint _stroke(Color color) => Paint()
   ..style = PaintingStyle.stroke
   ..strokeWidth = 2
@@ -32,15 +32,36 @@ class _HeartPainter extends CustomPainter {
   final double progress;
   final Color color;
 
-  static Path _heart() => Path()
-    ..moveTo(12, 21)
-    ..cubicTo(12, 21, 3, 14.5, 3, 8.5)
-    ..cubicTo(3, 5.4, 5.4, 3, 8.3, 3)
-    ..cubicTo(10, 3, 11.5, 3.9, 12, 5.2)
-    ..cubicTo(12.5, 3.9, 14, 3, 15.7, 3)
-    ..cubicTo(18.6, 3, 21, 5.4, 21, 8.5)
-    ..cubicTo(21, 14.5, 12, 21, 12, 21)
-    ..close();
+  // The heart outline from UseAnimations' "heart-v2" (MIT, see
+  // third-party-licenses): vertices with in/out tangents, as in its Lottie file.
+  static const _v = [
+    [20.84, 4.61], [16.95, 2.998], [13.06, 4.61], [12.0, 5.67], [10.94, 4.61], [3.16, 4.61],
+    [3.16, 12.39], [4.22, 13.45], [12.0, 21.23], [19.78, 13.45], [20.84, 12.39], [22.452, 8.5],
+  ];
+  static const _in = [
+    [1.032, 1.032], [1.459, 0.0], [1.032, -1.032], [0.0, 0.0], [0.0, 0.0], [2.148, -2.148],
+    [-2.148, -2.148], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 1.459],
+  ];
+  static const _out = [
+    [-1.032, -1.032], [-1.459, 0.0], [0.0, 0.0], [0.0, 0.0], [-2.148, -2.148], [-2.148, 2.148],
+    [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [1.032, -1.032], [0.0, -1.459],
+  ];
+
+  static Path _heart() {
+    // Start at the bottom point so the trace grows up from it.
+    const start = 8;
+    final path = Path()..moveTo(_v[start][0], _v[start][1]);
+    for (var j = 0; j < _v.length; j++) {
+      final k = (start + j) % _v.length;
+      final n = (k + 1) % _v.length;
+      path.cubicTo(
+        _v[k][0] + _out[k][0], _v[k][1] + _out[k][1],
+        _v[n][0] + _in[n][0], _v[n][1] + _in[n][1],
+        _v[n][0], _v[n][1],
+      );
+    }
+    return path..close();
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -67,71 +88,4 @@ class _HeartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_HeartPainter old) => old.progress != progress || old.color != color;
-}
-
-/// Books on a shelf: two stand up and hop in turn while the leaning one
-/// swings upright and tips back.
-class LibraryIcon extends StatelessWidget {
-  const LibraryIcon({super.key, required this.progress, required this.color, this.size = 22});
-
-  final double progress;
-  final Color color;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) =>
-      CustomPaint(size: Size.square(size), painter: _LibraryPainter(progress, color));
-}
-
-class _LibraryPainter extends CustomPainter {
-  _LibraryPainter(this.progress, this.color);
-
-  final double progress;
-  final Color color;
-
-  /// How far the leaning book rests off vertical.
-  static const _lean = .3;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.scale(size.width / 24);
-    final paint = _stroke(color);
-    final running = progress > 0 && progress < 1;
-
-    // Hop for book [i]: a bump in its own slice of the animation.
-    double hop(int i) {
-      if (!running) return 0;
-      final p = ((progress - i * .12) / .4).clamp(0.0, 1.0);
-      return math.sin(math.pi * p);
-    }
-
-    RRect book(double x, double top) => RRect.fromRectAndRadius(Rect.fromLTWH(x, top, 4, 20 - top), const Radius.circular(1));
-
-    canvas.save();
-    canvas.translate(0, -2.5 * hop(0));
-    canvas.drawRRect(book(3, 5), paint);
-    canvas.restore();
-
-    canvas.save();
-    canvas.translate(0, -2.5 * hop(1));
-    canvas.drawRRect(book(9, 3), paint);
-    canvas.restore();
-
-    // The leaning book pivots on its bottom-right corner: it swings up past
-    // vertical and settles back to its lean.
-    final swing = running ? (math.sin(math.pi * progress * 1.5) * (1 - progress * .5)) : 0.0;
-    final angle = _lean * (1 - 1.6 * swing);
-    canvas.save();
-    canvas.translate(19, 20);
-    canvas.rotate(-angle);
-    canvas.translate(-19, -20);
-    canvas.drawRRect(book(15, 4), paint);
-    canvas.restore();
-
-    // The shelf.
-    canvas.drawLine(const Offset(2, 21.5), const Offset(22, 21.5), paint);
-  }
-
-  @override
-  bool shouldRepaint(_LibraryPainter old) => old.progress != progress || old.color != color;
 }
