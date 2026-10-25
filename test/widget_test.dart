@@ -127,8 +127,13 @@ void main() {
     await _advance(tester, const Duration(seconds: 2));
     final settled = tester.widget<Text>(find.text('x'));
     expect(settled.style!.color!.a, 1);
-    // At rest the letters carry no transform at all (no shimmer, no layers).
-    expect(find.ancestor(of: find.text('x'), matching: find.byType(Transform)), findsNothing);
+    // At rest the letters stay on the same rendering path as while moving: a
+    // transform that is never exactly identity (so landing doesn't pop) yet
+    // visually nil, and no Opacity layers.
+    final rest = tester.widget<Transform>(find.ancestor(of: find.text('x'), matching: find.byType(Transform)).first);
+    expect(rest.transform.isIdentity(), isFalse);
+    expect(rest.transform.entry(0, 1).abs(), lessThan(1e-5));
+    expect(rest.transform.entry(1, 3).abs(), lessThan(1e-9)); // no leftover translation
     expect(find.ancestor(of: find.text('x'), matching: find.byType(Opacity)), findsNothing);
   });
 

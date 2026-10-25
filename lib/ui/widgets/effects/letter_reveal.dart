@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../app/theme/motion.dart';
 
+/// Rotation (radians) added to every letter so its transform is never the
+/// identity; see the comment in [_letterRow].
+const _neverIdentity = 1e-6;
+
 /// One animated glyph row.
 ///
 /// Built to stay cheap and steady while it moves:
@@ -10,9 +14,8 @@ import '../../../app/theme/motion.dart';
 ///  * hidden from semantics while it animates, with one stable label for the
 ///    whole string (per-letter nodes made every frame rebuild the
 ///    accessibility tree);
-///  * letters at rest are plain `Text`, with no transform, and the last
-///    sub-pixel tail of a spring is snapped away (this lands exactly on the
-///    rest position, verified by tool/letter_probe_main.dart).
+///  * letters never change rendering path when they land or leave (no swap
+///    to a transform-free widget), which is what removes the landing pop;
 ///
 /// `pop` is 1 when a letter is in place and 0 when fully "out" (dropped .65em,
 /// tilted 10°); it may overshoot while a spring settles. `opacity` is
@@ -44,15 +47,21 @@ Widget _letterRow(
                   softWrap: false,
                   style: base.copyWith(color: alpha >= .999 ? color : color.withValues(alpha: alpha * color.a)),
                 );
-                // At rest: exactly the plain text, no transform at all.
-                if ((1 - pop).abs() < .004 && alpha >= .999) return glyph;
-                // Deliberately NOT rounded to whole pixels: measured in the real
-                // engine (tool/letter_probe_main.dart), rounding made letters
-                // hop in 1 px steps (0.6 px rms jitter vs 0.07 px unrounded).
+                // Letters stay in the SAME rendering path from the first frame
+                // to the last (like a CSS animation that never leaves its
+                // layer). Measured in the real engine
+                // (tool/letter_probe_main.dart): swapping to a plain,
+                // transform-free Text at the end made the final frame change
+                // 2.8x more than the one before it, a visible pop; a never-
+                // identity transform removed it (0.1x). The 1e-6 rad tilt is
+                // invisible and just keeps the matrix from being identity.
+                //
+                // Also deliberately NOT rounded to whole pixels: rounding made
+                // letters hop in 1 px steps (0.6 px rms jitter vs 0.07).
                 final dy = .65 * em * (1 - pop);
                 return Transform(
                   alignment: Alignment.center,
-                  transform: Matrix4.translationValues(0, dy, 0)..rotateZ(.1745 * (1 - pop)),
+                  transform: Matrix4.translationValues(0, dy, 0)..rotateZ(.1745 * (1 - pop) + _neverIdentity),
                   child: glyph,
                 );
               }(),
@@ -269,8 +278,7 @@ class _LetterSwapState extends State<LetterSwap> with SingleTickerProviderStateM
             }
             // Exit: a smooth accelerating drop and fade. (The spring played
             // backwards overshoots upward first, which read as a twitch.)
-            final e = Curves.easeInCubic.transform(t);
-            return (pop: 1 - e, opacity: 1 - Curves.easeIn.transform(t));
+            return (pop: 1 - Motion.exitMotion.transform(t), opacity: 1 - Motion.exitFade.transform(t));
           },
         );
       },

@@ -153,8 +153,14 @@ janky). Current profile baseline (60 Hz, this machine): build ≈ 1 ms, raster �
 - `tool/perf_main.dart` — per-phase frame build/raster times through the heavy scenarios:
   `flutter run -d windows --profile -t tool/perf_main.dart`.
 - `tool/letter_probe_main.dart` — pixel-level measurement of how smoothly the engine renders animated letters
-  (jitter in px): `flutter run -d windows --profile -t tool/letter_probe_main.dart`. Lesson learned: rounding
-  transforms to whole pixels made motion ~10× *worse* here; don't "pixel-snap" animated text.
+  (jitter in px, plus a landing/start "pop" metric): `flutter run -d windows --profile -t tool/letter_probe_main.dart`.
+  Lessons learned, all measured in the real engine (Impeller/GL):
+  - Don't round animated transforms to whole pixels: ~10× *more* jitter.
+  - Use `PreciseCubic` (`app/theme/precise_cubic.dart`) for easings, not Flutter's `Cubic`: its 0.001 bisection
+    tolerance adds up to ~0.17 px of per-frame noise on a 58 px title. All `Motion` curves use it.
+  - Never swap an animating widget for a transform-free one when it lands/leaves: the engine draws the two
+    slightly differently and the swap shows as a pop (2.8× the previous frame's change). Keep a never-identity
+    transform (1e-6 rad tilt) instead. Same applies to any future animated text/shape.
 - Add golden tests for key screens once the design settles; add an integration test for login → play.
 - CI: analyze + test on every push.
 
