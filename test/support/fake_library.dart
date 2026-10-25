@@ -89,6 +89,9 @@ class FakeLibraryApi implements LibraryApi {
   /// When set, every list/detail call throws this.
   ApiException? failWith;
 
+  /// Replaces the default songs (for big-library tests).
+  List<Track>? songs;
+
   /// Replaces the default albums (for big-library and empty tests).
   List<Album>? albums;
 
@@ -165,6 +168,10 @@ class FakeLibraryApi implements LibraryApi {
   @override
   Future<SearchResults> search(String query, {int artistCount = 5, int albumCount = 10, int songCount = 20}) async =>
       _ok('search', () => const SearchResults());
+
+  @override
+  Future<List<Track>> getSongs({int offset = 0, int size = 500}) async =>
+      _ok('getSongs:$offset', () => (songs ?? fakeTracks).skip(offset).take(size).toList());
 
   @override
   Future<List<Track>> getRandomSongs({int size = 30}) async => _ok('getRandomSongs', () => fakeTracks.take(size).toList());

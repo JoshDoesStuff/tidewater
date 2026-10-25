@@ -4,6 +4,7 @@ import '../../core/api/library_api.dart';
 import '../../core/models/album.dart';
 import '../../core/models/artist.dart';
 import '../../core/models/playlist.dart';
+import '../../core/models/track.dart';
 import 'session_providers.dart';
 
 /// Albums for a Home row (recently added, most played, recently played).
@@ -78,6 +79,7 @@ class PickNotifier<T> extends Notifier<T> {
 enum LibraryTab {
   albums('Albums'),
   artists('Artists'),
+  songs('Songs'),
   playlists('Playlists');
 
   const LibraryTab(this.label);
@@ -98,3 +100,58 @@ final albumDetailProvider = FutureProvider.family<AlbumDetail, String>((ref, id)
 
 /// One artist with their albums (the artist page).
 final artistDetailProvider = FutureProvider.family<ArtistDetail, String>((ref, id) => ref.watch(apiProvider).getArtist(id));
+
+/// How the Songs tab is ordered (client-side: the server has no sorted
+/// "all songs" call).
+enum SongSort {
+  title('Title'),
+  artist('Artist'),
+  album('Album');
+
+  const SongSort(this.label);
+  final String label;
+
+  String _key(Track t) => (switch (this) {
+        SongSort.title => t.title,
+        SongSort.artist => t.artist,
+        SongSort.album => t.albumTitle,
+      })
+          .toLowerCase();
+
+  /// Sorted copy; ties fall back to title so the order is stable.
+  List<Track> sorted(Iterable<Track> songs) => [...songs]..sort((a, b) {
+        final c = _key(a).compareTo(_key(b));
+        return c != 0 ? c : a.title.toLowerCase().compareTo(b.title.toLowerCase());
+      });
+}
+
+final librarySongSortProvider = NotifierProvider<PickNotifier<SongSort>, SongSort>(() => PickNotifier(SongSort.title));
+
+/// Songs loaded so far, and whether that is all of them.
+class LibrarySongs {
+  const LibrarySongs(this.songs, {required this.complete});
+
+  final List<Track> songs;
+  final bool complete;
+}
+
+/// Every song, loaded page by page (200 first, then 500 at a time) in the
+/// server's order; [sortedSongsProvider] orders them for the list.
+final libraryAllSongsProvider = StreamProvider<LibrarySongs>((ref) async* {
+  final api = ref.watch(apiProvider);
+  final all = <Track>[];
+  while (true) {
+    final size = all.isEmpty ? 200 : 500;
+    final page = await api.getSongs(offset: all.length, size: size);
+    all.addAll(page);
+    final done = page.length < size;
+    yield LibrarySongs(List.unmodifiable(all), complete: done);
+    if (done) return;
+  }
+});
+
+/// The loaded songs in the chosen order (keeps loading/error state).
+final sortedSongsProvider = Provider<AsyncValue<LibrarySongs>>((ref) {
+  final sort = ref.watch(librarySongSortProvider);
+  return ref.watch(libraryAllSongsProvider).whenData((l) => LibrarySongs(sort.sorted(l.songs), complete: l.complete));
+});

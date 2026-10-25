@@ -207,7 +207,7 @@ class _MediaCardState extends State<MediaCard> {
                       params: widget.shape.params,
                       exponent: widget.round ? 2 : 4.2,
                       morph: morphed ? 1 : 0,
-                      spin: active && !reduced ? .72 : 0,
+                      spin: (active || _hovered) && !reduced ? .72 : 0,
                       child: Ripple(color: scheme.onPrimary, child: const SizedBox.expand()),
                     ),
                   ),

@@ -280,6 +280,19 @@ class OpenSubsonicClient implements LibraryApi {
   }
 
   @override
+  Future<List<Track>> getSongs({int offset = 0, int size = 500}) async {
+    final body = await _call('search3', {
+      'query': '',
+      'artistCount': 0,
+      'albumCount': 0,
+      'songCount': size,
+      'songOffset': offset,
+    });
+    final result = body['searchResult3'];
+    return [for (final s in asObjects(result is Map ? result['song'] : null)) Track.fromJson(s)];
+  }
+
+  @override
   Future<List<Track>> getRandomSongs({int size = 30}) async {
     final body = await _call('getRandomSongs', {'size': size});
     final list = body['randomSongs'];

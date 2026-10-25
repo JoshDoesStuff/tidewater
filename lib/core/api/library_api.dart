@@ -75,6 +75,10 @@ abstract class LibraryApi {
 
   Future<SearchResults> search(String query, {int artistCount = 5, int albumCount = 10, int songCount = 20});
 
+  /// A page of every song in the library (Subsonic `search3` with an empty
+  /// query, which Navidrome answers with all songs), in the server's order.
+  Future<List<Track>> getSongs({int offset = 0, int size = 500});
+
   /// Random songs from the whole library (Shuffle all).
   Future<List<Track>> getRandomSongs({int size = 30});
 

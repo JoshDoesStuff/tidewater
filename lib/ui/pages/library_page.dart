@@ -7,6 +7,7 @@ import '../../app/theme/motion.dart';
 import '../../core/models/album.dart';
 import '../../core/models/artist.dart';
 import '../../core/models/playlist.dart';
+import '../../core/models/track.dart';
 import '../widgets/async_states.dart';
 import '../widgets/effects/letter_reveal.dart';
 import '../widgets/effects/stagger_in.dart';
@@ -14,6 +15,8 @@ import '../widgets/expressive_buttons.dart';
 import '../widgets/pressable.dart';
 import 'page_frame.dart';
 import 'widgets/album_card.dart';
+import 'widgets/song_row.dart';
+import '../../app/providers/playback_providers.dart';
 
 class LibraryPage extends ConsumerStatefulWidget {
   const LibraryPage({super.key});
@@ -32,6 +35,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
   /// Grid geometry from the last layout, for the A–Z jump.
   int _columns = 1;
   double _rowExtent = 0;
+  double _rowGap = _gap;
 
   @override
   void dispose() {
@@ -42,8 +46,12 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
   /// Scrolls so the row holding item [index] is at the top of the grid.
   void _jumpToIndex(int index) {
     if (!_scroll.hasClients || _columns < 1) return;
-    final header = (_headerKey.currentContext?.findRenderObject() as RenderBox?)?.size.height ?? 0;
-    final target = header + (index ~/ _columns) * (_rowExtent + _gap);
+    final header =
+        (_headerKey.currentContext?.findRenderObject() as RenderBox?)
+            ?.size
+            .height ??
+        0;
+    final target = header + (index ~/ _columns) * (_rowExtent + _rowGap);
     _scroll.animateTo(
       target.clamp(0.0, _scroll.position.maxScrollExtent),
       duration: Motion.of(context, Motion.slow),
@@ -59,6 +67,11 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     final albums = ref.watch(libraryAlbumsProvider(sort));
     final artists = ref.watch(artistsProvider);
     final playlists = ref.watch(playlistsProvider);
+    // Only the Songs tab pulls in every song (thousands of rows of metadata).
+    final songSort = ref.watch(librarySongSortProvider);
+    final songs = tab == LibraryTab.songs
+        ? ref.watch(sortedSongsProvider)
+        : null;
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
 
@@ -75,31 +88,61 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
           subtitle = albums.hasError ? 'Couldn\'t load albums' : 'Loading…';
         } else {
           final n = shownAlbums.length;
-          final label = genre != null ? '$n ${genre.toLowerCase()} album${n == 1 ? '' : 's'}' : '$n album${n == 1 ? '' : 's'}';
+          final label = genre != null
+              ? '$n ${genre.toLowerCase()} album${n == 1 ? '' : 's'}'
+              : '$n album${n == 1 ? '' : 's'}';
           subtitle = loaded.complete ? label : '$label so far…';
         }
       case LibraryTab.artists:
         final n = artists.value?.length;
-        subtitle = n == null ? (artists.hasError ? 'Couldn\'t load artists' : 'Loading…') : '$n artist${n == 1 ? '' : 's'}';
+        subtitle = n == null
+            ? (artists.hasError ? 'Couldn\'t load artists' : 'Loading…')
+            : '$n artist${n == 1 ? '' : 's'}';
+      case LibraryTab.songs:
+        final loaded = songs!.value;
+        if (loaded == null) {
+          subtitle = songs.hasError ? 'Couldn\'t load songs' : 'Loading…';
+        } else {
+          final n = loaded.songs.length;
+          final label = '$n song${n == 1 ? '' : 's'}';
+          subtitle = loaded.complete ? label : '$label so far…';
+        }
       case LibraryTab.playlists:
         final n = playlists.value?.length;
-        subtitle = n == null ? (playlists.hasError ? 'Couldn\'t load playlists' : 'Loading…') : '$n playlist${n == 1 ? '' : 's'}';
+        subtitle = n == null
+            ? (playlists.hasError ? 'Couldn\'t load playlists' : 'Loading…')
+            : '$n playlist${n == 1 ? '' : 's'}';
     }
 
     final genres = {
       for (final a in albums.value?.albums ?? const <Album>[])
         if (a.genre != null) a.genre!,
-    }.toList()
-      ..sort();
+    }.toList()..sort();
 
     // A–Z jump only makes sense when the list is alphabetical.
-    final alphabetical = (tab == LibraryTab.albums && (sort == LibrarySort.name || sort == LibrarySort.artist)) ||
-        tab == LibraryTab.artists;
+    final alphabetical =
+        (tab == LibraryTab.albums &&
+            (sort == LibrarySort.name || sort == LibrarySort.artist)) ||
+        tab == LibraryTab.artists ||
+        tab == LibraryTab.songs;
     List<String> titlesForRail() => switch (tab) {
-          LibraryTab.albums => [for (final a in shownAlbums) sort == LibrarySort.artist ? a.artist : a.title],
-          LibraryTab.artists => [for (final a in artists.value ?? const <Artist>[]) a.name],
-          LibraryTab.playlists => const [],
-        };
+      LibraryTab.albums => [
+        for (final a in shownAlbums)
+          sort == LibrarySort.artist ? a.artist : a.title,
+      ],
+      LibraryTab.artists => [
+        for (final a in artists.value ?? const <Artist>[]) a.name,
+      ],
+      LibraryTab.songs => [
+        for (final t in songs?.value?.songs ?? const <Track>[])
+          switch (songSort) {
+            SongSort.title => t.title,
+            SongSort.artist => t.artist,
+            SongSort.album => t.albumTitle,
+          },
+      ],
+      LibraryTab.playlists => const [],
+    };
 
     return PageFrame(
       child: Stack(
@@ -144,20 +187,45 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                               label: sort.label,
                               semanticLabel: 'Sort: ${sort.label}',
                               value: sort,
-                              entries: [for (final s in LibrarySort.values) (s, s.label)],
-                              onSelected: ref.read(librarySortProvider.notifier).set,
+                              entries: [
+                                for (final s in LibrarySort.values)
+                                  (s, s.label),
+                              ],
+                              onSelected: ref
+                                  .read(librarySortProvider.notifier)
+                                  .set,
                             ),
                             const SizedBox(width: 6),
                             _MenuPill<String>(
                               icon: Icons.filter_list_rounded,
                               label: genre ?? 'Genre',
-                              semanticLabel: genre == null ? 'Filter by genre' : 'Genre: $genre',
+                              semanticLabel: genre == null
+                                  ? 'Filter by genre'
+                                  : 'Genre: $genre',
                               value: genre ?? '',
                               highlighted: genre != null,
-                              entries: [('', 'All genres'), for (final g in genres) (g, g)],
-                              onSelected: (g) => ref.read(libraryGenreProvider.notifier).set(g.isEmpty ? null : g),
+                              entries: [
+                                ('', 'All genres'),
+                                for (final g in genres) (g, g),
+                              ],
+                              onSelected: (g) => ref
+                                  .read(libraryGenreProvider.notifier)
+                                  .set(g.isEmpty ? null : g),
                             ),
                           ],
+                          if (tab == LibraryTab.songs)
+                            _MenuPill<SongSort>(
+                              icon: Icons.sort_rounded,
+                              label: songSort.label,
+                              semanticLabel: 'Sort songs: ${songSort.label}',
+                              value: songSort,
+                              entries: [
+                                for (final s in SongSort.values) (s, s.label),
+                              ],
+                              onSelected: ref
+                                  .read(librarySongSortProvider.notifier)
+                                  .set,
+                            ),
                         ],
                       ),
                       const SizedBox(height: 22),
@@ -171,7 +239,9 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                               child: ExpressiveChip(
                                 label: t.label,
                                 selected: t == tab,
-                                onTap: () => ref.read(libraryTabProvider.notifier).set(t),
+                                onTap: () => ref
+                                    .read(libraryTabProvider.notifier)
+                                    .set(t),
                               ),
                             ),
                         ],
@@ -181,7 +251,15 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                   ),
                 ),
               ),
-              ..._body(tab, sort, albums, shownAlbums, artists, playlists),
+              ..._body(
+                tab,
+                sort,
+                albums,
+                shownAlbums,
+                artists,
+                playlists,
+                songs,
+              ),
             ],
           ),
           if (alphabetical)
@@ -203,61 +281,175 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     List<Album> shownAlbums,
     AsyncValue<List<Artist>> artists,
     AsyncValue<List<Playlist>> playlists,
+    AsyncValue<LibrarySongs>? songs,
   ) {
     switch (tab) {
       case LibraryTab.albums:
         if (albums.hasError && !albums.hasValue) {
-          return [_message(ErrorPanel(error: albums.error!, onRetry: () => ref.invalidate(libraryAlbumsProvider(sort))))];
+          return [
+            _message(
+              ErrorPanel(
+                error: albums.error!,
+                onRetry: () => ref.invalidate(libraryAlbumsProvider(sort)),
+              ),
+            ),
+          ];
         }
         if (!albums.hasValue) return [_skeletonGrid(round: false)];
         if (shownAlbums.isEmpty && albums.requireValue.complete) {
           return [
-            _message(EmptyPanel(
-              icon: Icons.album_rounded,
-              title: ref.read(libraryGenreProvider) == null ? 'No albums yet' : 'No albums in this genre',
-              message: ref.read(libraryGenreProvider) == null ? 'Add music to your Navidrome library and it will show up here.' : null,
-            )),
+            _message(
+              EmptyPanel(
+                icon: Icons.album_rounded,
+                title: ref.read(libraryGenreProvider) == null
+                    ? 'No albums yet'
+                    : 'No albums in this genre',
+                message: ref.read(libraryGenreProvider) == null
+                    ? 'Add music to your Navidrome library and it will show up here.'
+                    : null,
+              ),
+            ),
           ];
         }
         return [
-          _grid(shownAlbums.length, (i) => AlbumCard(album: shownAlbums[i], large: true)),
+          _grid(
+            shownAlbums.length,
+            (i) => AlbumCard(album: shownAlbums[i], large: true),
+          ),
           if (albums.hasError)
             _message(
-              ErrorPanel(error: albums.error!, compact: true, onRetry: () => ref.invalidate(libraryAlbumsProvider(sort))),
+              ErrorPanel(
+                error: albums.error!,
+                compact: true,
+                onRetry: () => ref.invalidate(libraryAlbumsProvider(sort)),
+              ),
               bottom: true,
             ),
         ];
       case LibraryTab.artists:
         if (artists.hasError && !artists.hasValue) {
-          return [_message(ErrorPanel(error: artists.error!, onRetry: () => ref.invalidate(artistsProvider)))];
+          return [
+            _message(
+              ErrorPanel(
+                error: artists.error!,
+                onRetry: () => ref.invalidate(artistsProvider),
+              ),
+            ),
+          ];
         }
         if (!artists.hasValue) return [_skeletonGrid(round: true)];
         final list = artists.requireValue;
-        if (list.isEmpty) return [_message(const EmptyPanel(icon: Icons.person_rounded, title: 'No artists yet'))];
-        return [_grid(list.length, (i) => ArtistCard(artist: list[i], large: true))];
+        if (list.isEmpty) {
+          return [
+            _message(const EmptyPanel(icon: Icons.person_rounded, title: 'No artists yet')),
+          ];
+        }
+        return [
+          _grid(list.length, (i) => ArtistCard(artist: list[i], large: true)),
+        ];
+      case LibraryTab.songs:
+        final s = songs!;
+        if (s.hasError && !s.hasValue) {
+          return [
+            _message(
+              ErrorPanel(
+                error: s.error!,
+                onRetry: () => ref.invalidate(libraryAllSongsProvider),
+              ),
+            ),
+          ];
+        }
+        if (!s.hasValue) return [_skeletonList()];
+        final list = s.requireValue.songs;
+        if (list.isEmpty && s.requireValue.complete) {
+          return [
+            _message(
+              const EmptyPanel(
+                icon: Icons.music_note_rounded,
+                title: 'No songs yet',
+                message: 'Add music to your Navidrome library and it will show up here.',
+              ),
+            ),
+          ];
+        }
+        _columns = 1;
+        _rowExtent = SongRow.height;
+        _rowGap = 0;
+        return [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              24,
+              0,
+              40,
+              PageFrame.bottomClearance,
+            ),
+            sliver: SliverFixedExtentList(
+              itemExtent: SongRow.height,
+              delegate: SliverChildBuilderDelegate(
+                (context, i) => SongRow(
+                  key: ValueKey(list[i].id),
+                  track: list[i],
+                  // Queue everything loaded, in the order shown, from this song.
+                  onPlay: () => ref
+                      .read(playbackProvider.notifier)
+                      .playTracks(list, index: i),
+                ),
+                childCount: list.length,
+              ),
+            ),
+          ),
+          if (s.hasError)
+            _message(
+              ErrorPanel(
+                error: s.error!,
+                compact: true,
+                onRetry: () => ref.invalidate(libraryAllSongsProvider),
+              ),
+              bottom: true,
+            ),
+        ];
       case LibraryTab.playlists:
         if (playlists.hasError && !playlists.hasValue) {
-          return [_message(ErrorPanel(error: playlists.error!, onRetry: () => ref.invalidate(playlistsProvider)))];
+          return [
+            _message(
+              ErrorPanel(
+                error: playlists.error!,
+                onRetry: () => ref.invalidate(playlistsProvider),
+              ),
+            ),
+          ];
         }
         if (!playlists.hasValue) return [_skeletonGrid(round: false)];
         final list = playlists.requireValue;
         if (list.isEmpty) {
           return [
-            _message(const EmptyPanel(
-              icon: Icons.queue_music_rounded,
-              title: 'No playlists yet',
-              message: 'Playlists you make in Navidrome appear here.',
-            )),
+            _message(
+              const EmptyPanel(
+                icon: Icons.queue_music_rounded,
+                title: 'No playlists yet',
+                message: 'Playlists you make in Navidrome appear here.',
+              ),
+            ),
           ];
         }
-        return [_grid(list.length, (i) => PlaylistCard(playlist: list[i], large: true))];
+        return [
+          _grid(
+            list.length,
+            (i) => PlaylistCard(playlist: list[i], large: true),
+          ),
+        ];
     }
   }
 
   Widget _message(Widget child, {bool bottom = false}) => SliverPadding(
-        padding: EdgeInsets.fromLTRB(24, bottom ? 20 : 0, 40, PageFrame.bottomClearance),
-        sliver: SliverToBoxAdapter(child: child),
-      );
+    padding: EdgeInsets.fromLTRB(
+      24,
+      bottom ? 20 : 0,
+      40,
+      PageFrame.bottomClearance,
+    ),
+    sliver: SliverToBoxAdapter(child: child),
+  );
 
   SliverPadding _grid(int count, Widget Function(int index) card) {
     return SliverPadding(
@@ -269,6 +461,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
           final extent = tile + 14 + 40;
           _columns = columns;
           _rowExtent = extent;
+          _rowGap = _gap;
           return SliverGrid.builder(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: columns,
@@ -277,7 +470,8 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
               mainAxisExtent: extent,
             ),
             itemCount: count,
-            itemBuilder: (context, i) => StaggerIn(index: i < 24 ? i : 0, child: card(i)),
+            itemBuilder: (context, i) =>
+                StaggerIn(index: i < 24 ? i : 0, child: card(i)),
           );
         },
       ),
@@ -285,9 +479,23 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
   }
 
   (int, double) _geometry(double available) {
-    final columns = ((available + _gap) / (_cardWidth + _gap)).floor().clamp(2, 12);
+    final columns = ((available + _gap) / (_cardWidth + _gap)).floor().clamp(
+      2,
+      12,
+    );
     return (columns, (available - (columns - 1) * _gap) / columns);
   }
+
+  Widget _skeletonList() => SliverPadding(
+    padding: const EdgeInsets.fromLTRB(24, 0, 40, PageFrame.bottomClearance),
+    sliver: SliverList.builder(
+      itemCount: 8,
+      itemBuilder: (context, i) => const Padding(
+        padding: EdgeInsets.only(bottom: 8),
+        child: SkeletonBox(height: 52, radius: 22),
+      ),
+    ),
+  );
 
   Widget _skeletonGrid({required bool round}) {
     return SliverPadding(
@@ -306,7 +514,12 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
             itemBuilder: (context, i) => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SkeletonBox(width: tile, height: tile, radius: tile * .26, circle: round),
+                SkeletonBox(
+                  width: tile,
+                  height: tile,
+                  radius: tile * .26,
+                  circle: round,
+                ),
                 const SizedBox(height: 14),
                 const SkeletonBox(width: 110, height: 12, radius: 6),
                 const SizedBox(height: 6),
@@ -354,8 +567,12 @@ class _MenuPillState<T> extends State<_MenuPill<T>> {
     final scheme = Theme.of(context).colorScheme;
     final bg = widget.highlighted
         ? scheme.secondaryContainer
-        : (_hovered ? scheme.surfaceContainerHighest : scheme.surfaceContainerHigh);
-    final fg = widget.highlighted ? scheme.onSecondaryContainer : scheme.onSurface;
+        : (_hovered
+              ? scheme.surfaceContainerHighest
+              : scheme.surfaceContainerHigh);
+    final fg = widget.highlighted
+        ? scheme.onSecondaryContainer
+        : scheme.onSurface;
     return Semantics(
       label: widget.semanticLabel,
       button: true,
@@ -363,49 +580,80 @@ class _MenuPillState<T> extends State<_MenuPill<T>> {
         child: MouseRegion(
           onEnter: (_) => setState(() => _hovered = true),
           onExit: (_) => setState(() => _hovered = false),
-          child: PopupMenuButton<T>(
-            tooltip: '',
-            initialValue: widget.value,
-            offset: const Offset(0, 54),
-            color: scheme.surfaceContainerHigh,
-            surfaceTintColor: Colors.transparent,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            onSelected: widget.onSelected,
-            itemBuilder: (context) => [
-              for (final (value, label) in widget.entries)
-                PopupMenuItem<T>(
-                  value: value,
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontWeight: value == widget.value ? FontWeight.w700 : FontWeight.w500,
-                      color: value == widget.value ? scheme.primary : scheme.onSurface,
-                    ),
-                  ),
-                ),
-            ],
-            child: AnimatedContainer(
-              duration: Motion.of(context, Motion.fast),
-              height: 48,
-              padding: const EdgeInsets.only(left: 18, right: 20),
-              decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(24)),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(widget.icon, size: 20, color: fg),
-                  const SizedBox(width: 10),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 140),
+          // No rectangular ink highlight over the pill (the menu button adds one).
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              hoverColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              splashColor: Colors.transparent,
+              splashFactory: NoSplash.splashFactory,
+            ),
+            child: PopupMenuButton<T>(
+              tooltip: '',
+              initialValue: widget.value,
+              // Open *below* the pill. By default Flutter puts the selected item over the button.
+              position: PopupMenuPosition.under,
+              offset: const Offset(0, 8),
+              clipBehavior: Clip.antiAlias,
+              popUpAnimationStyle: AnimationStyle(
+                duration: Motion.of(context, Motion.medium),
+                curve: Motion.curve(context, Motion.emphasized),
+              ),
+              color: scheme.surfaceContainerHigh,
+              surfaceTintColor: Colors.transparent,
+            elevation: 2,
+            shadowColor: Colors.black38,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              onSelected: widget.onSelected,
+              itemBuilder: (context) => [
+                for (final (value, label) in widget.entries)
+                  PopupMenuItem<T>(
+                    value: value,
                     child: Text(
-                      widget.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 14, fontWeight: FontWeight.w500, color: fg),
+                      label,
+                      style: TextStyle(
+                        fontWeight: value == widget.value
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: value == widget.value
+                            ? scheme.primary
+                            : scheme.onSurface,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Icon(Icons.expand_more_rounded, size: 16, color: fg),
-                ],
+              ],
+              child: AnimatedContainer(
+                duration: Motion.of(context, Motion.fast),
+                height: 48,
+                padding: const EdgeInsets.only(left: 18, right: 20),
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(widget.icon, size: 20, color: fg),
+                    const SizedBox(width: 10),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 140),
+                      child: Text(
+                        widget.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: fg,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Icon(Icons.expand_more_rounded, size: 16, color: fg),
+                  ],
+                ),
               ),
             ),
           ),
@@ -416,7 +664,20 @@ class _MenuPillState<T> extends State<_MenuPill<T>> {
 }
 
 /// Words the server ignores when alphabetizing ("The Beatles" lives under B).
-const _ignoredArticles = ['the ', 'an ', 'a ', 'el ', 'la ', 'los ', 'las ', 'le ', 'les ', 'os ', 'as ', 'o '];
+const _ignoredArticles = [
+  'the ',
+  'an ',
+  'a ',
+  'el ',
+  'la ',
+  'los ',
+  'las ',
+  'le ',
+  'les ',
+  'os ',
+  'as ',
+  'o ',
+];
 
 String _initial(String title, {required bool skipArticles}) {
   var t = title.trim().toLowerCase();
@@ -437,7 +698,9 @@ String _initial(String title, {required bool skipArticles}) {
 /// server's article-skipping order; -1 when none does.
 int firstIndexForLetter(List<String> titles, String letter) {
   for (final skip in const [true, false]) {
-    final i = titles.indexWhere((t) => _initial(t, skipArticles: skip) == letter);
+    final i = titles.indexWhere(
+      (t) => _initial(t, skipArticles: skip) == letter,
+    );
     if (i >= 0) return i;
   }
   return -1;
@@ -457,13 +720,19 @@ class _AlphaRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final shown = [for (var i = 0; i < _letters.length; i += 2) _letters[i]];
-    final present = <String>{for (final l in _letters) if (firstIndexForLetter(titles, l) >= 0) l};
+    final present = <String>{
+      for (final l in _letters)
+        if (firstIndexForLetter(titles, l) >= 0) l,
+    };
     return ConstrainedBox(
       constraints: const BoxConstraints(maxHeight: 520),
       child: Container(
         width: 22,
         padding: const EdgeInsets.symmetric(vertical: 6),
-        decoration: BoxDecoration(color: scheme.surfaceContainerLow, borderRadius: BorderRadius.circular(11)),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(11),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
@@ -489,21 +758,31 @@ class _AlphaRail extends StatelessWidget {
                   width: 22,
                   height: 22,
                   alignment: Alignment.center,
-                  transform: Matrix4.diagonal3Values(s.hovered ? 1.35 : 1, s.hovered ? 1.35 : 1, 1),
+                  transform: Matrix4.diagonal3Values(
+                    s.hovered ? 1.35 : 1,
+                    s.hovered ? 1.35 : 1,
+                    1,
+                  ),
                   transformAlignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: s.hovered ? scheme.primary : scheme.primary.withValues(alpha: 0),
+                    color: s.hovered
+                        ? scheme.primary
+                        : scheme.primary.withValues(alpha: 0),
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: Text(
                     l,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
-                          color: s.hovered
-                              ? scheme.onPrimary
-                              : (present.contains(l) ? scheme.onSurfaceVariant : scheme.onSurfaceVariant.withValues(alpha: .4)),
-                        ),
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: s.hovered
+                          ? scheme.onPrimary
+                          : (present.contains(l)
+                                ? scheme.onSurfaceVariant
+                                : scheme.onSurfaceVariant.withValues(
+                                    alpha: .4,
+                                  )),
+                    ),
                   ),
                 ),
               ),

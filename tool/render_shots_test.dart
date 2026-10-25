@@ -52,6 +52,7 @@ final _dir = _light ? 'build/shots-light' : 'build/shots';
 
 void main() {
   loginShots();
+  libraryShots();
   testWidgets('render shots', (tester) async {
     debugPrint('step: fonts');
     await tester.runAsync(_loadFonts);
@@ -178,6 +179,44 @@ void loginShots() {
     await tester.tap(find.text('Connect'));
     await _advance(tester, const Duration(seconds: 2));
     await shot('00b-login-error');
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 1));
+  });
+}
+
+void libraryShots() {
+  testWidgets('render library shots', (tester) async {
+    await tester.runAsync(_loadFonts);
+    final overrides = await testOverrides(prefs: _light ? {'dark_theme': false} : {});
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final boundaryKey = GlobalKey();
+    await tester.pumpWidget(RepaintBoundary(
+      key: boundaryKey,
+      child: ProviderScope(retry: (_, _) => null, overrides: overrides, child: const TidewaterApp()),
+    ));
+    Directory(_dir).createSync(recursive: true);
+    Future<void> shot(String name) async {
+      await tester.runAsync(() async {
+        final boundary = boundaryKey.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+        final image = await boundary.toImage();
+        final data = await image.toByteData(format: ui.ImageByteFormat.png);
+        File('$_dir/$name.png').writeAsBytesSync(data!.buffer.asUint8List());
+      });
+    }
+
+    await _advance(tester, const Duration(seconds: 2));
+    await tester.tap(find.text('Library'));
+    await _advance(tester, const Duration(seconds: 2));
+    await tester.tap(find.text('Genre'));
+    await _advance(tester, const Duration(milliseconds: 700));
+    await shot('11-library-genre-menu');
+    await tester.tapAt(const Offset(300, 700));
+    await _advance(tester, const Duration(milliseconds: 500));
+    await tester.tap(find.text('Songs'));
+    await _advance(tester, const Duration(seconds: 2));
+    await shot('12-library-songs');
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 1));
   });
