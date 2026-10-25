@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers/library_providers.dart';
 import '../../app/theme/motion.dart';
 import '../../core/models/album.dart';
-import '../../core/models/artist.dart';
 import '../../core/models/playlist.dart';
 import '../../core/models/track.dart';
 import '../widgets/async_states.dart';
@@ -98,7 +97,6 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     final sort = ref.watch(librarySortProvider);
     final genre = ref.watch(libraryGenreProvider);
     final albums = ref.watch(libraryAlbumsProvider(sort));
-    final artists = ref.watch(artistsProvider);
     final playlists = ref.watch(playlistsProvider);
     // Only the Songs tab pulls in every song (thousands of rows of metadata).
     final songSort = ref.watch(librarySongSortProvider);
@@ -126,11 +124,6 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
               : '$n album${n == 1 ? '' : 's'}';
           subtitle = loaded.complete ? label : '$label so far…';
         }
-      case LibraryTab.artists:
-        final n = artists.value?.length;
-        subtitle = n == null
-            ? (artists.hasError ? 'Couldn\'t load artists' : 'Loading…')
-            : '$n artist${n == 1 ? '' : 's'}';
       case LibraryTab.songs:
         final loaded = songs!.value;
         if (loaded == null) {
@@ -156,15 +149,11 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     final alphabetical =
         (tab == LibraryTab.albums &&
             (sort == LibrarySort.name || sort == LibrarySort.artist)) ||
-        tab == LibraryTab.artists ||
         tab == LibraryTab.songs;
     List<String> titlesForRail() => switch (tab) {
       LibraryTab.albums => [
         for (final a in shownAlbums)
           sort == LibrarySort.artist ? a.artist : a.title,
-      ],
-      LibraryTab.artists => [
-        for (final a in artists.value ?? const <Artist>[]) a.name,
       ],
       LibraryTab.songs => [
         for (final t in songs?.value?.songs ?? const <Track>[])
@@ -287,7 +276,6 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                     sort,
                     albums,
                     shownAlbums,
-                    artists,
                     playlists,
                     songs,
                   ),
@@ -300,7 +288,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
               right: 6,
               top: 168,
               bottom: PageFrame.bottomClearance,
-              child: _AlphaRail(titles: titlesForRail(), onJump: _jumpToIndex),
+              child: AlphaRail(titles: titlesForRail(), onJump: _jumpToIndex),
             ),
         ],
       ),
@@ -312,7 +300,6 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     LibrarySort sort,
     AsyncValue<LibraryAlbums> albums,
     List<Album> shownAlbums,
-    AsyncValue<List<Artist>> artists,
     AsyncValue<List<Playlist>> playlists,
     AsyncValue<LibrarySongs>? songs,
   ) {
@@ -328,7 +315,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
             ),
           ];
         }
-        if (!albums.hasValue) return [_skeletonGrid(round: false)];
+        if (!albums.hasValue) return [_skeletonGrid()];
         if (shownAlbums.isEmpty && albums.requireValue.complete) {
           return [
             _message(
@@ -358,27 +345,6 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
               ),
               bottom: true,
             ),
-        ];
-      case LibraryTab.artists:
-        if (artists.hasError && !artists.hasValue) {
-          return [
-            _message(
-              ErrorPanel(
-                error: artists.error!,
-                onRetry: () => ref.invalidate(artistsProvider),
-              ),
-            ),
-          ];
-        }
-        if (!artists.hasValue) return [_skeletonGrid(round: true)];
-        final list = artists.requireValue;
-        if (list.isEmpty) {
-          return [
-            _message(const EmptyPanel(icon: Icons.person_rounded, title: 'No artists yet')),
-          ];
-        }
-        return [
-          _grid(list.length, (i) => ArtistCard(artist: list[i], large: true)),
         ];
       case LibraryTab.songs:
         final s = songs!;
@@ -457,7 +423,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
             ),
           ];
         }
-        if (!playlists.hasValue) return [_skeletonGrid(round: false)];
+        if (!playlists.hasValue) return [_skeletonGrid()];
         final list = playlists.requireValue;
         if (list.isEmpty) {
           return [
@@ -535,7 +501,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     ),
   );
 
-  Widget _skeletonGrid({required bool round}) {
+  Widget _skeletonGrid() {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(24, 0, 40, PageFrame.bottomClearance),
       sliver: SliverLayoutBuilder(
@@ -556,7 +522,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                   width: tile,
                   height: tile,
                   radius: tile * .26,
-                  circle: round,
+                  
                 ),
                 const SizedBox(height: 14),
                 const SkeletonBox(width: 110, height: 12, radius: 6),
@@ -753,8 +719,8 @@ int firstIndexForLetter(List<String> titles, String letter) {
 
 /// A–Z jump rail along the right edge. Letters with nothing in the list (so
 /// far) are dimmed and do nothing.
-class _AlphaRail extends StatelessWidget {
-  const _AlphaRail({required this.titles, required this.onJump});
+class AlphaRail extends StatelessWidget {
+  const AlphaRail({super.key, required this.titles, required this.onJump});
 
   final List<String> titles;
   final ValueChanged<int> onJump;

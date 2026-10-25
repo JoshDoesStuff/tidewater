@@ -247,9 +247,7 @@ void main() {
 
     testWidgets('an artist card opens the artist instead of starting playback', (tester) async {
       final container = await pumpApp(tester);
-      await tester.tap(find.text('Library'));
-      await advance(tester, const Duration(seconds: 2));
-      await tester.tap(find.widgetWithText(ExpressiveChip, 'Artists'));
+      await tester.tap(find.text('Artists').first); // sidebar
       await advance(tester, const Duration(seconds: 2));
       final card = find.ancestor(of: find.text('Ana Soleil').first, matching: find.byType(MediaCard));
       await tester.tapAt(tester.getTopLeft(card) + const Offset(50, 50)); // the cover
@@ -306,11 +304,14 @@ void main() {
       await disposeApp(tester);
     });
 
-    testWidgets('Artists and Playlists tabs have their own counts', (tester) async {
+    testWidgets('the Artists sidebar page counts artists; Playlists tab counts playlists', (tester) async {
       await openLibrary(tester);
-      await tester.tap(find.widgetWithText(ExpressiveChip, 'Artists'));
+      expect(find.widgetWithText(ExpressiveChip, 'Artists'), findsNothing);
+      await tester.tap(find.text('Artists').first);
       await advance(tester, const Duration(seconds: 2));
       expect(find.text('12 artists'), findsOneWidget);
+      await tester.tap(find.text('Library').first);
+      await advance(tester, const Duration(seconds: 2));
       await tester.tap(find.widgetWithText(ExpressiveChip, 'Playlists'));
       await advance(tester, const Duration(seconds: 2));
       expect(find.text('2 playlists'), findsOneWidget);
