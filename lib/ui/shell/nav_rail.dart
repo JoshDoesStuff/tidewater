@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart' show LottieComposition;
 
 import '../../app/destinations.dart';
 import '../../app/theme/motion.dart';
@@ -92,8 +93,19 @@ class _RailItem extends StatefulWidget {
 
 class _RailItemState extends State<_RailItem> with SingleTickerProviderStateMixin {
   /// Plays once each time the item becomes the selected one, alongside the
-  /// page transition: each destination has its own icon motion.
+  /// page transition: each destination has its own icon animation.
   late final AnimationController _pop = AnimationController(vsync: this, duration: Motion.slow);
+  LottieComposition? _composition;
+
+  @override
+  void initState() {
+    super.initState();
+    RailIcons.load(widget.destination)?.then((c) {
+      if (!mounted) return;
+      _pop.duration = c.duration;
+      setState(() => _composition = c);
+    });
+  }
 
   Destination get destination => widget.destination;
   bool get selected => widget.selected;
@@ -157,7 +169,7 @@ class _RailItemState extends State<_RailItem> with SingleTickerProviderStateMixi
                       duration: Motion.of(context, Motion.fast),
                       child: AnimatedBuilder(
                         animation: _pop,
-                        builder: (context, _) => railIconMotion(destination, _pop.value, fg),
+                        builder: (context, _) => railIconMotion(destination, _pop.value, fg, composition: _composition),
                       ),
                     ),
                   ],

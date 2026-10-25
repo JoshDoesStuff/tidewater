@@ -99,9 +99,65 @@ class SettingsPage extends ConsumerWidget {
                         ),
                     ],
                   ),
+                  const SizedBox(height: 28),
+                  const _Credits(),
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Attribution for the sidebar icon artwork.
+class _Credits extends StatelessWidget {
+  const _Credits();
+
+  static const _entries = [
+    (
+      'Library icon',
+      'Music Library icon by Icons8 (https://icons8.com)',
+    ),
+    (
+      'Artists, Liked, Lists, Radio and Settings icons',
+      'UseAnimations (https://useanimations.com), MIT License',
+    ),
+    (
+      'Home icon',
+      'Lucide (https://lucide.dev), ISC License. Translated into code by Claude.',
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Semantics(
+      container: true,
+      label: 'Credits',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Credits', style: text.titleLarge),
+            const SizedBox(height: 4),
+            Text(
+              'Sidebar icon artwork:',
+              style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+            for (final (what, who) in _entries) ...[
+              const SizedBox(height: 12),
+              Text(what, style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              SelectableText(who, style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
+            ],
           ],
         ),
       ),
