@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../app/destinations.dart';
@@ -72,7 +74,7 @@ class NavRail extends StatelessWidget {
   }
 }
 
-class _RailItem extends StatelessWidget {
+class _RailItem extends StatefulWidget {
   const _RailItem({
     required this.destination,
     required this.selected,
@@ -84,6 +86,32 @@ class _RailItem extends StatelessWidget {
   final bool selected;
   final bool compact;
   final VoidCallback onTap;
+
+  @override
+  State<_RailItem> createState() => _RailItemState();
+}
+
+class _RailItemState extends State<_RailItem> with SingleTickerProviderStateMixin {
+  /// Plays once each time the item becomes the selected one, alongside the
+  /// page transition: the icon hops up, overshoots and wiggles.
+  late final AnimationController _pop = AnimationController(vsync: this, duration: Motion.slow);
+
+  Destination get destination => widget.destination;
+  bool get selected => widget.selected;
+  bool get compact => widget.compact;
+  VoidCallback get onTap => widget.onTap;
+
+  @override
+  void didUpdateWidget(_RailItem old) {
+    super.didUpdateWidget(old);
+    if (widget.selected && !old.selected && !Motion.reduced(context)) _pop.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _pop.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +156,21 @@ class _RailItem extends StatelessWidget {
                     AnimatedScale(
                       scale: s.pressed ? .8 : 1,
                       duration: Motion.of(context, Motion.fast),
-                      child: Icon(destination.icon, size: 22, color: fg),
+                      child: AnimatedBuilder(
+                        animation: _pop,
+                        builder: (context, child) {
+                          final t = _pop.value;
+                          // Hop up and settle, with a decaying wiggle.
+                          final hop = -7 * math.sin(math.pi * t.clamp(0, .5) * 2) * (1 - t);
+                          final turn = .35 * math.sin(t * math.pi * 3) * (1 - t);
+                          final grow = 1 + .3 * math.sin(math.pi * t) * (1 - t);
+                          return Transform.translate(
+                            offset: Offset(0, hop),
+                            child: Transform.rotate(angle: turn, child: Transform.scale(scale: grow, child: child)),
+                          );
+                        },
+                        child: Icon(destination.icon, size: 22, color: fg),
+                      ),
                     ),
                   ],
                 ),

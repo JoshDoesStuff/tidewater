@@ -21,8 +21,16 @@ abstract final class AppTheme {
   static ThemeData build(Brightness brightness, {Color seedColor = seed, bool muted = false}) =>
       fromScheme(scheme(brightness, seedColor: seedColor, muted: muted));
 
-  static ThemeData fromScheme(ColorScheme scheme) {
-    final base = ThemeData(colorScheme: scheme, useMaterial3: true);
+  /// Windows picks a Chinese font for kanji unless told otherwise, which makes
+  /// Japanese names look off. These are the Japanese UI fonts it ships with.
+  static const japaneseFallback = ['Yu Gothic UI', 'Meiryo UI', 'MS UI Gothic'];
+
+  static ThemeData fromScheme(ColorScheme scheme, {bool japanese = false}) {
+    final base = ThemeData(
+      colorScheme: scheme,
+      useMaterial3: true,
+      fontFamilyFallback: japanese ? japaneseFallback : null,
+    );
     final text = base.textTheme
         .copyWith(
           // Page titles ("Good evening", "Library").

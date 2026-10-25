@@ -69,6 +69,13 @@ class SettingsPage extends ConsumerWidget {
                     value: ref.watch(lrclibEnabledProvider),
                     onChanged: ref.read(lrclibEnabledProvider.notifier).set,
                   ),
+                  const SizedBox(height: 8),
+                  _SwitchRow(
+                    title: 'Japanese-friendly text',
+                    subtitle: 'Draws Japanese names (artists, albums, tracks, playlists) with Japanese fonts. Turn off to use the system default.',
+                    value: ref.watch(japaneseTextProvider),
+                    onChanged: ref.read(japaneseTextProvider.notifier).set,
+                  ),
                   const SizedBox(height: 22),
                   Text('Visualizer style', style: text.titleLarge),
                   const SizedBox(height: 4),

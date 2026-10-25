@@ -455,7 +455,7 @@ void main() {
       await advance(tester, const Duration(seconds: 2));
       expect(container.read(routerProvider).state.uri.path, '/playlist/pl-1');
       expect(container.read(playbackProvider).queue, isEmpty);
-      expect(find.text('Shuffle playlist'), findsOneWidget);
+      expect(find.text('Shuffle'), findsOneWidget);
       await disposeApp(tester);
     });
 

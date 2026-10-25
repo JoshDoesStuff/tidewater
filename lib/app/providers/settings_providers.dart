@@ -140,6 +140,22 @@ class LrclibEnabledNotifier extends Notifier<bool> {
 
 final lrclibEnabledProvider = NotifierProvider<LrclibEnabledNotifier, bool>(LrclibEnabledNotifier.new);
 
+/// Draw Japanese text (artist, album, track and playlist names) with Japanese
+/// fonts instead of the system's default CJK pick. Persisted.
+class JapaneseTextNotifier extends Notifier<bool> {
+  static const _key = 'japanese_text';
+
+  @override
+  bool build() => ref.watch(sharedPreferencesProvider).getBool(_key) ?? true;
+
+  void set(bool value) {
+    state = value;
+    ref.read(sharedPreferencesProvider).setBool(_key, value);
+  }
+}
+
+final japaneseTextProvider = NotifierProvider<JapaneseTextNotifier, bool>(JapaneseTextNotifier.new);
+
 /// Liked songs page: cards instead of a list. Persisted.
 class LikedAsCardsNotifier extends Notifier<bool> {
   static const _key = 'liked_as_cards';

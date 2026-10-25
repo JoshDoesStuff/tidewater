@@ -73,26 +73,6 @@ class _AppShellState extends ConsumerState<AppShell> {
         },
       );
     }
-    final album = RegExp(r'^/album/([^/]+)$').firstMatch(location);
-    if (album != null) {
-      return (
-        label: 'Shuffle album',
-        run: () async {
-          final d = await ref.read(albumDetailProvider(album.group(1)!).future);
-          await player.playTracks(d.tracks, shuffle: true);
-        },
-      );
-    }
-    final playlist = RegExp(r'^/playlist/([^/]+)$').firstMatch(location);
-    if (playlist != null) {
-      return (
-        label: 'Shuffle playlist',
-        run: () async {
-          final d = await ref.read(playlistDetailProvider(playlist.group(1)!).future);
-          await player.playTracks(d.tracks, shuffle: true);
-        },
-      );
-    }
     return null;
   }
 
