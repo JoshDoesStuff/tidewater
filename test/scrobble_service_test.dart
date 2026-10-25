@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tidewater/app/providers/library_providers.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
 import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/core/api/api_exception.dart';
@@ -51,6 +52,22 @@ void main() {
     await listenTo(tester, c, 105);
     await advance(tester, const Duration(seconds: 1));
     expect(api.calls.where((x) => x.startsWith('getAlbumList:recent')).length, greaterThan(before));
+    await c.read(playbackProvider.notifier).toggle();
+    await disposeApp(tester);
+  });
+
+  testWidgets('a counted play also refreshes the Library\'s played sorts', (tester) async {
+    final api = FakeLibraryApi();
+    final c = await pumpApp(tester, api: api);
+    c.read(librarySortProvider.notifier).set(LibrarySort.mostPlayed);
+    await tester.tap(find.text('Library'));
+    await advance(tester, const Duration(seconds: 2));
+    final before = api.calls.where((x) => x.startsWith('getAlbumList:frequent:0')).length;
+    await c.read(playbackProvider.notifier).playAlbum(fakeAlbums[0]);
+    await advance(tester, const Duration(milliseconds: 500));
+    await listenTo(tester, c, 105);
+    await advance(tester, const Duration(seconds: 1));
+    expect(api.calls.where((x) => x.startsWith('getAlbumList:frequent:0')).length, greaterThan(before));
     await c.read(playbackProvider.notifier).toggle();
     await disposeApp(tester);
   });

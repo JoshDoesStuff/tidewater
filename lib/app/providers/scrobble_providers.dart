@@ -26,6 +26,8 @@ final scrobbleServiceProvider = Provider<void>((ref) {
         // The play now exists on the server: Home's rows should show it.
         ref.invalidate(albumRowProvider(AlbumListType.recent));
         ref.invalidate(albumRowProvider(AlbumListType.frequent));
+        ref.invalidate(libraryAlbumsProvider(LibrarySort.recentlyPlayed));
+        ref.invalidate(libraryAlbumsProvider(LibrarySort.mostPlayed));
       }
     } catch (_) {
       // A "now playing" that fails is simply stale; a counted play is worth
