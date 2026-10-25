@@ -1,30 +1,62 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tidewater/app/app.dart';
 import 'package:tidewater/app/destinations.dart';
+import 'package:tidewater/app/providers/playback_providers.dart';
+import 'package:tidewater/app/providers/settings_providers.dart';
+import 'package:tidewater/app/providers/ui_providers.dart';
+import 'package:tidewater/app/theme/album_scheme.dart';
 import 'package:tidewater/app/theme/motion.dart';
 import 'package:tidewater/core/data/fake_library.dart';
-import 'package:tidewater/ui/widgets/shapes/squircle.dart';
+import 'package:tidewater/ui/widgets/shapes/morph_path.dart';
 
-Future<void> _pumpApp(WidgetTester tester, {Size size = const Size(1280, 800)}) async {
+/// Pumps the app and returns its provider container. Always call [_dispose]
+/// at the end of a test that plays audio so the simulated clock stops.
+Future<ProviderContainer> _pumpApp(WidgetTester tester, {Size size = const Size(1280, 800)}) async {
+  SharedPreferences.setMockInitialValues({});
+  final prefs = await SharedPreferences.getInstance();
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  await tester.pumpWidget(const ProviderScope(child: TidewaterApp()));
-  await tester.pumpAndSettle();
+  await tester.pumpWidget(ProviderScope(
+    overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    child: const TidewaterApp(),
+  ));
+  await _advance(tester, const Duration(seconds: 2));
+  return ProviderScope.containerOf(tester.element(find.byType(TidewaterApp)));
+}
+
+/// Advances fake time in 100 ms frames so route and implicit animations run.
+Future<void> _advance(WidgetTester tester, Duration total) async {
+  var left = total;
+  while (left > Duration.zero) {
+    final step = left > const Duration(milliseconds: 100) ? const Duration(milliseconds: 100) : left;
+    await tester.pump(step);
+    left -= step;
+  }
+}
+
+Future<void> _dispose(WidgetTester tester) async {
+  await tester.pumpWidget(const SizedBox());
+  await _advance(tester, const Duration(seconds: 1));
 }
 
 void main() {
   testWidgets('shell shows rail, mini player, FAB and Home', (tester) async {
     await _pumpApp(tester);
-    expect(find.text('Good evening'), findsOneWidget);
+    expect(find.text('Good evening'), findsNothing); // letters are separate widgets
     expect(find.text('Jump back in'), findsOneWidget);
     expect(find.text('Shuffle all'), findsOneWidget);
-    expect(find.text(fakeAlbums.first.track), findsOneWidget); // mini player
+    expect(find.text(fakeTracks.first.title), findsWidgets); // mini player
     for (final d in Destination.values) {
       expect(find.text(d.label), findsWidgets);
     }
+    await _dispose(tester);
   });
 
   testWidgets('filter chips hug their labels and sit in one row', (tester) async {
@@ -35,16 +67,18 @@ void main() {
     expect(albums.width, lessThan(200));
     expect(albums.top, all.top);
     expect(albums.left, greaterThan(all.right));
+    await _dispose(tester);
   });
 
   testWidgets('rail navigates to Library and back', (tester) async {
     await _pumpApp(tester);
     await tester.tap(find.text('Library'));
-    await tester.pumpAndSettle();
+    await _advance(tester, const Duration(seconds: 2));
     expect(find.text('1,284 albums · 96 GB'), findsOneWidget);
     await tester.tap(find.text('Home'));
-    await tester.pumpAndSettle();
-    expect(find.text('Good evening'), findsOneWidget);
+    await _advance(tester, const Duration(seconds: 2));
+    expect(find.text('Jump back in'), findsOneWidget);
+    await _dispose(tester);
   });
 
   testWidgets('narrow window collapses rail labels and FAB', (tester) async {
@@ -52,30 +86,118 @@ void main() {
     expect(find.text('Shuffle all'), findsNothing);
     expect(find.text('Settings'), findsNothing);
     expect(tester.takeException(), isNull);
+    await _dispose(tester);
   });
 
   testWidgets('reduced-motion setting reaches MediaQuery', (tester) async {
-    await _pumpApp(tester);
-    final element = tester.element(find.text('Good evening'));
-    expect(Motion.reduced(element), isFalse);
-    final container = ProviderScope.containerOf(element);
+    final container = await _pumpApp(tester);
+    expect(Motion.reduced(tester.element(find.text('Jump back in'))), isFalse);
     container.read(reduceMotionProvider.notifier).set(true);
-    await tester.pumpAndSettle();
-    expect(Motion.reduced(tester.element(find.text('Good evening'))), isTrue);
+    await _advance(tester, const Duration(seconds: 1));
+    expect(Motion.reduced(tester.element(find.text('Jump back in'))), isTrue);
+    await _dispose(tester);
   });
 
-  test('squircle path stays inside its box and is closed', () {
-    final bounds = squirclePath(const Size(100, 100)).getBounds();
-    expect(bounds.left, closeTo(0, 1));
-    expect(bounds.right, closeTo(100, 1));
-    expect(bounds.top, closeTo(0, 1));
-    expect(bounds.bottom, closeTo(100, 1));
+  testWidgets('playing an album recolors the theme and starts playback', (tester) async {
+    final container = await _pumpApp(tester);
+    final before = Theme.of(tester.element(find.text('Jump back in'))).colorScheme.primary;
+    await container.read(playbackProvider.notifier).playIndex(6);
+    await _advance(tester, const Duration(milliseconds: 100));
+    expect(container.read(playbackProvider).playing, isTrue);
+    expect(container.read(activeAlbumIndexProvider), 6);
+    await _advance(tester, const Duration(seconds: 2));
+    final after = Theme.of(tester.element(find.text('Jump back in'))).colorScheme.primary;
+    expect(after, isNot(before));
+    expect(after, AlbumScheme.of(fakeAlbums[6], Brightness.dark).primary);
+    await container.read(playbackProvider.notifier).toggle();
+    await _dispose(tester);
   });
+
+  testWidgets('mini player opens Now Playing; Esc closes it', (tester) async {
+    final container = await _pumpApp(tester);
+    await tester.tap(find.byTooltip('Previous').first, warnIfMissed: false);
+    container.read(nowPlayingOpenProvider.notifier).set(true);
+    await _advance(tester, const Duration(seconds: 2));
+    expect(find.text('Now playing'), findsOneWidget);
+    expect(find.text('LYRICS'), findsOneWidget);
+    expect(find.text('Synced lyrics'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await _advance(tester, const Duration(seconds: 1));
+    expect(container.read(nowPlayingOpenProvider), isFalse);
+    expect(find.text('Now playing'), findsNothing);
+    await _dispose(tester);
+  });
+
+  testWidgets('L toggles lyrics, V cycles visualizer style in Now Playing', (tester) async {
+    final container = await _pumpApp(tester);
+    container.read(nowPlayingOpenProvider.notifier).set(true);
+    await _advance(tester, const Duration(seconds: 2));
+    expect(container.read(lyricsOnProvider), isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyL);
+    await _advance(tester, const Duration(seconds: 1));
+    expect(container.read(lyricsOnProvider), isFalse);
+    final before = container.read(vizModeProvider);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+    await _advance(tester, const Duration(milliseconds: 100));
+    expect(container.read(vizModeProvider), before.next);
+    container.read(nowPlayingOpenProvider.notifier).set(false);
+    await _advance(tester, const Duration(seconds: 1));
+    await _dispose(tester);
+  });
+
+  testWidgets('goes idle after 3.5 s while playing, never while paused', (tester) async {
+    final container = await _pumpApp(tester);
+    container.read(nowPlayingOpenProvider.notifier).set(true);
+    await _advance(tester, const Duration(seconds: 2));
+    await _advance(tester, const Duration(seconds: 5));
+    expect(container.read(idleProvider), isFalse, reason: 'paused');
+    await container.read(playbackProvider.notifier).toggle();
+    await _advance(tester, const Duration(seconds: 5));
+    expect(container.read(idleProvider), isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.shiftLeft);
+    await _advance(tester, const Duration(milliseconds: 300));
+    expect(container.read(idleProvider), isFalse);
+    await container.read(playbackProvider.notifier).toggle();
+    container.read(nowPlayingOpenProvider.notifier).set(false);
+    await _advance(tester, const Duration(seconds: 1));
+    await _dispose(tester);
+  });
+
+  test('every album scheme keeps accent text readable (WCAG >= 4.5)', () {
+    double lum(Color c) {
+      double ch(double v) => v <= .03928 ? v / 12.92 : math.pow((v + .055) / 1.055, 2.4).toDouble();
+      return .2126 * ch(c.r) + .7152 * ch(c.g) + .0722 * ch(c.b);
+    }
+
+    double ratio(Color a, Color b) {
+      final l1 = lum(a);
+      final l2 = lum(b);
+      return (l1 > l2 ? l1 + .05 : l2 + .05) / (l1 > l2 ? l2 + .05 : l1 + .05);
+    }
+
+    for (final album in fakeAlbums) {
+      final s = AlbumScheme.of(album, Brightness.dark);
+      // Active lyric (primary) and body text on the lyrics card / surface.
+      expect(ratio(s.primary, s.surfaceContainerHigh), greaterThanOrEqualTo(4.5), reason: album.title);
+      expect(ratio(s.onSurface, s.surface), greaterThanOrEqualTo(4.5), reason: album.title);
+      expect(ratio(s.onSurfaceVariant, s.surfaceContainerHigh), greaterThanOrEqualTo(4.5), reason: album.title);
+    }
+  });
+
+  test('morph path stays inside its box at both ends', () {
+    const size = Size(100, 100);
+    final squircle = morphPath(size, m: 0, params: ShapeKind.cookie.params).getBounds();
+    expect(squircle.left, closeTo(0, 1));
+    expect(squircle.right, closeTo(100, 1));
+    final lobed = morphPath(size, m: 1, params: ShapeKind.clover.params).getBounds();
+    expect(lobed.width, lessThanOrEqualTo(100 * ShapeKind.clover.params.base * (1 + ShapeKind.clover.params.amp) + 1));
+    });
 
   test('motion tokens match the spec', () {
     expect(Motion.fast.inMilliseconds, 150);
     expect(Motion.medium.inMilliseconds, 300);
     expect(Motion.slow.inMilliseconds, 520);
+    expect(Motion.recolor.inMilliseconds, 800);
   });
 
   test('destinations resolve from locations', () {

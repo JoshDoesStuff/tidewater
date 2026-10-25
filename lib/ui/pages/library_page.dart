@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/motion.dart';
 import '../../core/data/fake_library.dart';
+import '../widgets/effects/letter_reveal.dart';
+import '../widgets/effects/ripple.dart';
+import '../widgets/effects/stagger_in.dart';
 import '../widgets/expressive_buttons.dart';
 import '../widgets/pressable.dart';
 import 'page_frame.dart';
@@ -19,6 +22,7 @@ class _LibraryPageState extends State<LibraryPage> {
   static const _cardWidth = 156.0;
 
   int _chip = 0;
+  final bool _reveal = revealOnce('library');
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +46,12 @@ class _LibraryPageState extends State<LibraryPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Library', style: text.displaySmall),
+                                LetterReveal(
+                                  text: 'Library',
+                                  style: text.displaySmall,
+                                  delay: const Duration(milliseconds: 100),
+                                  animate: _reveal,
+                                ),
                                 Text(
                                   '1,284 albums · 96 GB',
                                   style: text.bodyMedium?.copyWith(
@@ -61,10 +70,20 @@ class _LibraryPageState extends State<LibraryPage> {
                         ],
                       ),
                       const SizedBox(height: 22),
-                      ExpressiveChipGroup(
-                        labels: const ['Albums', 'Artists', 'Songs', 'Playlists', 'Genres'],
-                        selectedIndex: _chip,
-                        onSelected: (i) => setState(() => _chip = i),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: [
+                          for (final (i, label) in ['Albums', 'Artists', 'Songs', 'Playlists', 'Genres'].indexed)
+                            StaggerIn(
+                              index: i,
+                              child: ExpressiveChip(
+                                label: label,
+                                selected: i == _chip,
+                                onTap: () => setState(() => _chip = i),
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 22),
                     ],
@@ -87,7 +106,7 @@ class _LibraryPageState extends State<LibraryPage> {
                         mainAxisExtent: tile + 14 + 40,
                       ),
                       itemCount: fakeAlbums.length,
-                      itemBuilder: (context, i) => AlbumCard(album: fakeAlbums[i], large: true),
+                      itemBuilder: (context, i) => StaggerIn(index: i, child: AlbumCard(index: i, large: true)),
                     );
                   },
                 ),
@@ -115,20 +134,26 @@ class _SortButton extends StatelessWidget {
       builder: (context, s) => AnimatedContainer(
         duration: Motion.of(context, Motion.fast),
         height: 48,
-        padding: const EdgeInsets.only(left: 18, right: 20),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: s.hovered ? scheme.surfaceContainerHighest : scheme.surfaceContainerHigh,
           borderRadius: BorderRadius.circular(24),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.sort_rounded, size: 20, color: scheme.onSurface),
-            const SizedBox(width: 10),
-            Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 14, fontWeight: FontWeight.w500)),
-            const SizedBox(width: 10),
-            Icon(Icons.expand_more_rounded, size: 16, color: scheme.onSurface),
-          ],
+        child: Ripple(
+          color: scheme.onSurface,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 18, right: 20),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.sort_rounded, size: 20, color: scheme.onSurface),
+                const SizedBox(width: 10),
+                Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 14, fontWeight: FontWeight.w500)),
+                const SizedBox(width: 10),
+                Icon(Icons.expand_more_rounded, size: 16, color: scheme.onSurface),
+              ],
+            ),
+          ),
         ),
       ),
     );

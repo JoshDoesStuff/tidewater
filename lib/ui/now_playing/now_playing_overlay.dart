@@ -1,0 +1,1001 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../app/providers/playback_providers.dart';
+import '../../app/providers/settings_providers.dart';
+import '../../app/providers/ui_providers.dart';
+import '../../app/theme/motion.dart';
+import '../../core/data/fake_library.dart';
+import '../../core/models/album.dart';
+import '../../core/models/track.dart';
+import '../shell/shell_keys.dart';
+import '../widgets/art_tile.dart';
+import '../widgets/effects/letter_reveal.dart';
+import '../widgets/effects/particle_burst.dart';
+import '../widgets/effects/ripple.dart';
+import '../widgets/expressive_buttons.dart';
+import '../widgets/pressable.dart';
+import '../widgets/shapes/morph_path.dart';
+import '../widgets/shapes/morph_shape.dart';
+import '../widgets/wavy_progress.dart';
+import 'lyrics_list.dart';
+import 'viz_picker.dart';
+import 'visualizer/visualizer.dart';
+import 'volume_slider.dart';
+
+/// Cover bounds inside Now Playing (hero flight target, Ring visualizer origin).
+final npCoverKey = GlobalKey(debugLabel: 'npCover');
+
+const _designW = 1280.0;
+const _designH = 800.0;
+const _idleAfter = Duration(milliseconds: 3500);
+const _idleTick = Duration(milliseconds: 250);
+
+class _Flight {
+  const _Flight(this.delta, this.ratio);
+
+  /// Offset of the mini cover from the Now Playing cover, in design pixels.
+  final Offset delta;
+
+  /// Mini cover size over Now Playing cover size.
+  final double ratio;
+}
+
+/// Fullscreen Now Playing, laid out on a 1280x800 design canvas that is
+/// scaled to fit the window (backdrop and visualizer fill the real window).
+///
+/// Opens with a FLIP-style flight of the cover from the mini player while the
+/// other elements rise with a 70 ms stagger. After 3.5 s without input while
+/// playing it goes idle: controls fade away, the cover glides, big lyrics (or
+/// a centered caption) appear and a wavy progress runs along the bottom edge.
+class NowPlayingOverlay extends ConsumerStatefulWidget {
+  const NowPlayingOverlay({super.key});
+
+  @override
+  ConsumerState<NowPlayingOverlay> createState() => _NowPlayingOverlayState();
+}
+
+class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with TickerProviderStateMixin {
+  late final AnimationController _fade = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 280),
+    reverseDuration: const Duration(milliseconds: 260),
+  );
+  late final AnimationController _enter = AnimationController(vsync: this, duration: const Duration(milliseconds: 820));
+  late final AnimationController _trackFx =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 600), value: 1);
+
+  final _burstKey = GlobalKey<BurstLayerState>();
+  final _heartKey = GlobalKey();
+
+  bool _visible = false;
+  Duration _sinceInput = Duration.zero; // counted in timer ticks
+  Timer? _idleTimer;
+  Timer? _swapTimer;
+  _Flight? _flight;
+  late int _shownIndex = ref.read(playbackProvider).index;
+  late int _kindIdx = _shownIndex % 5;
+
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_onKey);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onKey);
+    _idleTimer?.cancel();
+    _swapTimer?.cancel();
+    _fade.dispose();
+    _enter.dispose();
+    _trackFx.dispose();
+    super.dispose();
+  }
+
+  bool _onKey(KeyEvent e) {
+    if (_visible) _wake();
+    return false;
+  }
+
+  void _wake() {
+    _sinceInput = Duration.zero;
+    if (ref.read(idleProvider)) ref.read(idleProvider.notifier).set(false);
+  }
+
+  void _open() {
+    if (_visible) return;
+    _sinceInput = Duration.zero;
+    _flight = null;
+    _fade.value = 0;
+    _enter.value = 0;
+    setState(() => _visible = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _measureFlight();
+      if (Motion.reduced(context)) {
+        _fade.value = 1;
+        _enter.value = 1;
+      } else {
+        _fade.forward();
+        _enter.forward();
+      }
+    });
+    _idleTimer?.cancel();
+    _idleTimer = Timer.periodic(_idleTick, (_) => _checkIdle());
+  }
+
+  void _close() {
+    if (!_visible) return;
+    _idleTimer?.cancel();
+    ref.read(idleProvider.notifier).set(false);
+    ref.read(vizPopupOpenProvider.notifier).set(false);
+    Future<void> done() async {
+      if (!mounted || ref.read(nowPlayingOpenProvider)) return;
+      setState(() => _visible = false);
+    }
+
+    if (Motion.reduced(context)) {
+      _fade.value = 0;
+      done();
+    } else {
+      _fade.reverse(from: _fade.value).then((_) => done());
+    }
+  }
+
+  void _checkIdle() {
+    final playing = ref.read(playbackProvider).playing;
+    final popup = ref.read(vizPopupOpenProvider);
+    _sinceInput += _idleTick;
+    final should = playing && !popup && _sinceInput > _idleAfter;
+    if (should != ref.read(idleProvider)) ref.read(idleProvider.notifier).set(should);
+  }
+
+  void _measureFlight() {
+    final to = npCoverKey.currentContext?.findRenderObject() as RenderBox?;
+    final from = miniCoverKey.currentContext?.findRenderObject() as RenderBox?;
+    if (to == null || from == null || !to.attached || !from.attached) return;
+    final toTL = to.localToGlobal(Offset.zero);
+    final fromTL = from.localToGlobal(Offset.zero);
+    final toW = to.localToGlobal(Offset(to.size.width, 0)).dx - toTL.dx;
+    if (toW <= 0) return;
+    final s = toW / to.size.width;
+    _flight = _Flight((fromTL - toTL) / s, from.size.width / toW);
+  }
+
+  void _onTrack(int index) {
+    if (!_visible || Motion.reduced(context)) {
+      setState(() {
+        _shownIndex = index;
+        _kindIdx = index % 5;
+      });
+      return;
+    }
+    _trackFx.forward(from: 0);
+    _swapTimer?.cancel();
+    _swapTimer = Timer(const Duration(milliseconds: 190), () {
+      if (!mounted) return;
+      setState(() {
+        _shownIndex = index;
+        _kindIdx = index % 5;
+      });
+    });
+  }
+
+  Rect? _ringRect() {
+    final cover = npCoverKey.currentContext?.findRenderObject() as RenderBox?;
+    final me = context.findRenderObject() as RenderBox?;
+    if (cover == null || me == null || !cover.attached || !me.attached) return null;
+    final tl = me.globalToLocal(cover.localToGlobal(Offset.zero));
+    final br = me.globalToLocal(cover.localToGlobal(cover.size.bottomRight(Offset.zero)));
+    return Rect.fromPoints(tl, br);
+  }
+
+  void _toggleLike() {
+    final id = fakeTracks[_shownIndex].id;
+    final wasLiked = ref.read(likedProvider).contains(id);
+    ref.read(likedProvider.notifier).toggle(id);
+    if (!wasLiked) {
+      final heart = _heartKey.currentContext?.findRenderObject() as RenderBox?;
+      final layer = _burstKey.currentContext?.findRenderObject() as RenderBox?;
+      if (heart != null && layer != null) {
+        final c = layer.globalToLocal(heart.localToGlobal(heart.size.center(Offset.zero)));
+        _burstKey.currentState?.burst(c);
+      }
+    }
+  }
+
+  // ---- animation helpers ---------------------------------------------------
+
+  /// Rise-in with a 70 ms stagger per [index] (see "other elements rise").
+  Widget _rise(int index, Widget child) {
+    return AnimatedBuilder(
+      animation: _enter,
+      child: child,
+      builder: (context, c) {
+        final raw = ((_enter.value * 820 - (120 + 70 * index)) / 560).clamp(0.0, 1.0);
+        final e = Motion.emphasized.transform(raw);
+        return Opacity(opacity: e, child: Transform.translate(offset: Offset(0, 26 * (1 - e)), child: c));
+      },
+    );
+  }
+
+  /// Idle: fade plus a 14 px slide, never receiving input while hidden.
+  Widget _idleFade(bool idle, Widget child) {
+    final reduced = Motion.reduced(context);
+    return IgnorePointer(
+      ignoring: idle,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(end: idle ? 1 : 0),
+        duration: reduced ? Duration.zero : Motion.slow,
+        curve: Motion.emphasized,
+        builder: (context, t, c) => Opacity(
+          opacity: 1 - t,
+          child: Transform.translate(offset: Offset(0, 14 * t), child: c),
+        ),
+        child: child,
+      ),
+    );
+  }
+
+  /// Track-change slide: out (up), in (from below). [i] staggers by 40 ms.
+  Widget _slideSwap(int i, Widget child) {
+    return AnimatedBuilder(
+      animation: _trackFx,
+      child: child,
+      builder: (context, c) {
+        final raw = ((_trackFx.value * 600 - i * 40) / 560).clamp(0.0, 1.0);
+        if (raw >= 1) return c!;
+        final v = Motion.emphasized.transform(raw);
+        double opacity;
+        double dy;
+        if (v < .35) {
+          final p = v / .35;
+          opacity = 1 - p;
+          dy = -10 * p;
+        } else if (v < .45) {
+          opacity = 0;
+          dy = -10 + 24 * ((v - .35) / .1);
+        } else {
+          final p = (v - .45) / .55;
+          opacity = p;
+          dy = 14 * (1 - p);
+        }
+        return Opacity(opacity: opacity, child: Transform.translate(offset: Offset(0, dy), child: c));
+      },
+    );
+  }
+
+  // ---- build -----------------------------------------------------------------
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(nowPlayingOpenProvider, (p, open) => open ? _open() : _close());
+    ref.listen(playbackProvider.select((s) => s.index), (p, i) => _onTrack(i));
+    if (!_visible) return const SizedBox.shrink();
+
+    final scheme = Theme.of(context).colorScheme;
+    final idle = ref.watch(idleProvider);
+    final lyricsOn = ref.watch(lyricsOnProvider);
+    final mode = ref.watch(vizModeProvider);
+
+    return FadeTransition(
+      opacity: CurvedAnimation(parent: _fade, curve: Motion.emphasized, reverseCurve: Curves.easeIn),
+      child: MouseRegion(
+        cursor: idle ? SystemMouseCursors.none : MouseCursor.defer,
+        onHover: (_) => _wake(),
+        child: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (_) => _wake(),
+          onPointerMove: (_) => _wake(),
+          onPointerSignal: (_) => _wake(),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ColoredBox(color: scheme.surface),
+              CustomPaint(painter: _BackdropPainter(scheme.primaryContainer.withValues(alpha: .6))),
+              Visualizer(mode: mode, ringRect: _ringRect),
+              FittedBox(
+                fit: BoxFit.contain,
+                child: SizedBox(
+                  width: _designW,
+                  height: _designH,
+                  child: BurstLayer(
+                    key: _burstKey,
+                    color: scheme.primary,
+                    child: _design(context, idle: idle, lyricsOn: lyricsOn),
+                  ),
+                ),
+              ),
+              _idleProgress(context, idle),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _design(BuildContext context, {required bool idle, required bool lyricsOn}) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final reduced = Motion.reduced(context);
+    final playing = ref.watch(playbackProvider.select((s) => s.playing));
+    final album = fakeAlbums[_shownIndex];
+    final track = fakeTracks[_shownIndex];
+    final slow = Motion.of(context, Motion.slow);
+    final glideLeft = idle && !lyricsOn ? 420.0 : 100.0;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Top bar.
+        Positioned(
+          left: 36,
+          right: 48,
+          top: 44,
+          height: 56,
+          child: _rise(1, _idleFade(idle, _topBar(context))),
+        ),
+
+        // Cover column (glides to center in idle without lyrics).
+        AnimatedPositioned(
+          duration: slow,
+          curve: Motion.emphasized,
+          left: glideLeft,
+          top: 180,
+          width: 440,
+          height: 440,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: -40,
+                top: -40,
+                width: 520,
+                height: 520,
+                child: IgnorePointer(
+                  child: MorphShape(
+                    params: const ShapeParams(lobes: 12, amp: .05, base: .97),
+                    morph: 1,
+                    squareBase: false,
+                    shadow: false,
+                    spin: reduced ? 0 : -.18,
+                    child: ColoredBox(color: scheme.tertiaryContainer.withValues(alpha: .55)),
+                  ),
+                ),
+              ),
+              Positioned.fill(child: _cover(album, playing, reduced)),
+            ],
+          ),
+        ),
+
+        // Volume.
+        Positioned(
+          left: 128,
+          top: 678,
+          width: 360,
+          child: _rise(2, _idleFade(idle, const VolumeSlider())),
+        ),
+
+        // Right column.
+        Positioned(
+          left: 620,
+          top: 110,
+          width: 580,
+          height: 646,
+          child: _rise(0, _idleFade(idle, _rightColumn(context, album, track, lyricsOn))),
+        ),
+
+        // Idle lyrics beside the cover.
+        Positioned(
+          left: 640,
+          top: 180,
+          width: 580,
+          height: 440,
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: idle && lyricsOn ? 1 : 0,
+              duration: slow,
+              curve: Motion.standard,
+              child: AnimatedSlide(
+                offset: idle && lyricsOn ? Offset.zero : const Offset(30 / 580, 0),
+                duration: slow,
+                curve: Motion.emphasized,
+                child: const LyricsList(style: LyricsStyle.idle, layoutWidth: 440),
+              ),
+            ),
+          ),
+        ),
+
+        // Idle caption under the cover (never any lyric text here).
+        AnimatedPositioned(
+          duration: slow,
+          curve: Motion.emphasized,
+          left: lyricsOn ? 100 : 0,
+          width: lyricsOn ? 440 : _designW,
+          top: 650,
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: idle ? 1 : 0,
+              duration: slow,
+              curve: Motion.standard,
+              child: Column(
+                children: [
+                  Text(
+                    track.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: text.headlineMedium?.copyWith(fontSize: 32, fontWeight: FontWeight.w700, letterSpacing: -.5),
+                  ),
+                  Text(
+                    track.artist,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: text.titleMedium?.copyWith(fontSize: 20, color: scheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // Visualizer style popup (outside tap closes it).
+        if (ref.watch(vizPopupOpenProvider))
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () => ref.read(vizPopupOpenProvider.notifier).set(false),
+            ),
+          ),
+        const Positioned(right: 44, top: 112, child: VizPicker()),
+      ],
+    );
+  }
+
+  Widget _cover(Album album, bool playing, bool reduced) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([_enter, _trackFx]),
+      builder: (context, child) {
+        // Hero flight: from the mini player cover to here.
+        final e = Motion.emphasized.transform((_enter.value * 820 / 640).clamp(0.0, 1.0));
+        final f = _flight;
+        final m = Matrix4.identity();
+        if (f != null && e < 1) {
+          m
+            ..translateByDouble(f.delta.dx * (1 - e), f.delta.dy * (1 - e), 0, 1)
+            ..scaleByDouble(f.ratio + (1 - f.ratio) * e, f.ratio + (1 - f.ratio) * e, 1, 1);
+        }
+        // Track change: scale down and fade, swap, spring back up.
+        final raw = (_trackFx.value * 600 / 560).clamp(0.0, 1.0);
+        var scale = 1.0;
+        var opacity = 1.0;
+        if (raw < 1) {
+          if (raw < .5) {
+            final p = raw / .5;
+            scale = 1 - .1 * p;
+            opacity = 1 - .6 * p;
+          } else {
+            final p = Motion.spring.transform((raw - .5) / .5);
+            scale = .9 + .1 * p;
+            opacity = .4 + .6 * ((raw - .5) / .5);
+          }
+        }
+        return Transform(
+          alignment: Alignment.topLeft,
+          transform: m,
+          child: Opacity(
+            opacity: opacity.clamp(0.0, 1.0),
+            child: Transform.scale(scale: scale, child: child),
+          ),
+        );
+      },
+      child: GestureDetector(
+        onTap: () => setState(() => _kindIdx = (_kindIdx + 1) % 5),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: KeyedSubtree(
+            key: npCoverKey,
+            child: ArtTile(
+              album: album,
+              size: 440,
+              params: ShapeKind.values[_kindIdx].params,
+              morph: playing ? 1 : 0,
+              spin: playing && !reduced ? .36 : 0,
+              shadowAlpha: .45,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _topBar(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final mode = ref.watch(vizModeProvider);
+    final popup = ref.watch(vizPopupOpenProvider);
+    return Row(
+      children: [
+        ExpressiveIconButton(
+          icon: Icons.close_fullscreen_rounded,
+          size: 56,
+          squareRadius: 18,
+          tooltip: 'Close (Esc)',
+          onPressed: () => ref.read(nowPlayingOpenProvider.notifier).set(false),
+        ),
+        Expanded(
+          child: Center(
+            child: Text(
+              'Now playing',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurfaceVariant,
+                  ),
+            ),
+          ),
+        ),
+        ExpressiveIconButton(
+          icon: Icons.auto_awesome_rounded,
+          size: 56,
+          squareRadius: 18,
+          selected: mode != VizMode.off || popup,
+          tooltip: 'Visualizer (V)',
+          onPressed: () => ref.read(vizPopupOpenProvider.notifier).toggle(),
+        ),
+        const SizedBox(width: 16),
+        const ExpressiveIconButton(icon: Icons.queue_music_rounded, size: 56, squareRadius: 18, tooltip: 'Queue'),
+        const SizedBox(width: 16),
+        const ExpressiveIconButton(icon: Icons.cast_rounded, size: 56, squareRadius: 18, tooltip: 'Cast'),
+      ],
+    );
+  }
+
+  Widget _rightColumn(BuildContext context, Album album, Track track, bool lyricsOn) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final controller = ref.read(playbackProvider.notifier);
+    final state = ref.watch(playbackProvider);
+    final position = ref.watch(positionProvider);
+    final lyrics = ref.watch(lyricsProvider);
+    final liked = ref.watch(likedProvider).contains(track.id);
+    final duration = track.duration;
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _slideSwap(
+          0,
+          Text(
+            'ALBUM · ${album.title}'.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: text.labelLarge?.copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.5,
+              color: scheme.primary,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: 580,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: LetterReveal(
+              text: track.title,
+              style: text.displayMedium?.copyWith(
+                fontSize: 58,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -1,
+                height: 1.05,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        _slideSwap(
+          1,
+          Text(
+            track.artist,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: text.titleLarge?.copyWith(fontSize: 24, fontWeight: FontWeight.w500, color: scheme.onSurfaceVariant),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: 580,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const _Tag(label: 'FLAC · 24-bit / 96 kHz'),
+              if (lyrics.synced) const _Tag(label: 'Synced lyrics'),
+              _HeartChip(key: _heartKey, liked: liked, onTap: _toggleLike),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        const SizedBox(
+          width: 580,
+          height: 40,
+          child: WavyScrubber(amplitude: 4, breathe: 7, wavelength: 28, strokeWidth: 6),
+        ),
+        const SizedBox(height: 2),
+        SizedBox(
+          width: 580,
+          child: ValueListenableBuilder<Duration>(
+            valueListenable: position,
+            builder: (context, p, _) {
+              final style = text.bodySmall?.copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: scheme.onSurfaceVariant,
+              );
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(formatDuration(p), style: style),
+                  Text('-${formatDuration(duration - p)}', style: style),
+                ],
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          height: 84,
+          child: Row(
+            children: [
+              ExpressiveIconButton(
+                icon: Icons.shuffle_rounded,
+                size: 56,
+                squareRadius: 18,
+                selected: state.shuffle,
+                tooltip: 'Shuffle',
+                onPressed: controller.toggleShuffle,
+              ),
+              const SizedBox(width: 12),
+              _WideButton(icon: Icons.skip_previous_rounded, label: 'Previous (P)', onTap: controller.previous),
+              const SizedBox(width: 12),
+              _BigPlay(playing: state.playing, onTap: controller.toggle),
+              const SizedBox(width: 12),
+              _WideButton(icon: Icons.skip_next_rounded, label: 'Next (N)', onTap: controller.next),
+              const SizedBox(width: 12),
+              ExpressiveIconButton(
+                icon: Icons.repeat_rounded,
+                size: 56,
+                squareRadius: 18,
+                selected: state.repeat,
+                tooltip: 'Repeat',
+                onPressed: controller.toggleRepeat,
+              ),
+              const SizedBox(width: 12),
+              ExpressiveIconButton(
+                icon: Icons.lyrics_rounded,
+                size: 56,
+                squareRadius: 18,
+                selected: lyricsOn,
+                tooltip: 'Lyrics (L)',
+                onPressed: ref.read(lyricsOnProvider.notifier).toggle,
+              ),
+            ],
+          ),
+        ),
+        _LyricsCard(visible: lyricsOn, onToggle: ref.read(lyricsOnProvider.notifier).toggle),
+      ],
+    );
+  }
+
+  /// Wavy progress along the bottom edge of the window with elapsed and
+  /// remaining time at the corners. Only in idle mode.
+  Widget _idleProgress(BuildContext context, bool idle) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final position = ref.watch(positionProvider);
+    final duration = fakeTracks[_shownIndex].duration;
+    final style = text.bodySmall?.copyWith(fontSize: 13, fontWeight: FontWeight.w500, color: scheme.onSurfaceVariant);
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 6,
+      height: 62,
+      child: IgnorePointer(
+        ignoring: !idle,
+        child: AnimatedOpacity(
+          opacity: idle ? 1 : 0,
+          duration: Motion.of(context, Motion.slow),
+          curve: Motion.standard,
+          child: Stack(
+            children: [
+              const Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 40,
+                child: WavyScrubber(amplitude: 5, wavelength: 30, strokeWidth: 5, padding: 16),
+              ),
+              Positioned(
+                left: 20,
+                top: 0,
+                child: ValueListenableBuilder<Duration>(
+                  valueListenable: position,
+                  builder: (context, p, _) => Text(formatDuration(p), style: style),
+                ),
+              ),
+              Positioned(
+                right: 20,
+                top: 0,
+                child: ValueListenableBuilder<Duration>(
+                  valueListenable: position,
+                  builder: (context, p, _) => Text('-${formatDuration(duration - p)}', style: style),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BackdropPainter extends CustomPainter {
+  _BackdropPainter(this.color);
+
+  final Color color;
+
+  /// Soft glow: ellipse 60% x 70% of the window at (24%, 48%).
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.translate(size.width * .24, size.height * .48);
+    canvas.scale(size.width * .6, size.height * .7);
+    canvas.drawRect(
+      const Rect.fromLTRB(-3, -3, 3, 3),
+      Paint()
+        ..shader = RadialGradient(colors: [color, color.withValues(alpha: 0)])
+            .createShader(Rect.fromCircle(center: Offset.zero, radius: 1)),
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_BackdropPainter old) => old.color != color;
+}
+
+class _Tag extends StatelessWidget {
+  const _Tag({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(10)),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
+    );
+  }
+}
+
+/// Heart chip: pops (1 → 1.45 → 1) and squares off when liked.
+class _HeartChip extends StatefulWidget {
+  const _HeartChip({super.key, required this.liked, required this.onTap});
+
+  final bool liked;
+  final VoidCallback onTap;
+
+  @override
+  State<_HeartChip> createState() => _HeartChipState();
+}
+
+class _HeartChipState extends State<_HeartChip> with SingleTickerProviderStateMixin {
+  late final AnimationController _pop = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
+
+  @override
+  void dispose() {
+    _pop.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Pressable(
+      semanticLabel: widget.liked ? 'Unlike' : 'Like',
+      onTap: () {
+        if (!Motion.reduced(context)) _pop.forward(from: 0);
+        widget.onTap();
+      },
+      builder: (context, s) => AnimatedBuilder(
+        animation: _pop,
+        builder: (context, child) {
+          final t = _pop.value;
+          final scale = 1 + .45 * math.sin(math.pi * Motion.spring.transform(t).clamp(0.0, 1.0)) * (1 - t * .0);
+          return Transform.scale(scale: scale, child: child);
+        },
+        child: AnimatedContainer(
+          duration: Motion.of(context, Motion.medium),
+          curve: Motion.curve(context, Motion.spring),
+          width: 44,
+          height: 34,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: widget.liked ? scheme.primary : scheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(widget.liked ? 10 : 17),
+          ),
+          child: Ripple(
+            color: widget.liked ? scheme.onPrimary : scheme.primary,
+            child: Center(
+              child: Icon(
+                widget.liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                size: 18,
+                color: widget.liked ? scheme.onPrimary : scheme.primary,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WideButton extends StatelessWidget {
+  const _WideButton({required this.icon, required this.label, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Pressable(
+      onTap: onTap,
+      semanticLabel: label,
+      builder: (context, s) => AnimatedScale(
+        scale: s.pressed ? .96 : 1,
+        duration: Motion.of(context, Motion.fast),
+        curve: Motion.curve(context, Motion.spring),
+        child: AnimatedContainer(
+          duration: Motion.of(context, Motion.medium),
+          curve: Motion.curve(context, Motion.spring),
+          width: 96,
+          height: 64,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: scheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(s.pressed ? 20 : 32),
+          ),
+          child: Ripple(
+            color: scheme.onSecondaryContainer,
+            child: Center(child: Icon(icon, size: 26, color: scheme.onSecondaryContainer)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BigPlay extends StatelessWidget {
+  const _BigPlay({required this.playing, required this.onTap});
+
+  final bool playing;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Pressable(
+      onTap: onTap,
+      semanticLabel: playing ? 'Pause (Space)' : 'Play (Space)',
+      builder: (context, s) => AnimatedScale(
+        scale: s.pressed ? .94 : 1,
+        duration: Motion.of(context, Motion.fast),
+        curve: Motion.curve(context, Motion.spring),
+        child: AnimatedContainer(
+          duration: Motion.of(context, Motion.slow),
+          curve: Motion.curve(context, Motion.spring),
+          width: 128,
+          height: 80,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: scheme.primary,
+            borderRadius: BorderRadius.circular(playing || s.pressed ? 28 : 40),
+            boxShadow: [BoxShadow(color: scheme.shadow.withValues(alpha: .35), blurRadius: 20, offset: const Offset(0, 8))],
+          ),
+          child: Ripple(
+            color: scheme.onPrimary,
+            child: Center(child: PlayPauseIcon(playing: playing, size: 34, color: scheme.onPrimary)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Lyrics card. Collapses (height, fade, margin; slow, emphasized) when
+/// lyrics are toggled off.
+class _LyricsCard extends ConsumerWidget {
+  const _LyricsCard({required this.visible, required this.onToggle});
+
+  final bool visible;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(end: visible ? 1 : 0),
+      duration: Motion.of(context, Motion.slow),
+      curve: Motion.emphasized,
+      builder: (context, f, child) => Padding(
+        padding: EdgeInsets.only(top: 16 * f),
+        child: ClipRect(
+          child: Align(
+            alignment: Alignment.topCenter,
+            heightFactor: f,
+            child: Opacity(opacity: f, child: child),
+          ),
+        ),
+      ),
+      child: Container(
+        height: 190,
+        width: 580,
+        decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(36)),
+        child: Stack(
+          children: [
+            Positioned(
+              left: 32,
+              top: 22,
+              child: Text(
+                'LYRICS',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1,
+                      color: scheme.onSurfaceVariant,
+                    ),
+              ),
+            ),
+            Positioned(
+              right: 28,
+              top: 14,
+              child: ExpressiveIconButton(
+                icon: Icons.lyrics_rounded,
+                size: 48,
+                iconSize: 20,
+                squareRadius: 14,
+                tone: ButtonTone.standard,
+                onPressed: onToggle,
+                tooltip: 'Hide lyrics (L)',
+              ),
+            ),
+            const Positioned(
+              left: 32,
+              right: 32,
+              top: 46,
+              height: 128,
+              child: LyricsList(style: LyricsStyle.card),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

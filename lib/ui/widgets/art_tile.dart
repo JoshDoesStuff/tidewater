@@ -2,58 +2,76 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../core/models/album.dart';
-import 'shapes/squircle.dart';
+import 'shapes/morph_path.dart';
+import 'shapes/morph_shape.dart';
 
-/// Placeholder cover art: diagonal gradient with the demo's highlight disc.
-/// [squircle] clips to a superellipse with a soft drop shadow; otherwise it
-/// fills its box (used behind hero cards, which clip themselves).
-class ArtTile extends StatelessWidget {
-  const ArtTile({super.key, required this.album, this.size, this.squircle = true});
+/// Placeholder cover art: diagonal gradient with the demo's highlight disc,
+/// filling its box. Real cover art replaces this in milestone 2.
+class ArtFill extends StatelessWidget {
+  const ArtFill({super.key, required this.album, this.child});
 
   final Album album;
-  final double? size;
-  final bool squircle;
+  final Widget? child;
 
   @override
   Widget build(BuildContext context) {
-    final painter = _ArtPainter(
-      a: Color(album.colorA),
-      b: Color(album.colorB),
-      shadow: Theme.of(context).colorScheme.shadow,
-      squircle: squircle,
-    );
-    return RepaintBoundary(
-      child: CustomPaint(
-        size: size == null ? Size.infinite : Size.square(size!),
-        painter: painter,
-      ),
+    return CustomPaint(
+      painter: _ArtPainter(Color(album.colorA), Color(album.colorB)),
+      child: child ?? const SizedBox.expand(),
     );
   }
 }
 
+/// Cover art in a [MorphShape]: a squircle that can spring into a scalloped
+/// shape ([morph] 0..1) and spin.
+class ArtTile extends StatelessWidget {
+  const ArtTile({
+    super.key,
+    required this.album,
+    this.size,
+    this.params,
+    this.morph = 0,
+    this.spin = 0,
+    this.shadowAlpha = .28,
+    this.child,
+  });
+
+  final Album album;
+
+  /// Edge length; null fills the available space.
+  final double? size;
+
+  /// Shape the tile morphs to. Defaults to the cookie.
+  final ShapeParams? params;
+  final double morph;
+  final double spin;
+  final double shadowAlpha;
+
+  /// Painted over the art inside the clip (e.g. a [Ripple]).
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final tile = MorphShape(
+      params: params ?? ShapeKind.cookie.params,
+      morph: morph,
+      spin: spin,
+      shadowAlpha: shadowAlpha,
+      child: ArtFill(album: album, child: child),
+    );
+    return size == null ? tile : SizedBox.square(dimension: size, child: tile);
+  }
+}
+
 class _ArtPainter extends CustomPainter {
-  _ArtPainter({required this.a, required this.b, required this.shadow, required this.squircle});
+  _ArtPainter(this.a, this.b);
 
   final Color a;
   final Color b;
-  final Color shadow;
-  final bool squircle;
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    final k = size.width / 112;
-    if (squircle) {
-      final path = squirclePath(size);
-      canvas.drawPath(
-        path.shift(Offset(0, 8 * k)),
-        Paint()
-          ..color = shadow.withValues(alpha: .28)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 7 * k),
-      );
-      canvas.save();
-      canvas.clipPath(path);
-    }
     canvas.drawRect(
       rect,
       Paint()
@@ -68,10 +86,8 @@ class _ArtPainter extends CustomPainter {
     final ring = (14 * size.width / 156).clamp(4.0, 14.0);
     canvas.drawCircle(c, d / 2 + ring, Paint()..color = AppTheme.onArt.withValues(alpha: .11));
     canvas.drawCircle(c, d / 2, Paint()..color = AppTheme.onArt.withValues(alpha: .2));
-    if (squircle) canvas.restore();
   }
 
   @override
-  bool shouldRepaint(_ArtPainter old) =>
-      old.a != a || old.b != b || old.shadow != shadow || old.squircle != squircle;
+  bool shouldRepaint(_ArtPainter old) => old.a != a || old.b != b;
 }

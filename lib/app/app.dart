@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'providers/playback_providers.dart';
+import 'providers/settings_providers.dart';
 import 'router.dart';
+import 'theme/album_scheme.dart';
 import 'theme/app_theme.dart';
 import 'theme/motion.dart';
 
@@ -19,12 +22,13 @@ class TidewaterApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reduceMotion = ref.watch(reduceMotionProvider);
+    final brightness = ref.watch(darkThemeProvider) ? Brightness.dark : Brightness.light;
+    final scheme = AlbumScheme.of(ref.watch(currentAlbumProvider), brightness);
     return MaterialApp.router(
       title: 'Tidewater',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.build(Brightness.light),
-      darkTheme: AppTheme.build(Brightness.dark),
-      themeMode: ThemeMode.dark,
+      theme: AppTheme.fromScheme(scheme),
+      themeAnimationDuration: Duration.zero,
       routerConfig: ref.watch(routerProvider),
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         scrollbars: false,
@@ -32,9 +36,21 @@ class TidewaterApp extends ConsumerWidget {
       ),
       builder: (context, child) {
         final media = MediaQuery.of(context);
+        final reduced = media.disableAnimations || reduceMotion;
         return MediaQuery(
-          data: media.copyWith(disableAnimations: media.disableAnimations || reduceMotion),
-          child: child!,
+          data: media.copyWith(disableAnimations: reduced),
+          // The whole app recolors from the playing album's scheme.
+          child: TweenAnimationBuilder<ColorScheme>(
+            tween: ColorSchemeTween(end: scheme),
+            duration: reduced ? Duration.zero : Motion.recolor,
+            curve: Curves.easeInOut,
+            builder: (context, animated, child) => Theme(data: AppTheme.fromScheme(animated), child: child!),
+            child: Listener(
+              behavior: HitTestBehavior.translucent,
+              onPointerDown: (e) => ref.read(pointerOriginProvider).value = e.position,
+              child: child!,
+            ),
+          ),
         );
       },
     );

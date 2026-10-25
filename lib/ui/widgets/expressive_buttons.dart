@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme/motion.dart';
+import 'effects/ripple.dart';
 import 'pressable.dart';
 
 enum ButtonTone { standard, ghost, tonal, filled }
@@ -58,11 +59,12 @@ class ExpressiveIconButton extends StatelessWidget {
             curve: Motion.curve(context, Motion.spring),
             width: size,
             height: size,
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: bg,
               borderRadius: BorderRadius.circular(square ? squareRadius : size / 2),
             ),
-            child: Icon(icon, size: iconSize, color: fg),
+            child: Ripple(color: fg, child: Center(child: Icon(icon, size: iconSize, color: fg))),
           ),
         );
       },
@@ -143,7 +145,7 @@ class ExpressiveFab extends StatelessWidget {
             curve: Motion.curve(context, Motion.spring),
             width: extended ? 192 : 72,
             height: 72,
-            clipBehavior: Clip.hardEdge,
+            clipBehavior: Clip.antiAlias,
             transform: Matrix4.translationValues(0, s.hovered ? -3 : 0, 0),
             decoration: BoxDecoration(
               color: scheme.primaryContainer,
@@ -152,29 +154,81 @@ class ExpressiveFab extends StatelessWidget {
                 BoxShadow(color: scheme.shadow.withValues(alpha: .4), blurRadius: 24, offset: const Offset(0, 8)),
               ],
             ),
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, size: 24, color: scheme.onPrimaryContainer),
-                  if (extended) ...[
-                    const SizedBox(width: 12),
-                    Flexible(
-                      child: Text(
-                        label,
-                        softWrap: false,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: scheme.onPrimaryContainer,
-                            ),
-                      ),
+            child: Ripple(
+              color: scheme.onPrimaryContainer,
+              child: Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _Wiggle(
+                      active: s.hovered,
+                      child: Icon(icon, size: 24, color: scheme.onPrimaryContainer),
                     ),
+                    if (extended) ...[
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Text(
+                          label,
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: scheme.onPrimaryContainer,
+                              ),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
+        );
+      },
+    );
+  }
+}
+
+/// Icon wiggle on hover: tilts -16° and swells to 1.25, then settles (700 ms
+/// on the spring curve).
+class _Wiggle extends StatefulWidget {
+  const _Wiggle({required this.active, required this.child});
+
+  final bool active;
+  final Widget child;
+
+  @override
+  State<_Wiggle> createState() => _WiggleState();
+}
+
+class _WiggleState extends State<_Wiggle> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
+
+  @override
+  void didUpdateWidget(_Wiggle old) {
+    super.didUpdateWidget(old);
+    if (widget.active && !old.active && !Motion.reduced(context)) _c.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (context, child) {
+        // 0 → 30%: ease out to the wiggle pose, then spring back to rest.
+        final t = _c.value;
+        final pose = t < .3 ? Curves.easeOut.transform(t / .3) : 1 - Motion.spring.transform((t - .3) / .7);
+        return Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.rotationZ(-.279 * pose)..scaleByDouble(1 + .25 * pose, 1 + .25 * pose, 1, 1),
+          child: child,
         );
       },
     );
@@ -203,7 +257,7 @@ class ExpressiveChip extends StatelessWidget {
             duration: Motion.of(context, Motion.slow),
             curve: Motion.curve(context, Motion.spring),
             height: 40,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: selected
                   ? scheme.primary
@@ -212,15 +266,21 @@ class ExpressiveChip extends StatelessWidget {
             ),
             // widthFactor keeps the chip hugging its label (an `alignment` on
             // the container would stretch it to the full row).
-            child: Center(
-              widthFactor: 1,
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontSize: 14,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                      color: selected ? scheme.onPrimary : scheme.onSurface,
-                    ),
+            child: Ripple(
+              color: selected ? scheme.onPrimary : scheme.onSurface,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Center(
+                  widthFactor: 1,
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontSize: 14,
+                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                          color: selected ? scheme.onPrimary : scheme.onSurface,
+                        ),
+                  ),
+                ),
               ),
             ),
           ),

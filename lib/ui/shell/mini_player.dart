@@ -1,32 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/providers/playback_providers.dart';
+import '../../app/providers/ui_providers.dart';
 import '../../app/theme/motion.dart';
-import '../../core/data/fake_library.dart';
 import '../widgets/art_tile.dart';
+import '../widgets/effects/ripple.dart';
 import '../widgets/expressive_buttons.dart';
 import '../widgets/pressable.dart';
+import '../widgets/shapes/morph_path.dart';
 import '../widgets/wavy_progress.dart';
+import 'shell_keys.dart';
 
-/// Floating pill at the bottom of the window. Static placeholder data until
-/// playback exists (milestone 3); the play button only toggles its own icon.
-class MiniPlayer extends StatefulWidget {
+/// Floating pill at the bottom of the window: cover, title, transport,
+/// wavy progress and time. Clicking it opens Now Playing.
+class MiniPlayer extends ConsumerWidget {
   const MiniPlayer({super.key});
 
   @override
-  State<MiniPlayer> createState() => _MiniPlayerState();
-}
-
-class _MiniPlayerState extends State<MiniPlayer> {
-  bool _playing = false;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final album = fakeAlbums.first;
+    final album = ref.watch(currentAlbumProvider);
+    final track = ref.watch(currentTrackProvider);
+    final index = ref.watch(playbackProvider.select((s) => s.index));
+    final playing = ref.watch(playbackProvider.select((s) => s.playing));
+    final controller = ref.read(playbackProvider.notifier);
+    final position = ref.watch(positionProvider);
+    final reduced = Motion.reduced(context);
+
     return Pressable(
-      onTap: () {}, // Opens Now Playing in milestone 5.
-      semanticLabel: 'Now playing: ${album.track}',
+      onTap: () => ref.read(nowPlayingOpenProvider.notifier).set(true),
+      semanticLabel: 'Open now playing: ${track.title}',
       builder: (context, s) {
         return AnimatedContainer(
           duration: Motion.of(context, Motion.medium),
@@ -46,7 +51,17 @@ class _MiniPlayerState extends State<MiniPlayer> {
               final showProgress = box.maxWidth >= 600;
               return Row(
                 children: [
-                  ArtTile(album: album, size: 52),
+                  SizedBox.square(
+                    key: miniCoverKey,
+                    dimension: 52,
+                    child: ArtTile(
+                      album: album,
+                      size: 52,
+                      params: ShapeKind.forIndex(index).params.copyWith(amp: .07),
+                      morph: playing ? 1 : 0,
+                      spin: playing && !reduced ? .6 : 0,
+                    ),
+                  ),
                   const SizedBox(width: 14),
                   Flexible(
                     child: ConstrainedBox(
@@ -56,13 +71,13 @@ class _MiniPlayerState extends State<MiniPlayer> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            album.track,
+                            track.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: text.bodyLarge?.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
                           ),
                           Text(
-                            album.artist,
+                            track.artist,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: text.bodySmall?.copyWith(fontSize: 12.5, color: scheme.onSurfaceVariant),
@@ -72,34 +87,42 @@ class _MiniPlayerState extends State<MiniPlayer> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const ExpressiveIconButton(
+                  ExpressiveIconButton(
                     icon: Icons.skip_previous_rounded,
                     tone: ButtonTone.ghost,
                     size: 40,
                     iconSize: 22,
                     tooltip: 'Previous',
+                    onPressed: controller.previous,
                   ),
                   const SizedBox(width: 10),
-                  _PlayButton(playing: _playing, onTap: () => setState(() => _playing = !_playing)),
+                  _PlayButton(playing: playing, onTap: controller.toggle),
                   const SizedBox(width: 10),
-                  const ExpressiveIconButton(
+                  ExpressiveIconButton(
                     icon: Icons.skip_next_rounded,
                     tone: ButtonTone.ghost,
                     size: 40,
                     iconSize: 22,
                     tooltip: 'Next',
+                    onPressed: controller.next,
                   ),
                   if (showProgress) ...[
                     const SizedBox(width: 24),
                     const Expanded(
                       child: Align(
-                        child: SizedBox(width: 170, height: 30, child: WavyProgress(value: .38)),
+                        child: SizedBox(width: 170, height: 30, child: WavyScrubber()),
                       ),
                     ),
                     const SizedBox(width: 14),
                     SizedBox(
-                      width: 30,
-                      child: Text('1:16', style: text.bodySmall?.copyWith(fontSize: 12, color: scheme.onSurfaceVariant)),
+                      width: 34,
+                      child: ValueListenableBuilder<Duration>(
+                        valueListenable: position,
+                        builder: (context, p, _) => Text(
+                          formatDuration(p),
+                          style: text.bodySmall?.copyWith(fontSize: 12, color: scheme.onSurfaceVariant),
+                        ),
+                      ),
                     ),
                   ] else
                     const Spacer(),
@@ -113,6 +136,8 @@ class _MiniPlayerState extends State<MiniPlayer> {
   }
 }
 
+/// Primary play/pause: the icon rotates and scales between glyphs and the
+/// corner radius morphs (round paused, squarer playing).
 class _PlayButton extends StatelessWidget {
   const _PlayButton({required this.playing, required this.onTap});
 
@@ -135,11 +160,15 @@ class _PlayButton extends StatelessWidget {
             curve: Motion.curve(context, Motion.spring),
             width: 48,
             height: 48,
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: scheme.primary,
               borderRadius: BorderRadius.circular(playing || s.pressed ? 16 : 24),
             ),
-            child: Center(child: PlayPauseIcon(playing: playing, size: 24, color: scheme.onPrimary)),
+            child: Ripple(
+              color: scheme.onPrimary,
+              child: Center(child: PlayPauseIcon(playing: playing, size: 24, color: scheme.onPrimary)),
+            ),
           ),
         );
       },
