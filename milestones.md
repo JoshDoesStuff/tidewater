@@ -183,7 +183,7 @@ Most of the demo list is in. Remaining and review items:
 reviewable commits, ask before adding packages not listed in `CLAUDE.md`.
 
 **Performance:** measure in `--profile`, never debug (debug is several times slower and makes animations look
-janky). Current profile baseline (60 Hz, this machine): build ≈ 1 ms, raster ≈ 5–6 ms; worst phase is track skips
+janky). Current profile baseline (measured at 60 Hz; the real displays are a 180 Hz laptop and a 144 Hz external monitor, so the frame budget is ~5.5-7 ms, not 16.7): build ≈ 1 ms, raster ≈ 5–6 ms; worst phase is track skips
 (recolor) at build p90 ≈ 6.7 ms. Budget: no frames > 33 ms in any scenario.
 
 **Accessibility:**

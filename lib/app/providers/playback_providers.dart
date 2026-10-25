@@ -35,14 +35,14 @@ class PlaybackController extends Notifier<PlaybackState> {
 
   /// Runs a server request that ends in playback; a failure becomes a toast
   /// instead of an unhandled error.
-  Future<void> _load(Future<List<Track>> Function() tracks) async {
+  Future<void> _load(Future<List<Track>> Function() tracks, {int index = 0, bool shuffle = false}) async {
     try {
       final queue = await tracks();
       if (queue.isEmpty) {
         ref.read(toastProvider.notifier).show('Nothing to play there.');
         return;
       }
-      await _engine.playQueue(queue);
+      await _engine.playQueue(queue, index: index, shuffle: shuffle);
     } on ApiException catch (e) {
       ref.read(toastProvider.notifier).show(
             e.isOffline ? 'Can\'t reach the server. Check your connection.' : e.message,
@@ -51,10 +51,20 @@ class PlaybackController extends Notifier<PlaybackState> {
     }
   }
 
-  Future<void> playAlbum(Album album) => _load(() async => (await ref.read(apiProvider).getAlbum(album.id)).tracks);
+  Future<void> playAlbum(Album album, {bool shuffle = false}) =>
+      _load(() async => (await ref.read(apiProvider).getAlbum(album.id)).tracks, shuffle: shuffle);
 
-  Future<void> playPlaylist(Playlist playlist) =>
-      _load(() async => (await ref.read(apiProvider).getPlaylist(playlist.id)).tracks);
+  /// Plays [tracks] (an album page's list) starting at [index].
+  Future<void> playTracks(List<Track> tracks, {int index = 0, bool shuffle = false}) =>
+      _load(() async => tracks, index: index, shuffle: shuffle);
+
+  Future<void> addNext(List<Track> tracks) => _engine.addNext(tracks);
+  Future<void> addLast(List<Track> tracks) => _engine.addLast(tracks);
+  Future<void> removeAt(int index) => _engine.removeAt(index);
+  Future<void> move(int from, int to) => _engine.move(from, to);
+
+  Future<void> playPlaylist(Playlist playlist, {bool shuffle = false}) =>
+      _load(() async => (await ref.read(apiProvider).getPlaylist(playlist.id)).tracks, shuffle: shuffle);
 
   /// All of an artist's albums, in the server's order.
   Future<void> playArtist(Artist artist) => _load(() async {
@@ -85,7 +95,7 @@ class PlaybackController extends Notifier<PlaybackState> {
 
   Future<void> setVolume(double v) => _engine.setVolume(v);
   Future<void> toggleShuffle() => _engine.setShuffle(!state.shuffle);
-  Future<void> toggleRepeat() => _engine.setRepeat(!state.repeat);
+  Future<void> toggleRepeat() => _engine.setRepeat(state.repeat.next);
 }
 
 final playbackProvider = NotifierProvider<PlaybackController, PlaybackState>(PlaybackController.new);

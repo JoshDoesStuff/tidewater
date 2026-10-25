@@ -1,50 +1,57 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import '../models/track.dart';
-import 'playback_engine.dart';
+import 'audio_backend.dart';
+import 'queue_engine.dart';
 
-/// Plays nothing: advances a clock so the UI can be built and demoed before
-/// a real engine (media_kit, milestone 3) exists.
-class SimulatedEngine implements PlaybackEngine {
-  SimulatedEngine({List<Track> queue = const [], this.tick = const Duration(milliseconds: 33), math.Random? random})
-      : _state = PlaybackState(queue: queue),
-        _random = random ?? math.Random();
+/// Plays nothing: a clock that advances through the window like a real
+/// backend would. Used by the tests, previews and the performance tools, so
+/// they exercise the real queue logic without sound.
+class SimulatedBackend implements AudioBackend {
+  SimulatedBackend({this.tick = const Duration(milliseconds: 33)});
 
   final Duration tick;
-  final math.Random _random;
 
-  PlaybackState _state;
-  final _states = StreamController<PlaybackState>.broadcast();
-  final _positions = StreamController<Duration>.broadcast();
+  final _playing = StreamController<bool>.broadcast();
+  final _position = StreamController<Duration>.broadcast();
+  final _advanced = StreamController<int>.broadcast();
+  final _completed = StreamController<void>.broadcast();
+  final _buffering = StreamController<bool>.broadcast();
+  final _errors = StreamController<String>.broadcast();
 
+  List<Track> _window = [];
+  int _at = 0;
   Timer? _timer;
   final _clock = Stopwatch();
   Duration _base = Duration.zero;
+  bool _isPlaying = false;
 
   @override
-  PlaybackState get state => _state;
+  Stream<bool> get playing => _playing.stream;
+  @override
+  Stream<Duration> get position => _position.stream;
+  @override
+  Stream<int> get advanced => _advanced.stream;
+  @override
+  Stream<void> get completed => _completed.stream;
+  @override
+  Stream<bool> get buffering => _buffering.stream;
+  @override
+  Stream<String> get errors => _errors.stream;
+
+  /// For tests: pretend the current track failed to play.
+  void emitError(String message) => _errors.add(message);
+
+  Duration get _duration => _window.isEmpty ? Duration.zero : _window[_at].duration;
 
   @override
-  Stream<PlaybackState> get states => _states.stream;
-
-  @override
-  Duration get position {
+  Duration get currentPosition {
     final p = _base + _clock.elapsed;
-    final d = _state.track?.duration ?? Duration.zero;
-    return p > d ? d : p;
-  }
-
-  @override
-  Stream<Duration> get positions => _positions.stream;
-
-  void _emit(PlaybackState s) {
-    _state = s;
-    _states.add(s);
+    return p > _duration ? _duration : p;
   }
 
   void _startClock() {
-    _base = position;
+    _base = currentPosition;
     _clock
       ..reset()
       ..start();
@@ -52,7 +59,7 @@ class SimulatedEngine implements PlaybackEngine {
   }
 
   void _stopClock() {
-    _base = position;
+    _base = currentPosition;
     _clock
       ..stop()
       ..reset();
@@ -61,126 +68,86 @@ class SimulatedEngine implements PlaybackEngine {
   }
 
   void _onTick() {
-    if (position >= (_state.track?.duration ?? Duration.zero)) {
-      _advance();
+    if (currentPosition >= _duration) {
+      if (_at + 1 < _window.length) {
+        _at++;
+        _base = Duration.zero;
+        _clock
+          ..reset()
+          ..start();
+        _advanced.add(_at);
+      } else {
+        _stopClock();
+        _isPlaying = false;
+        _completed.add(null);
+      }
       return;
     }
-    _positions.add(position);
-  }
-
-  void _advance() {
-    if (_state.queue.isEmpty) return;
-    if (_state.repeat) {
-      _jump(_state.index);
-    } else {
-      _jump(_nextIndex());
-    }
-  }
-
-  int _nextIndex() {
-    final n = _state.queue.length;
-    if (_state.shuffle && n > 1) {
-      var i = _state.index;
-      while (i == _state.index) {
-        i = _random.nextInt(n);
-      }
-      return i;
-    }
-    return (_state.index + 1) % n;
-  }
-
-  void _jump(int index) {
-    final wasPlaying = _state.playing;
-    _base = Duration.zero;
-    _clock.reset();
-    if (wasPlaying) _clock.start();
-    _emit(_state.copyWith(index: index, started: true));
-    _positions.add(Duration.zero);
+    _position.add(currentPosition);
   }
 
   @override
-  Future<void> playQueue(List<Track> queue, {int index = 0}) async {
-    if (queue.isEmpty) return;
+  Future<void> open(List<Track> window, {Duration start = Duration.zero, bool play = true}) async {
     _stopClock();
-    _base = Duration.zero;
-    _emit(_state.copyWith(queue: queue, index: index.clamp(0, queue.length - 1), started: true, playing: true));
-    _startClock();
-    _positions.add(Duration.zero);
+    _window = [...window];
+    _at = 0;
+    _base = start;
+    _isPlaying = play;
+    if (play) _startClock();
   }
 
   @override
-  Future<void> playIndex(int index) async {
-    if (index < 0 || index >= _state.queue.length) return;
-    _stopClock();
-    _base = Duration.zero;
-    _emit(_state.copyWith(index: index, started: true, playing: true));
-    _startClock();
-    _positions.add(Duration.zero);
+  Future<void> setNext(Track? track) async {
+    if (_window.length > _at + 1) _window.removeRange(_at + 1, _window.length);
+    if (track != null) _window.add(track);
+  }
+
+  @override
+  Future<void> dropFirst() async {
+    if (_at > 0) {
+      _window.removeAt(0);
+      _at = 0;
+    }
   }
 
   @override
   Future<void> play() async {
-    if (_state.queue.isEmpty) return;
-    if (_state.playing) return;
-    _emit(_state.copyWith(playing: true, started: true));
+    _isPlaying = true;
     _startClock();
   }
 
   @override
   Future<void> pause() async {
-    if (!_state.playing) return;
+    _isPlaying = false;
     _stopClock();
-    _emit(_state.copyWith(playing: false));
   }
 
   @override
-  Future<void> stop() async {
-    _stopClock();
-    _base = Duration.zero;
-    _emit(const PlaybackState().copyWith(volume: _state.volume, shuffle: _state.shuffle, repeat: _state.repeat));
-    _positions.add(Duration.zero);
-  }
-
-  @override
-  Future<void> seek(Duration to) async {
-    final d = _state.track?.duration ?? Duration.zero;
-    _base = to < Duration.zero ? Duration.zero : (to > d ? d : to);
+  Future<void> seek(Duration position) async {
+    final p = position > _duration ? _duration : position;
+    _base = p;
     _clock.reset();
-    if (_state.playing) _clock.start();
-    _positions.add(_base);
+    if (_isPlaying) _clock.start();
+    _position.add(p);
   }
 
   @override
-  Future<void> next() async {
-    if (_state.queue.isNotEmpty) _jump(_nextIndex());
-  }
-
-  @override
-  Future<void> previous() async {
-    if (_state.queue.isEmpty) return;
-    // Like most players: restart the track first, go back only near its start.
-    if (position > const Duration(seconds: 3)) {
-      await seek(Duration.zero);
-      return;
-    }
-    final n = _state.queue.length;
-    _jump((_state.index - 1 + n) % n);
-  }
-
-  @override
-  Future<void> setVolume(double volume) async => _emit(_state.copyWith(volume: volume.clamp(0.0, 1.0)));
-
-  @override
-  Future<void> setShuffle(bool value) async => _emit(_state.copyWith(shuffle: value));
-
-  @override
-  Future<void> setRepeat(bool value) async => _emit(_state.copyWith(repeat: value));
+  Future<void> setVolume(double volume) async {}
 
   @override
   Future<void> dispose() async {
     _timer?.cancel();
     _timer = null;
-    await _states.close();
-    await _positions.close();
+    for (final c in [_playing, _position, _advanced, _completed, _buffering, _errors]) {
+      await c.close();
+    }
+  }
+}
+
+/// A [QueueEngine] on the simulated backend.
+class SimulatedEngine extends QueueEngine {
+  SimulatedEngine({List<Track> queue = const [], Duration tick = const Duration(milliseconds: 33), super.random})
+      : super(backend: SimulatedBackend(tick: tick)) {
+    if (queue.isNotEmpty) restore(queue);
   }
 }

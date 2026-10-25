@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers/playback_providers.dart';
 import '../../app/providers/settings_providers.dart';
 import '../../app/providers/ui_providers.dart';
+import '../../core/playback/play_queue.dart' show LoopMode;
 import '../../app/theme/motion.dart';
 import '../../core/models/track.dart';
 import '../shell/shell_keys.dart';
@@ -684,11 +685,15 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
               _WideButton(icon: Icons.skip_next_rounded, label: 'Next (N)', onTap: controller.next),
               const SizedBox(width: 12),
               ExpressiveIconButton(
-                icon: Icons.repeat_rounded,
+                icon: state.repeat == LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
                 size: 56,
                 squareRadius: 18,
-                selected: state.repeat,
-                tooltip: 'Repeat',
+                selected: state.repeat != LoopMode.off,
+                tooltip: switch (state.repeat) {
+                  LoopMode.off => 'Repeat: off',
+                  LoopMode.all => 'Repeat: all',
+                  LoopMode.one => 'Repeat: this track',
+                },
                 onPressed: controller.toggleRepeat,
               ),
               const SizedBox(width: 12),
