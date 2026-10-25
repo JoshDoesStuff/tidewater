@@ -21,6 +21,7 @@ class NavRail extends StatelessWidget {
     Destination.home,
     Destination.library,
     Destination.artists,
+    Destination.liked,
     Destination.lists,
     Destination.radio,
   ];
@@ -40,16 +41,24 @@ class NavRail extends StatelessWidget {
             tooltip: 'Menu',
           ),
           const SizedBox(height: 34),
-          for (final d in _main) ...[
-            _RailItem(
-              destination: d,
-              selected: d == selected,
-              compact: compact,
-              onTap: () => onSelected(d),
+          // Scrolls when the window is too short for every item.
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  for (final d in _main) ...[
+                    _RailItem(
+                      destination: d,
+                      selected: d == selected,
+                      compact: compact,
+                      onTap: () => onSelected(d),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-          ],
-          const Spacer(),
+          ),
           _RailItem(
             destination: Destination.settings,
             selected: Destination.settings == selected,

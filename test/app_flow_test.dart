@@ -12,7 +12,9 @@ import 'package:tidewater/core/api/server_config.dart';
 import 'package:tidewater/core/api/session_store.dart';
 import 'package:tidewater/core/models/album.dart';
 import 'package:tidewater/ui/pages/library_page.dart' show firstIndexForLetter;
-import 'package:tidewater/ui/pages/widgets/album_card.dart' show MediaCard;
+import 'package:tidewater/ui/pages/widgets/album_card.dart' show MediaCard, PlaylistCard, TrackCard;
+import 'package:tidewater/ui/pages/widgets/song_row.dart';
+import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/ui/widgets/expressive_buttons.dart';
 
 import 'support/fake_library.dart';
@@ -166,9 +168,9 @@ void main() {
 
     testWidgets('hero cards and rows come from the server', (tester) async {
       await pumpApp(tester);
-      // recent -> heroes; frequent -> quick picks; newest -> Recently added.
+      // recent -> heroes; frequent -> Most played; newest -> Recently added.
       expect(find.text('Album · Mira Vale'), findsOneWidget);
-      expect(find.text('Quick picks'), findsOneWidget);
+      expect(find.text('Continue listening'), findsNothing, reason: 'nothing queued yet');
       expect(find.text('Neon Cartography'), findsWidgets);
       expect(find.text('Recently added'), findsOneWidget);
       await disposeApp(tester);
@@ -181,7 +183,7 @@ void main() {
       await advance(tester, const Duration(seconds: 2));
       expect(container.read(activeAlbumIdProvider), 'a0');
       expect(find.byTooltip('Next'), findsOneWidget);
-      expect(find.text('Lantern Season'), findsOneWidget);
+      expect(find.text('Lantern Season'), findsWidgets); // mini player + Continue listening
       await container.read(playbackProvider.notifier).toggle();
       await disposeApp(tester);
     });
@@ -195,7 +197,7 @@ void main() {
 
     testWidgets('"Show all" opens the Library on that tab', (tester) async {
       final container = await pumpApp(tester);
-      await tester.tap(find.text('Show all'));
+      await tester.tap(find.text('Show all').first); // Recently added
       await advance(tester, const Duration(seconds: 2));
       expect(find.text('12 albums'), findsOneWidget);
       expect(container.read(librarySortProvider), LibrarySort.recentlyAdded);
@@ -375,6 +377,53 @@ void main() {
       expect(firstIndexForLetter(titles, 'C'), 3);
       expect(firstIndexForLetter(titles, 'Z'), -1);
       expect(firstIndexForLetter(['1999', '(What) Story'], '#'), 0);
+    });
+  });
+
+  group('liked songs, playlists and continue listening', () {
+    testWidgets('Home has a Liked songs row between Recently added and Most played', (tester) async {
+      await pumpApp(tester);
+      final added = tester.getTopLeft(find.text('Recently added')).dy;
+      final liked = tester.getTopLeft(find.text('Liked songs')).dy;
+      expect(liked, greaterThan(added));
+      expect(find.text('Salt on the Window'), findsOneWidget);
+      await disposeApp(tester);
+    });
+
+    testWidgets('Continue listening appears once a queue exists and toggles playback', (tester) async {
+      final container = await pumpApp(tester);
+      expect(find.text('Continue listening'), findsNothing);
+      await container.read(playbackProvider.notifier).playAlbum(fakeAlbums[0]);
+      await advance(tester, const Duration(seconds: 1));
+      expect(find.text('Continue listening'), findsOneWidget);
+      expect(container.read(playbackProvider).playing, isTrue);
+      await tester.tap(find.text('Continue listening'));
+      await advance(tester, const Duration(milliseconds: 500));
+      expect(container.read(playbackProvider).playing, isFalse);
+      await disposeApp(tester);
+    });
+
+    testWidgets('the Liked page lists hearted songs and can switch to cards', (tester) async {
+      final container = await pumpApp(tester);
+      await tester.tap(find.text('Liked').first);
+      await advance(tester, const Duration(seconds: 2));
+      expect(find.text('1 song'), findsOneWidget);
+      expect(find.byType(SongRow), findsOneWidget);
+      await tester.tap(find.byTooltip('Show as cards'));
+      await advance(tester, const Duration(seconds: 2));
+      expect(find.byType(SongRow), findsNothing);
+      expect(find.byType(TrackCard), findsOneWidget);
+      expect(container.read(likedAsCardsProvider), isTrue);
+      await disposeApp(tester);
+    });
+
+    testWidgets('Lists shows playlists as cards', (tester) async {
+      await pumpApp(tester);
+      await tester.tap(find.text('Lists').first);
+      await advance(tester, const Duration(seconds: 2));
+      expect(find.text('2 playlists'), findsOneWidget);
+      expect(find.byType(PlaylistCard), findsNWidgets(2));
+      await disposeApp(tester);
     });
   });
 }

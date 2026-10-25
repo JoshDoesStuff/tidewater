@@ -5,6 +5,7 @@ enum Destination {
   home('/home', 'Home', Icons.home_rounded),
   library('/library', 'Library', Icons.library_music_rounded),
   artists('/artists', 'Artists', Icons.person_rounded),
+  liked('/liked', 'Liked', Icons.favorite_rounded),
   lists('/lists', 'Lists', Icons.queue_music_rounded),
   radio('/radio', 'Radio', Icons.radio_rounded),
   settings('/settings', 'Settings', Icons.settings_rounded);

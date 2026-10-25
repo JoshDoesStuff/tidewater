@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/library_api.dart';
@@ -5,6 +7,7 @@ import '../../core/models/album.dart';
 import '../../core/models/artist.dart';
 import '../../core/models/playlist.dart';
 import '../../core/models/track.dart';
+import 'playback_providers.dart';
 import 'session_providers.dart';
 
 /// Albums for a Home row (recently added, most played, recently played).
@@ -153,4 +156,14 @@ final libraryAllSongsProvider = StreamProvider<LibrarySongs>((ref) async* {
 final sortedSongsProvider = Provider<AsyncValue<LibrarySongs>>((ref) {
   final sort = ref.watch(librarySongSortProvider);
   return ref.watch(libraryAllSongsProvider).whenData((l) => LibrarySongs(sort.sorted(l.songs), complete: l.complete));
+});
+
+/// Every hearted song as the server lists them. Auto-disposed so Home and the
+/// Liked page load fresh each time they are opened; pages hide songs that were
+/// un-hearted since (see [likedProvider]).
+final likedSongsProvider = FutureProvider.autoDispose<List<Track>>((ref) async {
+  final songs = await ref.watch(apiProvider).getStarredSongs();
+  // So the hearts in every row show the server's state.
+  scheduleMicrotask(() => ref.read(likedProvider.notifier).seed(songs, addOnly: true));
+  return songs;
 });

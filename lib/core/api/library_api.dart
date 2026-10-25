@@ -82,6 +82,9 @@ abstract class LibraryApi {
   /// Random songs from the whole library (Shuffle all).
   Future<List<Track>> getRandomSongs({int size = 30});
 
+  /// Every song the person has hearted (OpenSubsonic `getStarred2`).
+  Future<List<Track>> getStarredSongs();
+
   /// Lyrics for a track from the server (OpenSubsonic `songLyrics`), or null
   /// when it has none or does not support them.
   Future<Lyrics?> getLyrics(String trackId);

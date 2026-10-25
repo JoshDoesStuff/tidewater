@@ -7,6 +7,7 @@ import '../../../app/theme/motion.dart';
 import '../../../core/models/album.dart';
 import '../../../core/models/artist.dart';
 import '../../../core/models/playlist.dart';
+import '../../../core/models/track.dart';
 import '../../widgets/art_tile.dart';
 import '../../widgets/effects/eq_bars.dart';
 import '../../widgets/effects/ripple.dart';
@@ -323,6 +324,34 @@ class _PoseTween extends Tween<_Pose> {
       tilt: Offset.lerp(a.tilt, b.tilt, t)!,
       lift: a.lift + (b.lift - a.lift) * t,
       scale: a.scale + (b.scale - a.scale) * t,
+    );
+  }
+}
+
+/// A song as a card (Liked songs). Tapping plays [tracks] from this one.
+class TrackCard extends ConsumerWidget {
+  const TrackCard({super.key, required this.tracks, required this.index, this.size, this.large = false});
+
+  final List<Track> tracks;
+  final int index;
+  final double? size;
+  final bool large;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final track = tracks[index];
+    final current = ref.watch(currentTrackIdProvider) == track.id;
+    return MediaCard(
+      title: track.title,
+      subtitle: track.artist,
+      coverArt: track.coverArt,
+      seedKey: track.albumId,
+      shape: ShapeKind.forKey(track.id),
+      size: size,
+      large: large,
+      active: current,
+      playing: current && ref.watch(playbackProvider.select((s) => s.playing)),
+      onTap: () => ref.read(playbackProvider.notifier).playTracks(tracks, index: index),
     );
   }
 }

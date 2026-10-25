@@ -139,3 +139,18 @@ class LrclibEnabledNotifier extends Notifier<bool> {
 }
 
 final lrclibEnabledProvider = NotifierProvider<LrclibEnabledNotifier, bool>(LrclibEnabledNotifier.new);
+
+/// Liked songs page: cards instead of a list. Persisted.
+class LikedAsCardsNotifier extends Notifier<bool> {
+  static const _key = 'liked_as_cards';
+
+  @override
+  bool build() => ref.watch(sharedPreferencesProvider).getBool(_key) ?? false;
+
+  void set(bool cards) {
+    state = cards;
+    ref.read(sharedPreferencesProvider).setBool(_key, cards);
+  }
+}
+
+final likedAsCardsProvider = NotifierProvider<LikedAsCardsNotifier, bool>(LikedAsCardsNotifier.new);

@@ -9,6 +9,7 @@ import '../../app/theme/app_theme.dart';
 import '../../app/theme/motion.dart';
 import '../../core/api/library_api.dart';
 import '../../core/models/album.dart';
+import '../../core/models/track.dart';
 import '../widgets/art_tile.dart';
 import '../widgets/async_states.dart';
 import '../widgets/cover_art.dart';
@@ -53,9 +54,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     final newest = ref.watch(albumRowProvider(AlbumListType.newest));
     final recent = ref.watch(albumRowProvider(AlbumListType.recent));
     final frequent = ref.watch(albumRowProvider(AlbumListType.frequent));
+    // Hearted songs, minus any un-hearted since the list loaded; a row of 20.
+    final liked = ref.watch(likedProvider);
+    final likedSongs = ref
+        .watch(likedSongsProvider)
+        .whenData((all) => [for (final t in all) if (liked.contains(t.id)) t].take(20).toList());
 
     final sections = <Widget>[
-      _jumpBackIn(newest, recent, frequent),
+      _jumpBackIn(newest, recent),
       SectionHeader(
         title: 'Recently added',
         onAction: () => _showAll(LibraryTab.albums, LibrarySort.recentlyAdded),
@@ -67,6 +73,15 @@ class _HomePageState extends ConsumerState<HomePage> {
         emptyMessage: 'Add music to your Navidrome library and it will show up here.',
         card: (a) => AlbumCard(album: a, size: 112),
       ),
+      if (likedSongs.value?.isNotEmpty ?? false) ...[
+        SectionHeader(title: 'Liked songs', onAction: () => context.go(Destination.liked.path)),
+        _CardRow<Track>(
+          value: likedSongs,
+          onRetry: () => ref.invalidate(likedSongsProvider),
+          emptyTitle: 'No liked songs yet',
+          card: (t) => TrackCard(tracks: likedSongs.requireValue, index: likedSongs.requireValue.indexOf(t), size: 112),
+        ),
+      ],
       if (frequent.value?.isNotEmpty ?? false) ...[
         const SectionHeader(title: 'Most played', action: null),
         _CardRow<Album>(
@@ -99,9 +114,9 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   /// Hero cards come from what was played last, topped up with the newest
-  /// albums; Quick picks are the most played (or newest again before there
-  /// is any history).
-  Widget _jumpBackIn(AsyncValue<List<Album>> newest, AsyncValue<List<Album>> recent, AsyncValue<List<Album>> frequent) {
+  /// albums; beside them sits Continue listening whenever a queue exists
+  /// (including the one restored from last time).
+  Widget _jumpBackIn(AsyncValue<List<Album>> newest, AsyncValue<List<Album>> recent) {
     final Widget body;
     if (newest.hasError && !newest.hasValue) {
       body = ErrorPanel(error: newest.error!, onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.newest)));
@@ -115,11 +130,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       );
     } else {
       final heroes = _distinct([...?recent.value, ...newest.requireValue]).take(3).toList();
-      final quick = _distinct([...?frequent.value, ...newest.requireValue])
-          .where((a) => !heroes.contains(a))
-          .take(3)
-          .toList();
-      body = _Carousel(heroes: heroes, quick: quick);
+      body = _Carousel(heroes: heroes, resume: ref.watch(currentTrackProvider) != null);
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -223,10 +234,10 @@ class _CarouselSkeleton extends StatelessWidget {
 /// Hero cards that spring wider on hover (the rest shrink) plus the Quick
 /// picks card. Weights animate on the spring curve.
 class _Carousel extends StatefulWidget {
-  const _Carousel({required this.heroes, required this.quick});
+  const _Carousel({required this.heroes, required this.resume});
 
   final List<Album> heroes;
-  final List<Album> quick;
+  final bool resume;
 
   @override
   State<_Carousel> createState() => _CarouselState();
@@ -247,7 +258,7 @@ class _CarouselState extends State<_Carousel> {
     final n = widget.heroes.length;
     return LayoutBuilder(
       builder: (context, box) {
-        final showQuick = box.maxWidth >= 900 && widget.quick.isNotEmpty;
+        final showQuick = box.maxWidth >= 900 && widget.resume;
         final gaps = 12.0 * (n - 1) + (showQuick ? 12 : 0);
         final total = box.maxWidth - gaps - (showQuick ? 244 : 0);
         return TweenAnimationBuilder<List<double>>(
@@ -280,7 +291,7 @@ class _CarouselState extends State<_Carousel> {
                   MouseRegion(
                     onEnter: (_) => setState(() => _hover = n),
                     onExit: (_) => setState(() => _hover = -1),
-                    child: SizedBox(width: 244, child: StaggerIn(index: n, child: _QuickPicks(picks: widget.quick))),
+                    child: SizedBox(width: 244, child: StaggerIn(index: n, child: const _ContinueListening())),
                   ),
               ],
             );
@@ -412,90 +423,111 @@ class _HeroCard extends ConsumerWidget {
   }
 }
 
-class _QuickPicks extends StatelessWidget {
-  const _QuickPicks({required this.picks});
-
-  final List<Album> picks;
-
-  static const _kinds = [ShapeKind.cookie, ShapeKind.sunny, ShapeKind.clover];
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(color: scheme.surfaceContainerLow, borderRadius: BorderRadius.circular(32)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Quick picks', style: text.titleMedium?.copyWith(fontSize: 16, fontWeight: FontWeight.w700, height: 1.2)),
-            const SizedBox(height: 8),
-            for (final (i, album) in picks.indexed) _QuickPick(album: album, kind: _kinds[i % 3], reverse: i.isOdd),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickPick extends ConsumerWidget {
-  const _QuickPick({required this.album, required this.kind, required this.reverse});
-
-  final Album album;
-  final ShapeKind kind;
-  final bool reverse;
+/// Picks up the queue (restored from last time or already playing): cover,
+/// title, how far along it is, and a button to resume or pause.
+class _ContinueListening extends ConsumerWidget {
+  const _ContinueListening();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final track = ref.watch(currentTrackProvider);
+    final playing = ref.watch(playbackProvider.select((s) => s.playing));
+    if (track == null) return const SizedBox.shrink();
+    final position = ref.watch(positionProvider);
     return Pressable(
-      onTap: () => ref.read(playbackProvider.notifier).playAlbum(album),
-      semanticLabel: '${album.title}, ${album.artist}',
+      onTap: () => ref.read(playbackProvider.notifier).toggle(),
+      semanticLabel: '${playing ? 'Pause' : 'Continue'} ${track.title}, ${track.artist}',
       builder: (context, s) => AnimatedContainer(
         duration: Motion.of(context, Motion.fast),
-        height: 46,
-        padding: const EdgeInsets.symmetric(horizontal: 6),
         clipBehavior: Clip.antiAlias,
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
         decoration: BoxDecoration(
-          color: s.hovered ? scheme.surfaceContainerHigh : scheme.surfaceContainerHigh.withValues(alpha: 0),
-          borderRadius: BorderRadius.circular(14),
+          color: s.hovered ? scheme.surfaceContainer : scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(s.pressed ? 28 : 32),
         ),
         child: Ripple(
           color: scheme.onSurface,
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ArtTile(
-                coverArt: album.coverArt,
-                seedKey: album.id,
-                resolution: 150,
-                size: 36,
-                params: kind.params,
-                morph: 1,
-                spin: Motion.reduced(context) ? 0 : (reverse ? -.72 : .72),
+              Text(
+                'Continue listening',
+                style: text.titleMedium?.copyWith(fontSize: 16, fontWeight: FontWeight.w700, height: 1.2),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      album.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.bodyMedium?.copyWith(fontSize: 13.5, fontWeight: FontWeight.w700),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  ArtTile(
+                    coverArt: track.coverArt,
+                    seedKey: track.albumId,
+                    resolution: 150,
+                    size: 56,
+                    params: ShapeKind.cookie.params,
+                    morph: 1,
+                    spin: playing && !Motion.reduced(context) ? .72 : 0,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          track.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.bodyMedium?.copyWith(fontSize: 14, fontWeight: FontWeight.w700),
+                        ),
+                        Text(
+                          track.artist,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.bodySmall?.copyWith(fontSize: 12, color: scheme.onSurfaceVariant),
+                        ),
+                      ],
                     ),
-                    Text(
-                      album.artist,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.bodySmall?.copyWith(fontSize: 11.5, color: scheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Row(
+                children: [
+                  Expanded(
+                    child: ValueListenableBuilder<Duration>(
+                      valueListenable: position,
+                      builder: (context, p, _) {
+                        final total = track.duration.inMilliseconds;
+                        final done = total <= 0 ? 0.0 : (p.inMilliseconds / total).clamp(0.0, 1.0);
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: done,
+                            minHeight: 5,
+                            backgroundColor: scheme.surfaceContainerHighest,
+                            valueColor: AlwaysStoppedAnimation(scheme.primary),
+                          ),
+                        );
+                      },
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 14),
+                  AnimatedContainer(
+                    duration: Motion.of(context, Motion.medium),
+                    curve: Motion.curve(context, Motion.spring),
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: scheme.primary,
+                      borderRadius: BorderRadius.circular(playing ? 14 : 22),
+                    ),
+                    child: Icon(
+                      playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      size: 24,
+                      color: scheme.onPrimary,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

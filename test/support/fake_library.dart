@@ -177,6 +177,12 @@ class FakeLibraryApi implements LibraryApi {
   Future<List<Track>> getRandomSongs({int size = 30}) async => _ok('getRandomSongs', () => fakeTracks.take(size).toList());
 
   @override
+  Future<List<Track>> getStarredSongs() async => _ok('getStarredSongs', () => [
+        for (final t in songs ?? fakeTracks)
+          if (t.starred) t,
+      ]);
+
+  @override
   Future<Lyrics?> getLyrics(String trackId) async =>
       _ok('getLyrics:$trackId', () => noLyricsFor.contains(trackId) ? null : placeholderLyrics);
 

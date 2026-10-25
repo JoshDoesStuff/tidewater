@@ -300,6 +300,13 @@ class OpenSubsonicClient implements LibraryApi {
   }
 
   @override
+  Future<List<Track>> getStarredSongs() async {
+    final body = await _call('getStarred2', const {});
+    final starred = body['starred2'];
+    return [for (final s in asObjects(starred is Map ? starred['song'] : null)) Track.fromJson(s)];
+  }
+
+  @override
   Future<Lyrics?> getLyrics(String trackId) async {
     try {
       final body = await _call('getLyricsBySongId', {'id': trackId});
