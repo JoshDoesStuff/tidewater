@@ -39,6 +39,10 @@ class QueueEngine implements PlaybackEngine {
   bool _buffering = false;
   bool _volumeSent = false;
 
+  /// What the person asked for (play or pause), as opposed to [_playing],
+  /// which follows what the backend reports. Used to recover from stalls.
+  bool _intent = false;
+
   /// The backend holds a window for the current track.
   bool _opened = false;
 
@@ -124,6 +128,7 @@ class QueueEngine implements PlaybackEngine {
   void _onCompleted() => _run(() async {
         if (!_opened) return;
         _playing = false;
+        _intent = false;
         _opened = false;
         _resumeAt = Duration.zero;
         _queue.jumpTo(0);
@@ -131,19 +136,38 @@ class QueueEngine implements PlaybackEngine {
         _emitPosition(Duration.zero);
       });
 
+  /// The track (and when) we last restarted because it was not producing
+  /// audio, so a second failure skips it instead of looping.
+  String? _kickedId;
+  DateTime _kickedAt = DateTime.fromMillisecondsSinceEpoch(0);
+
   void _onError(String message) {
     if (!_errors.isClosed) _errors.add(message);
-    // Skip a track that will not play; stop at the end of the queue.
-    _run(() async {
-      if (!_opened) return;
-      if (_queue.index + 1 < _queue.tracks.length) {
-        _queue.advance(LoopMode.off);
-        await _open(play: true);
-      } else {
-        await _backend.pause();
-        _playing = false;
-        _emit();
-      }
+    // The backend may skip a broken file by itself (mpv does, and reports the
+    // error just after moving on), so don't guess which track the error was
+    // about: after a moment, check that the current one is really playing.
+    Timer(const Duration(milliseconds: 400), () {
+      _run(() async {
+        final current = _queue.current;
+        if (!_opened || !_intent || current == null) return;
+        if (_playing && position > const Duration(milliseconds: 150)) return;
+        final recent = DateTime.now().difference(_kickedAt) < const Duration(seconds: 10);
+        if (_kickedId != current.id || !recent) {
+          // First failure: try this track once more.
+          _kickedId = current.id;
+          _kickedAt = DateTime.now();
+          await _open(play: true);
+        } else if (_queue.index + 1 < _queue.tracks.length) {
+          _kickedId = null;
+          _queue.advance(LoopMode.off);
+          await _open(play: true);
+        } else {
+          await _backend.pause();
+          _playing = false;
+          _intent = false;
+          _emit();
+        }
+      });
     });
   }
 
@@ -156,6 +180,7 @@ class QueueEngine implements PlaybackEngine {
     _opened = true;
     _resumeAt = Duration.zero;
     _playing = play;
+    _intent = play;
     if (play) _started = true;
     _emit();
     _emitPosition(start);
@@ -187,6 +212,7 @@ class QueueEngine implements PlaybackEngine {
         _queue.replace(queue, index: index);
         _opened = false;
         _playing = false;
+        _intent = false;
         _started = true;
         _resumeAt = position;
         _emit();
@@ -204,8 +230,9 @@ class QueueEngine implements PlaybackEngine {
         if (_queue.isEmpty) return;
         if (!_opened) {
           await _open(play: true, start: _resumeAt);
-        } else if (!_playing) {
+        } else if (!_playing || !_intent) {
           _playing = true;
+          _intent = true;
           _started = true;
           _emit();
           await _backend.play();
@@ -214,8 +241,9 @@ class QueueEngine implements PlaybackEngine {
 
   @override
   Future<void> pause() => _run(() async {
-        if (!_playing) return;
+        if (!_playing && !_intent) return;
         _playing = false;
+        _intent = false;
         _emit();
         if (_opened) await _backend.pause();
       });
@@ -226,6 +254,7 @@ class QueueEngine implements PlaybackEngine {
         _queue.clear();
         _opened = false;
         _playing = false;
+        _intent = false;
         _started = false;
         _buffering = false;
         _resumeAt = Duration.zero;
@@ -313,6 +342,7 @@ class QueueEngine implements PlaybackEngine {
           if (_opened) await _backend.pause();
           _opened = false;
           _playing = false;
+        _intent = false;
           _emit();
           return;
         }

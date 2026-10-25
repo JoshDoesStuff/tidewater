@@ -260,16 +260,22 @@ void main() {
       expect(e.state.playing, isFalse);
     });
 
-    test('a track that will not play is reported and skipped', () async {
+    test('a track that will not play is retried once, then reported and skipped', () async {
       final errors = <String>[];
       e.errors.listen(errors.add);
       await e.playQueue([_t('a', ms: 9000), _t('b', ms: 9000)]);
       final backend = _backendOf(e);
-      backend.emitError('Couldn\'t play a');
-      await until(() => e.state.index == 1);
-      expect(errors, ['Couldn\'t play a']);
+      backend.emitError('failed a');
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      expect(e.state.index, 0, reason: 'first failure: try again');
       expect(e.state.playing, isTrue);
-      backend.emitError('Couldn\'t play b');
+      backend.emitError('failed a');
+      await until(() => e.state.index == 1);
+      expect(errors.length, 2);
+      expect(e.state.playing, isTrue);
+      backend.emitError('failed b');
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      backend.emitError('failed b');
       await until(() => !e.state.playing);
       expect(e.state.index, 1, reason: 'last track: stop instead of looping on errors');
     });

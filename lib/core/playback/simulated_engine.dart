@@ -40,7 +40,12 @@ class SimulatedBackend implements AudioBackend {
   Stream<String> get errors => _errors.stream;
 
   /// For tests: pretend the current track failed to play.
-  void emitError(String message) => _errors.add(message);
+  void emitError(String message) {
+    // A track that fails to load goes nowhere: the clock stops.
+    _stopClock();
+    _base = Duration.zero;
+    _errors.add(message);
+  }
 
   Duration get _duration => _window.isEmpty ? Duration.zero : _window[_at].duration;
 

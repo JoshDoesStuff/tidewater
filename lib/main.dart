@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app.dart';
+import 'app/playback/real_engine.dart';
 import 'app/providers/session_providers.dart';
 import 'app/providers/settings_providers.dart';
 import 'app/session/prefs_session_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   await windowManager.ensureInitialized();
   const options = WindowOptions(
     size: Size(1280, 800),
@@ -35,6 +38,7 @@ Future<void> main() async {
       sharedPreferencesProvider.overrideWithValue(prefs),
       sessionStoreProvider.overrideWithValue(store),
       initialSessionProvider.overrideWithValue(saved),
+      realEngineOverride(),
     ],
     child: const TidewaterApp(),
   ));
