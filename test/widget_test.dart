@@ -15,6 +15,7 @@ import 'package:tidewater/app/theme/motion.dart';
 import 'package:tidewater/core/data/fake_library.dart';
 import 'package:tidewater/ui/widgets/effects/letter_reveal.dart';
 import 'package:tidewater/ui/widgets/shapes/morph_path.dart';
+import 'package:tidewater/ui/widgets/wavy_progress.dart';
 
 /// Pumps the app and returns its provider container. Always call [_dispose]
 /// at the end of a test that plays audio so the simulated clock stops.
@@ -311,6 +312,27 @@ void main() {
     expect(fast, (true, true), reason: 'at 3x the swap has already happened after 300 ms');
   });
 
+  test('squiggle grows continuously with the playhead (no sampling-step jumps)', () {
+    double? previousRight;
+    for (var i = 0; i <= 200; i++) {
+      final end = 100 + i * .05; // 10 px in 0.05 px increments
+      final b = wavePath(start: 2, end: end, centerY: 20, amplitude: 4, wavelength: 28, phase: 1.3).getBounds();
+      expect(b.right, closeTo(end, .001), reason: 'end=$end');
+      if (previousRight != null) {
+        expect(b.right - previousRight, lessThanOrEqualTo(.05 + 1e-4), reason: 'jumped at end=$end');
+      }
+      previousRight = b.right;
+    }
+  });
+
+  test('squiggle is finely sampled: no point farther than 2 px from the next', () {
+    final metric = wavePath(start: 0, end: 300, centerY: 0, amplitude: 4, wavelength: 18, phase: 0).computeMetrics().first;
+    // Arc length of a sine with amplitude 4 / wavelength 18 over 300 px, with a
+    // generous allowance: a coarse polyline would measure noticeably shorter.
+    final ideal = _sineArcLength(300, 4, 18);
+    expect(metric.length, closeTo(ideal, ideal * .005));
+  });
+
   test('motion tokens match the spec', () {
     expect(Motion.fast.inMilliseconds, 150);
     expect(Motion.medium.inMilliseconds, 300);
@@ -323,4 +345,17 @@ void main() {
     expect(Destination.fromLocation('/library/album/1'), Destination.library);
     expect(Destination.fromLocation('/nope'), isNull);
   });
+}
+
+/// Numerically integrated arc length of y = a*sin(2*pi*x/wl) over [0, length].
+double _sineArcLength(double length, double a, double wl) {
+  var sum = 0.0;
+  const n = 200000;
+  final dx = length / n;
+  for (var i = 0; i < n; i++) {
+    final x = (i + .5) * dx;
+    final slope = a * 2 * math.pi / wl * math.cos(2 * math.pi * x / wl);
+    sum += math.sqrt(1 + slope * slope) * dx;
+  }
+  return sum;
 }

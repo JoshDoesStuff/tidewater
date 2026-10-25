@@ -49,6 +49,43 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
   bool _playing = false;
   bool _reduced = false;
 
+  // Smooth position: the engine reports about 30 times a second, which would
+  // advance the bar in visible steps. Between reports the position is
+  // extrapolated from a monotonic clock, so it glides at display rate.
+  final _clock = Stopwatch()..start();
+  Duration _anchorPos = Duration.zero;
+  Duration _anchorAt = Duration.zero;
+  ValueNotifier<Duration>? _positionSource;
+
+  /// Best estimate of the playback position right now.
+  Duration _estimate(Duration duration) {
+    var p = _anchorPos;
+    if (_playing && !_model.dragging) p += _clock.elapsed - _anchorAt;
+    if (p < Duration.zero) return Duration.zero;
+    return p > duration ? duration : p;
+  }
+
+  void _onPosition() {
+    final actual = _positionSource!.value;
+    final now = _clock.elapsed;
+    final shown = _playing ? _anchorPos + (now - _anchorAt) : _anchorPos;
+    // A report that lags slightly behind what is already shown must not pull
+    // the bar backwards; real seeks (large jumps) are taken as they come.
+    final lagging = _playing && actual < shown && shown - actual < const Duration(milliseconds: 300);
+    _anchorPos = lagging ? shown : actual;
+    _anchorAt = now;
+    if (!_playing) _frame.value++;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final source = ref.read(positionProvider);
+    _positionSource = source;
+    _anchorPos = source.value;
+    source.addListener(_onPosition);
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -110,6 +147,7 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
 
   @override
   void dispose() {
+    _positionSource?.removeListener(_onPosition);
     _ticker?.dispose();
     _frame.dispose();
     super.dispose();
@@ -122,6 +160,9 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
     final position = ref.watch(positionProvider);
     final playing = ref.watch(playbackProvider.select((s) => s.playing));
     if (playing != _playing) {
+      // Freeze or resume the extrapolation from exactly where the bar is.
+      _anchorPos = _estimate(duration);
+      _anchorAt = _clock.elapsed;
       _playing = playing;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _sync();
@@ -144,9 +185,8 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
             size: Size.infinite,
             painter: WavyPainter(
               repaint: Listenable.merge([position, _frame]),
-              fraction: () => duration.inMicroseconds == 0
-                  ? 0
-                  : (position.value.inMicroseconds / duration.inMicroseconds).clamp(0.0, 1.0),
+              fraction: () =>
+                  duration.inMicroseconds == 0 ? 0 : _estimate(duration).inMicroseconds / duration.inMicroseconds,
               amplitude: () => _model.amplitude,
               phase: () => _model.phase,
               dragging: () => _model.dragging,
@@ -161,6 +201,29 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
       ),
     );
   }
+}
+
+/// The played part of the squiggle: a sine from [start] to [end].
+///
+/// Sampled about 20 times per wavelength so it reads as a smooth curve, and
+/// the last point is always exactly [end], so as the playhead moves the wave
+/// grows continuously rather than in sampling-step jumps.
+Path wavePath({
+  required double start,
+  required double end,
+  required double centerY,
+  required double amplitude,
+  required double wavelength,
+  required double phase,
+}) {
+  double y(double x) => centerY + amplitude * math.sin(2 * math.pi * (x - start) / wavelength - phase);
+  final step = (wavelength / 20).clamp(.75, 2.0);
+  final path = Path()..moveTo(start, y(start));
+  for (var x = start + step; x < end; x += step) {
+    path.lineTo(x, y(x));
+  }
+  if (end > start) path.lineTo(end, y(end));
+  return path;
 }
 
 class WavyPainter extends CustomPainter {
@@ -196,11 +259,18 @@ class WavyPainter extends CustomPainter {
     final amp = amplitude();
     final ph = phase();
 
-    // Played portion: sine path stopping short of the handle.
-    final wave = Path()..moveTo(x0, cy + amp * math.sin(-ph));
-    for (var x = x0 + 3; x <= math.max(x0, xp - 6); x += 3) {
-      wave.lineTo(x, cy + amp * math.sin(2 * math.pi * (x - x0) / wavelength - ph));
-    }
+    // Played portion: a sine path that always ends exactly 6 px before the
+    // handle. Sampled finely (about 20 points per wavelength) so it reads as a
+    // smooth curve, and the final point is explicit so the length grows
+    // continuously instead of in sampling-step jumps.
+    final wave = wavePath(
+      start: x0,
+      end: math.max(x0, xp - 6),
+      centerY: cy,
+      amplitude: amp,
+      wavelength: wavelength,
+      phase: ph,
+    );
     canvas.drawPath(
       wave,
       Paint()
