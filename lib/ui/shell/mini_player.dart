@@ -7,6 +7,7 @@ import '../../app/theme/motion.dart';
 import '../widgets/animated_glyphs.dart';
 import '../widgets/art_tile.dart';
 import '../widgets/effects/ripple.dart';
+import '../widgets/heart_button.dart';
 import '../widgets/expressive_buttons.dart';
 import '../widgets/pressable.dart';
 import '../widgets/shapes/morph_path.dart';
@@ -36,7 +37,7 @@ class _MiniPlayerBody extends ConsumerWidget {
           duration: Motion.of(context, Motion.medium),
           curve: Motion.curve(context, Motion.spring),
           height: 72,
-          padding: const EdgeInsets.only(left: 10, right: 24),
+          padding: const EdgeInsets.only(left: 10, right: 14),
           transform: Matrix4.translationValues(0, s.hovered ? -3 : 0, 0),
           decoration: BoxDecoration(
             color: scheme.surfaceContainerHighest,
@@ -117,11 +118,8 @@ class _MiniPlayerBody extends ConsumerWidget {
                   ),
                   if (showProgress) ...[
                     const SizedBox(width: 24),
-                    const Expanded(
-                      child: Align(
-                        child: SizedBox(width: 170, height: 30, child: WavyScrubber()),
-                      ),
-                    ),
+                    // The bar takes whatever room the title and buttons leave.
+                    const Expanded(child: SizedBox(height: 30, child: WavyScrubber())),
                     const SizedBox(width: 14),
                     SizedBox(
                       width: 34,
@@ -135,6 +133,11 @@ class _MiniPlayerBody extends ConsumerWidget {
                     ),
                   ] else
                     const Spacer(),
+                  const SizedBox(width: 4),
+                  HeartButton(
+                    liked: ref.watch(likedProvider.select((l) => l.contains(track.id))),
+                    onTap: () => ref.read(likedProvider.notifier).toggle(track),
+                  ),
                 ],
               );
             },

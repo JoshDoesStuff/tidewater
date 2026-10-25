@@ -34,4 +34,18 @@ void main() {
     await container.read(playbackProvider.notifier).toggle();
     await disposeApp(tester);
   });
+
+  testWidgets('the mini player has a heart that likes the playing song', (tester) async {
+    final handle = tester.ensureSemantics();
+    final container = await pumpApp(tester);
+    final track = _track('h', 'Hearted');
+    await container.read(playbackProvider.notifier).playTracks([track]);
+    await advance(tester, const Duration(seconds: 1));
+    await tester.tap(find.bySemanticsLabel('Like'));
+    await advance(tester, const Duration(seconds: 1));
+    expect(container.read(likedProvider), contains('h'));
+    await container.read(playbackProvider.notifier).toggle();
+    await disposeApp(tester);
+    handle.dispose();
+  });
 }
