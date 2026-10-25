@@ -25,6 +25,7 @@ import '../widgets/shapes/morph_path.dart';
 import '../widgets/shapes/morph_shape.dart';
 import '../widgets/wavy_progress.dart';
 import 'lyrics_list.dart';
+import 'queue_panel.dart';
 import 'viz_picker.dart';
 import 'visualizer/visualizer.dart';
 import 'volume_slider.dart';
@@ -138,6 +139,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
     _idleTimer?.cancel();
     ref.read(idleProvider.notifier).set(false);
     ref.read(vizPopupOpenProvider.notifier).set(false);
+    ref.read(queueOpenProvider.notifier).set(false);
     Future<void> done() async {
       if (!mounted || ref.read(nowPlayingOpenProvider)) return;
       setState(() => _visible = false);
@@ -153,7 +155,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
 
   void _checkIdle() {
     final playing = ref.read(playbackProvider).playing;
-    final popup = ref.read(vizPopupOpenProvider);
+    final popup = ref.read(vizPopupOpenProvider) || ref.read(queueOpenProvider);
     _sinceInput += _idleTick;
     final should = playing && !popup && _sinceInput > _idleAfter;
     if (should != ref.read(idleProvider)) ref.read(idleProvider.notifier).set(should);
@@ -472,6 +474,14 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
               onTap: () => ref.read(vizPopupOpenProvider.notifier).set(false),
             ),
           ),
+        if (ref.watch(queueOpenProvider))
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () => ref.read(queueOpenProvider.notifier).set(false),
+            ),
+          ),
+        const Positioned(right: 36, top: 100, bottom: 36, width: 440, child: QueuePanel()),
         const Positioned(right: 44, top: 112, child: VizPicker()),
       ],
     );
@@ -569,7 +579,14 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
           onPressed: () => ref.read(vizPopupOpenProvider.notifier).toggle(),
         ),
         const SizedBox(width: 16),
-        const ExpressiveIconButton(icon: Icons.queue_music_rounded, size: 56, squareRadius: 18, tooltip: 'Queue'),
+        ExpressiveIconButton(
+          icon: Icons.queue_music_rounded,
+          size: 56,
+          squareRadius: 18,
+          selected: ref.watch(queueOpenProvider),
+          tooltip: 'Queue (Q)',
+          onPressed: () => ref.read(queueOpenProvider.notifier).toggle(),
+        ),
         const SizedBox(width: 16),
         const ExpressiveIconButton(icon: Icons.cast_rounded, size: 56, squareRadius: 18, tooltip: 'Cast'),
       ],

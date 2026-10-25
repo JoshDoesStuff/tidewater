@@ -34,3 +34,6 @@ class ToastNotifier extends Notifier<Toast?> {
 }
 
 final toastProvider = NotifierProvider<ToastNotifier, Toast?>(ToastNotifier.new);
+
+/// The queue panel is open in Now Playing (blocks idle mode).
+final queueOpenProvider = NotifierProvider<BoolNotifier, bool>(BoolNotifier.new);

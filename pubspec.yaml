@@ -46,6 +46,11 @@ dependencies:
   media_kit: ^1.2.6
   media_kit_libs_windows_audio: ^1.0.9
   smtc_windows: ^1.1.0
+# smtc_windows was generated with flutter_rust_bridge 2.11.1 and refuses to start
+# against a newer runtime ("codegen version should be the same as runtime").
+dependency_overrides:
+  flutter_rust_bridge: 2.11.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tidewater/app/providers/cover_providers.dart';
 import 'package:tidewater/app/providers/lyrics_providers.dart';
+import 'package:tidewater/app/playback/system_media.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
+import 'package:tidewater/app/providers/system_media_providers.dart';
 import 'package:tidewater/app/providers/session_providers.dart';
 import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/core/api/api_exception.dart';
@@ -33,6 +35,7 @@ Future<List<Override>> testOverrides({
   Map<String, Object> prefs = const {},
   ClientFactory? factory,
   Future<Lyrics?> Function(Track track)? lrclib,
+  SystemMediaControls? media,
 }) async {
   SharedPreferences.setMockInitialValues(prefs);
   final sharedPrefs = await SharedPreferences.getInstance();
@@ -44,6 +47,7 @@ Future<List<Override>> testOverrides({
     clientFactoryProvider.overrideWithValue(factory ?? (_) => fake),
     coverCacheProvider.overrideWithValue(NoCovers()),
     lyricsFallbackProvider.overrideWithValue(lrclib ?? (_) async => null),
+    systemMediaProvider.overrideWithValue(media ?? const NoSystemMedia()),
     // The simulated clock uses the real stopwatch, which fake time does not
     // advance; a slow tick keeps it from emitting stray positions.
     playbackEngineProvider.overrideWith((ref) {
@@ -60,4 +64,7 @@ class NoCovers implements CoverStore {
   @override
   Future<Uint8List> get(String id, {int size = 300}) =>
       Future.error(const ApiException(ApiErrorKind.notFound, 'no cover in tests'));
+
+  @override
+  Future<String?> localPath(String id, {int size = 300}) async => null;
 }

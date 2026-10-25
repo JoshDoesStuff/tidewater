@@ -9,6 +9,7 @@ import '../../app/destinations.dart';
 import '../../app/providers/playback_providers.dart';
 import '../../app/providers/scrobble_providers.dart';
 import '../../app/providers/session_persistence.dart';
+import '../../app/providers/system_media_providers.dart';
 import '../../app/providers/settings_providers.dart';
 import '../../app/providers/ui_providers.dart';
 import '../now_playing/now_playing_overlay.dart';
@@ -65,10 +66,14 @@ class _AppShellState extends ConsumerState<AppShell> {
       player.previous();
     } else if (key == LogicalKeyboardKey.keyL && npOpen) {
       ref.read(lyricsOnProvider.notifier).toggle();
+    } else if (key == LogicalKeyboardKey.keyQ && npOpen) {
+      ref.read(queueOpenProvider.notifier).toggle();
     } else if (key == LogicalKeyboardKey.keyV && npOpen) {
       ref.read(vizModeProvider.notifier).cycle();
     } else if (key == LogicalKeyboardKey.escape) {
-      if (ref.read(vizPopupOpenProvider)) {
+      if (ref.read(queueOpenProvider)) {
+        ref.read(queueOpenProvider.notifier).set(false);
+      } else if (ref.read(vizPopupOpenProvider)) {
         ref.read(vizPopupOpenProvider.notifier).set(false);
       } else if (npOpen) {
         ref.read(nowPlayingOpenProvider.notifier).set(false);
@@ -85,6 +90,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget build(BuildContext context) {
     ref.watch(scrobbleServiceProvider); // keeps plays reported for as long as the shell lives
     ref.watch(sessionPersistenceProvider); // saves and restores the queue
+    ref.watch(systemMediaServiceProvider); // Windows media overlay and media keys
     final scheme = Theme.of(context).colorScheme;
     return LayoutBuilder(
       builder: (context, box) {

@@ -6,6 +6,8 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app/app.dart';
 import 'app/playback/real_engine.dart';
+import 'app/playback/smtc_controls.dart';
+import 'app/providers/system_media_providers.dart';
 import 'app/providers/session_providers.dart';
 import 'app/providers/settings_providers.dart';
 import 'app/session/prefs_session_store.dart';
@@ -13,6 +15,8 @@ import 'app/session/prefs_session_store.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+  // Media keys and the Windows media overlay; the app runs without them if this fails.
+  final smtc = await SmtcControls.create();
   await windowManager.ensureInitialized();
   const options = WindowOptions(
     size: Size(1280, 800),
@@ -39,6 +43,7 @@ Future<void> main() async {
       sessionStoreProvider.overrideWithValue(store),
       initialSessionProvider.overrideWithValue(saved),
       realEngineOverride(),
+      if (smtc != null) systemMediaProvider.overrideWithValue(smtc),
     ],
     child: const TidewaterApp(),
   ));
