@@ -73,6 +73,9 @@ final fakePlaylists = <Playlist>[
 class FakeLibraryApi implements LibraryApi {
   FakeLibraryApi({this.failWith, this.albums});
 
+  /// When set, `scrobble` throws this (the rest keeps working).
+  ApiException? failScrobbleWith;
+
   /// When set, every list/detail call throws this.
   ApiException? failWith;
 
@@ -170,7 +173,11 @@ class FakeLibraryApi implements LibraryApi {
   Future<void> unstar({String? trackId, String? albumId, String? artistId}) async {}
 
   @override
-  Future<void> scrobble(String trackId, {bool submission = false}) async {}
+  Future<void> scrobble(String trackId, {bool submission = false, DateTime? time}) async {
+    calls.add('scrobble:$trackId:${submission ? 'submission' : 'nowplaying'}');
+    final e = failScrobbleWith;
+    if (e != null) throw e;
+  }
 
   @override
   void close() {}

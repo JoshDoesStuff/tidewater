@@ -87,7 +87,7 @@ abstract class LibraryApi {
   Future<void> unstar({String? trackId, String? albumId, String? artistId});
 
   /// `submission: false` is "now playing"; `true` counts a play.
-  Future<void> scrobble(String trackId, {bool submission = false});
+  Future<void> scrobble(String trackId, {bool submission = false, DateTime? time});
 
   void close();
 }

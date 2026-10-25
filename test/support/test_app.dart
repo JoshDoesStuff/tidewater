@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tidewater/app/providers/cover_providers.dart';
+import 'package:tidewater/app/providers/playback_providers.dart';
 import 'package:tidewater/app/providers/session_providers.dart';
 import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/core/api/api_exception.dart';
@@ -11,6 +12,7 @@ import 'package:tidewater/core/api/cover_cache.dart';
 import 'package:tidewater/core/api/library_api.dart';
 import 'package:tidewater/core/api/server_config.dart';
 import 'package:tidewater/core/api/session_store.dart';
+import 'package:tidewater/core/playback/simulated_engine.dart';
 
 import 'fake_library.dart';
 
@@ -37,6 +39,13 @@ Future<List<Override>> testOverrides({
     initialSessionProvider.overrideWithValue(signedIn ? testServer : null),
     clientFactoryProvider.overrideWithValue(factory ?? (_) => fake),
     coverCacheProvider.overrideWithValue(NoCovers()),
+    // The simulated clock uses the real stopwatch, which fake time does not
+    // advance; a slow tick keeps it from emitting stray positions.
+    playbackEngineProvider.overrideWith((ref) {
+      final engine = SimulatedEngine(tick: const Duration(hours: 1));
+      ref.onDispose(engine.dispose);
+      return engine;
+    }),
   ];
 }
 

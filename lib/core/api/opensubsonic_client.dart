@@ -304,8 +304,12 @@ class OpenSubsonicClient implements LibraryApi {
       _call('unstar', {'id': trackId, 'albumId': albumId, 'artistId': artistId});
 
   @override
-  Future<void> scrobble(String trackId, {bool submission = false}) =>
-      _call('scrobble', {'id': trackId, 'submission': submission, 'time': DateTime.now().millisecondsSinceEpoch});
+  Future<void> scrobble(String trackId, {bool submission = false, DateTime? time}) =>
+      _call('scrobble', {
+        'id': trackId,
+        'submission': submission,
+        'time': (time ?? DateTime.now()).millisecondsSinceEpoch,
+      });
 
   @override
   void close() => _dio.close();

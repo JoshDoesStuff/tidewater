@@ -107,3 +107,35 @@ final pointerOriginProvider = Provider<ValueNotifier<Offset?>>((ref) {
   ref.onDispose(n.dispose);
   return n;
 });
+
+/// Tell the server what is playing and count plays (needed for Home's
+/// recently/most played).
+class ScrobbleEnabledNotifier extends Notifier<bool> {
+  static const _key = 'scrobble';
+
+  @override
+  bool build() => ref.watch(sharedPreferencesProvider).getBool(_key) ?? true;
+
+  void set(bool value) {
+    state = value;
+    ref.read(sharedPreferencesProvider).setBool(_key, value);
+  }
+}
+
+final scrobbleEnabledProvider = NotifierProvider<ScrobbleEnabledNotifier, bool>(ScrobbleEnabledNotifier.new);
+
+/// Ask lrclib.net for lyrics when the server has none. Sends the artist,
+/// title, album and length of the track to a third party, so it is a setting.
+class LrclibEnabledNotifier extends Notifier<bool> {
+  static const _key = 'lrclib';
+
+  @override
+  bool build() => ref.watch(sharedPreferencesProvider).getBool(_key) ?? true;
+
+  void set(bool value) {
+    state = value;
+    ref.read(sharedPreferencesProvider).setBool(_key, value);
+  }
+}
+
+final lrclibEnabledProvider = NotifierProvider<LrclibEnabledNotifier, bool>(LrclibEnabledNotifier.new);
