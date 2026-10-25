@@ -594,6 +594,8 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
   }
 
   Widget _rightColumn(BuildContext context, Track track, bool lyricsOn) {
+    // No lyrics (once loaded): no lyrics button and no card. While loading both stay.
+    final hasLyrics = ref.watch(lyricsStateProvider.select((v) => v.isLoading || (v.value?.isEmpty == false)));
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final controller = ref.read(playbackProvider.notifier);
@@ -722,19 +724,21 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
                 },
                 onPressed: controller.toggleRepeat,
               ),
-              const SizedBox(width: 12),
-              ExpressiveIconButton(
-                icon: Icons.lyrics_rounded,
-                size: 56,
-                squareRadius: 18,
-                selected: lyricsOn,
-                tooltip: 'Lyrics (L)',
-                onPressed: ref.read(lyricsOnProvider.notifier).toggle,
-              ),
+              if (hasLyrics) ...[
+                const SizedBox(width: 12),
+                ExpressiveIconButton(
+                  icon: Icons.lyrics_rounded,
+                  size: 56,
+                  squareRadius: 18,
+                  selected: lyricsOn,
+                  tooltip: 'Lyrics (L)',
+                  onPressed: ref.read(lyricsOnProvider.notifier).toggle,
+                ),
+              ],
             ],
           ),
         ),
-        _LyricsCard(visible: lyricsOn, onToggle: ref.read(lyricsOnProvider.notifier).toggle),
+        _LyricsCard(visible: lyricsOn && hasLyrics, onToggle: ref.read(lyricsOnProvider.notifier).toggle),
       ],
     );
   }
@@ -996,7 +1000,11 @@ class _LyricsCard extends ConsumerWidget {
           child: Align(
             alignment: Alignment.topCenter,
             heightFactor: f,
-            child: Opacity(opacity: f, child: child),
+            child: Opacity(
+              opacity: f,
+              // Collapsed (no lyrics, or switched off): nothing to click, read or tab to.
+              child: ExcludeSemantics(excluding: !visible, child: IgnorePointer(ignoring: !visible, child: child)),
+            ),
           ),
         ),
       ),
@@ -1038,24 +1046,6 @@ class _LyricsCard extends ConsumerWidget {
               top: 46,
               height: 128,
               child: LyricsList(style: LyricsStyle.card),
-            ),
-            // The list is empty while loading and when there are none: say so
-            // only for the latter.
-            Positioned(
-              left: 32,
-              right: 32,
-              top: 46,
-              height: 128,
-              child: IgnorePointer(
-                child: Center(
-                  child: Text(
-                    ref.watch(lyricsStateProvider.select((v) => !v.isLoading && (v.value?.isEmpty ?? true)))
-                        ? 'No lyrics for this track'
-                        : '',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
-                  ),
-                ),
-              ),
             ),
           ],
         ),

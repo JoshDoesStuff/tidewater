@@ -104,20 +104,21 @@ void main() {
       c.read(nowPlayingOpenProvider.notifier).set(true);
       await advance(tester, const Duration(seconds: 2));
       expect(find.text('Synced lyrics'), findsOneWidget);
-      expect(find.text('No lyrics for this track'), findsNothing);
+      expect(find.byTooltip('Lyrics (L)'), findsOneWidget);
+      expect(find.text('LYRICS'), findsOneWidget);
       c.read(nowPlayingOpenProvider.notifier).set(false);
       await advance(tester, const Duration(seconds: 1));
       await disposeApp(tester);
     });
 
-    testWidgets('no lyrics anywhere says so, without a lyrics tag', (tester) async {
+    testWidgets('no lyrics anywhere: no lyrics button, no card, no tag', (tester) async {
       final api = FakeLibraryApi()..noLyricsFor.add('t-a0');
       final c = await pumpApp(tester, api: api);
       await c.read(playbackProvider.notifier).playAlbum(fakeAlbums[0]);
       await c.read(playbackProvider.notifier).toggle();
       c.read(nowPlayingOpenProvider.notifier).set(true);
       await advance(tester, const Duration(seconds: 2));
-      expect(find.text('No lyrics for this track'), findsOneWidget);
+      expect(find.byTooltip('Lyrics (L)'), findsNothing);
       expect(find.text('Synced lyrics'), findsNothing);
       c.read(nowPlayingOpenProvider.notifier).set(false);
       await advance(tester, const Duration(seconds: 1));
