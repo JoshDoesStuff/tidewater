@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:tidewater/core/api/api_exception.dart';
@@ -95,6 +96,9 @@ class FakeLibraryApi implements LibraryApi {
   /// Replaces the default albums (for big-library and empty tests).
   List<Album>? albums;
 
+  /// Holds a track's lyrics lookup open until the completer is completed.
+  final lyricsGate = <String, Completer<void>>{};
+
   final calls = <String>[];
 
   List<Album> get _albums => albums ?? fakeAlbums;
@@ -183,8 +187,10 @@ class FakeLibraryApi implements LibraryApi {
       ]);
 
   @override
-  Future<Lyrics?> getLyrics(String trackId) async =>
-      _ok('getLyrics:$trackId', () => noLyricsFor.contains(trackId) ? null : placeholderLyrics);
+  Future<Lyrics?> getLyrics(String trackId) async {
+    await lyricsGate[trackId]?.future;
+    return _ok('getLyrics:$trackId', () => noLyricsFor.contains(trackId) ? null : placeholderLyrics);
+  }
 
   @override
   Future<Uint8List> getCoverArt(String id, {int size = 300}) async =>

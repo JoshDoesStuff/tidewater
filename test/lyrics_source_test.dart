@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:dio/dio.dart';
@@ -120,6 +121,55 @@ void main() {
       await advance(tester, const Duration(seconds: 2));
       expect(find.byTooltip('Lyrics (L)'), findsNothing);
       expect(find.text('Synced lyrics'), findsNothing);
+      c.read(nowPlayingOpenProvider.notifier).set(false);
+      await advance(tester, const Duration(seconds: 1));
+      await disposeApp(tester);
+    });
+
+    testWidgets('the lyrics button stays out of sight while the next lyrics load, then grows in', (tester) async {
+      final gate = Completer<void>();
+      final api = FakeLibraryApi()
+        ..noLyricsFor.add('t-a1')
+        ..lyricsGate['t-a1-1'] = gate;
+      final c = await pumpApp(tester, api: api);
+      await c.read(playbackProvider.notifier).playAlbum(fakeAlbums[1]);
+      await c.read(playbackProvider.notifier).toggle();
+      c.read(nowPlayingOpenProvider.notifier).set(true);
+      await advance(tester, const Duration(seconds: 2));
+      expect(find.byTooltip('Lyrics (L)'), findsNothing, reason: 'first track has none');
+
+      await c.read(playbackProvider.notifier).next();
+      await advance(tester, const Duration(seconds: 1));
+      expect(find.byTooltip('Lyrics (L)'), findsNothing, reason: 'still loading: no flash');
+
+      gate.complete();
+      await advance(tester, const Duration(milliseconds: 150));
+      await advance(tester, const Duration(seconds: 1));
+      expect(find.byTooltip('Lyrics (L)'), findsOneWidget, reason: 'confirmed: it appears');
+      c.read(nowPlayingOpenProvider.notifier).set(false);
+      await advance(tester, const Duration(seconds: 1));
+      await disposeApp(tester);
+    });
+
+    testWidgets('the button stays while the next lyrics load, then folds away when there are none', (tester) async {
+      final gate = Completer<void>();
+      final api = FakeLibraryApi()
+        ..noLyricsFor.add('t-a1-1')
+        ..lyricsGate['t-a1-1'] = gate;
+      final c = await pumpApp(tester, api: api);
+      await c.read(playbackProvider.notifier).playAlbum(fakeAlbums[1]);
+      await c.read(playbackProvider.notifier).toggle();
+      c.read(nowPlayingOpenProvider.notifier).set(true);
+      await advance(tester, const Duration(seconds: 2));
+      expect(find.byTooltip('Lyrics (L)'), findsOneWidget);
+
+      await c.read(playbackProvider.notifier).next();
+      await advance(tester, const Duration(seconds: 1));
+      expect(find.byTooltip('Lyrics (L)'), findsOneWidget, reason: 'still loading: it stays');
+
+      gate.complete();
+      await advance(tester, const Duration(seconds: 2));
+      expect(find.byTooltip('Lyrics (L)'), findsNothing, reason: 'confirmed none: it folds away');
       c.read(nowPlayingOpenProvider.notifier).set(false);
       await advance(tester, const Duration(seconds: 1));
       await disposeApp(tester);

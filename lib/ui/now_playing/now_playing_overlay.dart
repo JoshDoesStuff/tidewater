@@ -296,6 +296,18 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
   bool _queueDocked(BuildContext context) =>
       ref.watch(queueSidePanelProvider) && MediaQuery.sizeOf(context).width >= 1000;
 
+  /// Whether the lyrics button and card are shown. A track still loading its
+  /// lyrics keeps whatever the last one decided, so skipping from a track with
+  /// no lyrics to another one doesn't flash the button in and out; only a
+  /// finished lookup changes it.
+  bool _lyricsShown = false;
+
+  bool _lyricsAvailable() {
+    final state = ref.watch(lyricsStateProvider);
+    if (!state.isLoading) _lyricsShown = state.value?.isEmpty == false;
+    return _lyricsShown;
+  }
+
   // ---- build -----------------------------------------------------------------
 
   @override
@@ -308,7 +320,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
     final idle = ref.watch(idleProvider);
     final lyricsOn = ref.watch(lyricsOnProvider);
     // With nothing to show, idle mode lays out like lyrics-off (cover centered).
-    final lyricsAvailable = ref.watch(lyricsStateProvider.select((v) => v.isLoading || (v.value?.isEmpty == false)));
+    final lyricsAvailable = _lyricsAvailable();
     final mode = ref.watch(vizModeProvider);
     // The queue docks beside the player when there is room (and it is asked
     // for); otherwise it floats over it.
@@ -623,8 +635,8 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
   }
 
   Widget _rightColumn(BuildContext context, Track track, bool lyricsOn) {
-    // No lyrics (once loaded): no lyrics button and no card. While loading both stay.
-    final hasLyrics = ref.watch(lyricsStateProvider.select((v) => v.isLoading || (v.value?.isEmpty == false)));
+    // The lyrics button and card follow [_lyricsShown], which only changes once a lookup finishes.
+    final hasLyrics = _lyricsShown;
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final controller = ref.read(playbackProvider.notifier);
@@ -722,9 +734,13 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
           ),
         ),
         const SizedBox(height: 14),
+        // Centered under the progress bar; the lyrics button grows in and out of
+        // the row, so the other controls slide to stay centered.
         SizedBox(
+          width: 580,
           height: 84,
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               ExpressiveIconButton(
                 icon: Icons.shuffle_rounded,
@@ -755,22 +771,15 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
                 },
                 onPressed: controller.toggleRepeat,
               ),
-              if (hasLyrics) ...[
-                const SizedBox(width: 12),
-                ExpressiveIconButton(
-                  icon: Icons.lyrics_rounded,
-                  glyph: glyphFor(GlyphKind.lyrics, size: 26),
-                  size: 56,
-                  squareRadius: 18,
-                  selected: lyricsOn,
-                  tooltip: 'Lyrics (L)',
-                  onPressed: ref.read(lyricsOnProvider.notifier).toggle,
-                ),
-              ],
+              _LyricsSlot(
+                visible: hasLyrics,
+                selected: lyricsOn,
+                onTap: ref.read(lyricsOnProvider.notifier).toggle,
+              ),
             ],
           ),
         ),
-        _LyricsCard(visible: lyricsOn && hasLyrics, onToggle: ref.read(lyricsOnProvider.notifier).toggle),
+        _LyricsCard(visible: lyricsOn && hasLyrics),
       ],
     );
   }
@@ -1017,10 +1026,9 @@ class _BigPlay extends StatelessWidget {
 /// Lyrics card. Collapses (height, fade, margin; slow, emphasized) when
 /// lyrics are toggled off.
 class _LyricsCard extends ConsumerWidget {
-  const _LyricsCard({required this.visible, required this.onToggle});
+  const _LyricsCard({required this.visible});
 
   final bool visible;
-  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1062,20 +1070,6 @@ class _LyricsCard extends ConsumerWidget {
                     ),
               ),
             ),
-            Positioned(
-              right: 28,
-              top: 14,
-              child: ExpressiveIconButton(
-                icon: Icons.lyrics_rounded,
-                glyph: glyphFor(GlyphKind.lyrics, size: 22),
-                size: 48,
-                iconSize: 20,
-                squareRadius: 14,
-                tone: ButtonTone.standard,
-                onPressed: onToggle,
-                tooltip: 'Hide lyrics (L)',
-              ),
-            ),
             const Positioned(
               left: 32,
               right: 32,
@@ -1086,6 +1080,89 @@ class _LyricsCard extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The lyrics button and the gap before it. It grows in (width, fade, a little
+/// scale) when lyrics are available and folds away when they are not, so the
+/// controls beside it slide over rather than jump.
+class _LyricsSlot extends StatelessWidget {
+  const _LyricsSlot({required this.visible, required this.selected, required this.onTap});
+
+  final bool visible;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(end: visible ? 1 : 0),
+      duration: Motion.of(context, Motion.slow),
+      curve: Motion.curve(context, Motion.emphasized),
+      builder: (context, f, _) {
+        if (f <= 0) return const SizedBox.shrink();
+        final e = f.clamp(0.0, 1.0);
+        return ClipRect(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            widthFactor: e,
+            child: Opacity(
+              opacity: e,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: Transform.scale(
+                  scale: .6 + .4 * e,
+                  child: IgnorePointer(ignoring: !visible, child: _LyricsButton(selected: selected, onTap: onTap)),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// The speech-bubble button; its icon plays once when the button first shows.
+class _LyricsButton extends StatefulWidget {
+  const _LyricsButton({required this.selected, required this.onTap});
+
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  State<_LyricsButton> createState() => _LyricsButtonState();
+}
+
+class _LyricsButtonState extends State<_LyricsButton> {
+  bool _entering = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // One rising edge for the glyph, so it plays as the button appears; it is
+    // released again so later presses can play it too.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _entering = true);
+      Future<void>.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) setState(() => _entering = false);
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ExpressiveIconButton(
+      icon: Icons.lyrics_rounded,
+      glyph: (context, color, hovered, pressed) =>
+          AnimatedGlyph(kind: GlyphKind.lyrics, size: 26, color: color, hovered: hovered, active: pressed || _entering),
+      size: 56,
+      squareRadius: 18,
+      selected: widget.selected,
+      tooltip: 'Lyrics (L)',
+      onPressed: widget.onTap,
     );
   }
 }
