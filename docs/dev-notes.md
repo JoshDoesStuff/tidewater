@@ -73,15 +73,15 @@ The desktop is often locked, so screen capture of the real app returns the lock 
 - Providers: `app/providers/` (settings, playback, ui). Positions come from `positionProvider` (a `ValueNotifier`) so
   progress bars repaint without rebuilding.
 - The scheme is generated from the playing album and animated app-wide in `app.dart` (rebuilds the themed tree each
-  frame for 800 ms; fine so far). Seeded from the placeholder gradient until real cover art exists.
-- Cards, tracks and albums are linked **by list index** (`AlbumCard(index:)`, `fakeTracks`). Replace with ids in M2.
+  frame for 800 ms; fine so far). Seeded from the playing cover's pixels (`core/color/cover_seed.dart`).
+- Everything is keyed by server **id** (albums, tracks, covers). The engine takes a queue; `PlaybackState.track` is null until something is queued, and the mini player is hidden then.
 - Now Playing is a 1280×800 design canvas inside a `FittedBox`; backdrop and visualizer fill the real window.
   Glyph pixel-alignment is skipped under a non-1 scale (no grid to hit).
 - Letters: `LetterReveal` (every page-title build) and `LetterSwap` (Now Playing title; speed from Settings).
 - Settings persisted: reduce motion, dark/light, visualizer style, track-change speed.
 - Keyboard: global handler in `app_shell.dart` (Space, N, P, L, V, Esc); ignored while an `EditableText` has focus.
   Known gap: Space can also activate a focused button.
-- Visualizer levels and lyrics are **simulated/fake** until M3/M7; say so in UI/docs, never fake silently.
+- Playback audio, the visualizer levels and lyrics are **simulated/fake** until M3/M7; say so in UI/docs, never fake silently.
 
 ## Don't
 
@@ -91,3 +91,29 @@ The desktop is often locked, so screen capture of the real app returns the lock 
   table in `milestones.md`.
 - Don't add the removed badge shapes next to "Good evening" / "Library" (CLAUDE.md #16).
 - Don't leave probe/perf processes running (`Get-Process tidewater,flutter,dart | Stop-Process`).
+
+## Server, data and tests (added in M2)
+
+- **Layers**: `core/api/` (client, `connect()`, cover cache, session store; no Flutter UI imports) → `app/providers/`
+  (session, library, cover, scheme, playback) → `ui/`. The UI only sees `LibraryApi` (an interface), so tests swap in
+  `test/support/fake_library.dart`.
+- **Test harness**: `test/support/pump.dart` (`pumpApp`, `advance`, `disposeApp`) boots the whole app on the fake server
+  (`testOverrides` in `test_app.dart`). Always `ProviderScope(retry: (_, _) => null)`: Riverpod 3 retries failed
+  providers on its own, which hides error states and leaves timers pending.
+- **Covers in widget tests**: the real `CoverCache` does file IO, which never completes under fake async (it looks
+  like "the scheme never changes"). Tests override `coverCacheProvider` with `NoCovers`; the cache itself has plain
+  `test()`s with a temp folder.
+- **Real network**: `flutter test` blocks HTTP (everything answers 400). For a real-server test set
+  `HttpOverrides.global = null` (see `tool/real_covers_test.dart`).
+- **Server tools** (all read-only): `dart run tool/server_check.dart <url> <user> <pass>` (or `--api-key`),
+  `flutter test tool/real_covers_test.dart` (env `TIDEWATER_URL/USER/PASS/ALBUMS`; defaults to the public demo,
+  `demo`/`demo`), `flutter run -d windows -t tool/session_probe_main.dart` (secure storage round trip).
+- **Dart trap that bit once**: `Future.microtask(() => map.remove(key))` *returns the removed future*, so a failed
+  download re-raised its error as unhandled. Use a block body (`scheduleMicrotask(() { map.remove(key); })`).
+- **Windows shell**: this machine has no Python; `flutter test --name=word` (a name with spaces breaks
+  `flutter.bat`); in the Bash tool a heredoc containing apostrophes can fail, so write such files with the Write tool.
+- **Known pre-existing hitch**: opening Now Playing has 2-3 frames over 33 ms (max ~50 ms) in the profile run. M1 has
+  the same numbers (checked at `f978439`), so it is not a regression; candidates: first build of the overlay plus
+  the flight. Worth a look in M6.
+- **Servers**: a typed address with no scheme is tried as https then http; "Trust this server" accepts only that
+  host's certificate. Navidrome ignores articles when sorting ("The Beatles" under B); the A–Z rail mimics that.

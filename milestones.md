@@ -13,7 +13,21 @@ Now Playing with lyrics/volume/idle/visualizers, Settings). Quality at wrap-up: 
 passing, `flutter build windows --release` succeeds, zero console errors on launch, no frame over 33 ms in the
 profile scenarios (`tool/perf_main.dart`). Working notes for future sessions: `docs/dev-notes.md`.
 
-Next up is **M2 (Server)**; start by replacing the fakes listed below.
+## Milestone 2 wrap-up (done)
+
+The app now runs on a real Navidrome/OpenSubsonic server: login (password or API key, secrets in Windows secure
+storage), a dio client written from scratch (`core/api/`), cover art with a disk cache, scheme colors from real
+cover pixels, and a Home and Library built from server data with loading, error and empty states. Playback is
+**still simulated** (clock only), but it now plays real tracks from real queues.
+
+Checked against a live server: Navidrome 0.64.2 (the public demo) via `tool/server_check.dart` (auth, artists,
+playlists, paging, album detail with quality info, covers at 300/800, search, random songs) and 40 real covers via
+`tool/real_covers_test.dart` (0 contrast failures in dark and light; black/white/gray art gets a neutral scheme).
+`flutter_secure_storage` round-trips on this machine (`tool/session_probe_main.dart`). Quality at wrap-up:
+`flutter analyze` clean, 112 tests passing, Windows build and launch clean. **Not yet checked: the user's own
+server with a 4k+ song library** (run the two tools above against it first).
+
+Next up is **M3 (Playback)**.
 
 ## Where we are
 
@@ -25,9 +39,9 @@ pages that don't exist yet.
 | # | Milestone | Status |
 |---|-----------|--------|
 | 1 | Shell | ✅ |
-| 2 | Server (login, OpenSubsonic, real library, cover cache) | ⬜ |
+| 2 | Server (login, OpenSubsonic, real library, cover cache) | ✅ (search/artist pages come later) |
 | 3 | Playback (real engine, queue, SMTC, scrobbling, album page) | ⬜ (UI 🟡 via `SimulatedEngine`) |
-| 4 | Dynamic color + shapes | 🟡 (works, seeded from placeholder gradients) |
+| 4 | Dynamic color + shapes | 🟡 (works, seeded from real covers; light-theme QA outstanding) |
 | 5 | Now Playing | 🟡 (works, simulated audio/visualizer/lyrics) |
 | 6 | Motion polish pass | 🟡 (most of the demo list is in; QA pass outstanding) |
 | 7 | Search, playlists, offline cache, settings, real visualizer | ⬜ (Settings partly ✅) |
@@ -38,34 +52,61 @@ Replace these as the milestones below land. Each is a known, deliberate stand-in
 
 | Stand-in | Where | Replaced in |
 |----------|-------|-------------|
-| Fake albums, tracks, gradients | `core/data/fake_library.dart` | M2 |
-| `SimulatedEngine` (clock only, no audio) | `core/playback/simulated_engine.dart` | M3 |
-| Fake synced lyrics (same for every track) | `fakeLyrics` | M3 |
+| `SimulatedEngine` (clock only, no audio); it plays real tracks from the server but makes no sound | `core/playback/simulated_engine.dart` | M3 |
+| Fake synced lyrics (the same for every track) | `placeholderLyrics` in `core/lyrics/placeholder_lyrics.dart` | M3 |
 | `SimulatedVisualizerSource` (time-based, not from audio) | `core/playback/visualizer_source.dart` | M7 |
-| Scheme seeded from the album's placeholder gradient color | `app/theme/album_scheme.dart` | M2 (needs real cover art) |
-| Hard-coded: "Good evening", Jump back in heroes, Quick picks, "Daily Mix 1", "1,284 albums · 96 GB", avatar "J", "FLAC · 24-bit / 96 kHz" tag | `home_page.dart`, `library_page.dart`, `app_header.dart`, `now_playing_overlay.dart` | M2/M3 |
-| Album cards and tracks are tied together **by list index** | `AlbumCard(index:)`, `activeAlbumIndexProvider`, `fakeTracks` | M2 (switch to ids) |
-| No-op controls: menu button, search field, cast, queue, sort, filter chips, "Show all", A–Z rail, avatar tap, heart persistence | various | M2/M7 |
+| "Synced lyrics" tag follows the placeholder lyrics, not the track | `now_playing_overlay.dart` | M3 |
 | Volume, shuffle, repeat only change in-memory state | `SimulatedEngine` | M3 |
-| Liked tracks live in memory only | `likedProvider` | M3 (`star`/`unstar`) |
+| Liked tracks live in memory only (not read from or sent to the server) | `likedProvider` | M3 (`star`/`unstar`) |
+| No-op controls: menu button, search field, cast, queue button | various | M3/M7 |
+| Home chips Albums/Artists/Playlists only switch which rows show; Library has no Songs or Genres tab | `home_page.dart`, `library_page.dart` | M7 |
+| Artist and playlist cards **play** on tap (artist = first 12 albums); there is no artist, album or playlist page | `playback_providers.dart` | M3 (album page), M7 |
 
-## M2 — Server
+(Replaced in M2: fake library, gradient-seeded scheme, list-index coupling, hard-coded Home/Library text, the
+account initial, sort, genre filter, "Show all", the A–Z rail.)
 
-- Login screen: server URL, username, password / API key; remember server; clear error states (bad URL, bad
-  credentials, unreachable, TLS). Secrets in `flutter_secure_storage`, server URL/user in `shared_preferences`.
-- OpenSubsonic client in `core/api/` (dio, no SDK): `md5(password+salt)` token auth, prefer API key when
-  `getOpenSubsonicExtensions` advertises `apiKeyAuthentication`; `ping`, `getAlbumList2`, `getAlbum`, `getArtists`,
-  `getArtist`, `getPlaylists`, `getPlaylist`, `search3`. Unit tests with recorded JSON fixtures.
-- Replace `fake_library.dart` with repositories + Riverpod providers; **key everything by id, not list index**.
-- Cover art: request sized variants (300 grids, 800 Now Playing), disk cache keyed by `coverArt` id + size,
-  placeholder + fade-in while loading.
-- **Real cover-art color**: `QuantizerCelebi` + `Score` → seed → scheme (`material_color_utilities`), cached per
-  album id. Remove the gradient-seed shortcut. Keep the contrast test (WCAG ≥ 4.5 for lyrics/accent text) running
-  against real covers, including low-chroma and near-monochrome art.
-- Real Home (recently added, frequent, recent plays; time-based greeting) and Library (real counts, sort,
-  filters, A–Z jump actually scrolls, paging/lazy loading for large libraries).
-- Empty, loading (skeleton) and offline/error states for every list.
-- Avatar/initial from the account; sign out / switch server.
+## M2 — Server (done)
+
+What was built, and the decisions that were not in the plan:
+
+- **Login** (`ui/pages/login_page.dart`, `core/api/connect.dart`): server address, then password or API key. An
+  address without a scheme is tried as https then http. Errors are specific (bad address, unreachable, certificate,
+  wrong credentials, no API-key support); a rejected certificate offers **Trust this server** (accepts that host's
+  certificate only, saved with the session). The saved server is trusted at launch without a ping, so starting
+  offline opens the app and its lists show offline states.
+- **Secrets**: password/API key in `flutter_secure_storage`; URL, user name, auth mode in `shared_preferences`
+  (`app/session/prefs_session_store.dart`). Signing out drops the secret and remembers URL + user to prefill.
+- **Client** (`core/api/opensubsonic_client.dart`): token auth with a fresh salt per request, or `apiKey`. Added
+  `getRandomSongs` (Shuffle all) to the endpoint list. Fixtures are in `test/fixtures/`.
+- **Everything keyed by id**: `Album`/`Track`/`Artist`/`Playlist` carry server ids; the engine takes a queue
+  (`playQueue`), cards call `playAlbum` / `playPlaylist` / `playArtist`. Shapes come from the album id
+  (`ShapeKind.forKey`), so an album keeps its shape everywhere.
+- **Covers** (`core/api/cover_cache.dart`, `ui/widgets/cover_art.dart`): sizes snap to 150/300/800, files are
+  `<cache>/<server hash>/<id>_<size>.img`, concurrent requests share one download, the placeholder gradient (hue from
+  the album id) shows until the image fades in. The cache is trimmed to 500 MB (least recently used first) when the session starts.
+- **Scheme from the cover** (`core/color/cover_seed.dart`, `app/providers/scheme_providers.dart`): Celebi quantizer
+  + `Score` on a 112 px decode, run on another isolate. Art with no color (black, white, gray) gives a *muted*
+  seed → `DynamicSchemeVariant.neutral`, instead of a random hue. The app only recolors once the new seed is known
+  (never default → placeholder → real). Cover failures fall back to a hue from the album id.
+- **Home**: greeting from the local hour; heroes = recently played topped up with newest; Quick picks = most played;
+  rows for Recently added / Most played; chips switch All / Albums / Artists / Playlists.
+- **Library**: Albums, Artists, Playlists tabs. Albums load page by page (120, then 500 at a time) until the server
+  runs out; the grid is lazy. Sorts are server-side (recently added, name, artist, most played, recently played,
+  year newest-first, verified descending on a real server). Genre filter is client-side over what is loaded. The A–Z
+  rail only shows for alphabetical sorts and the Artists tab and skips articles ("The Beatles" files under B).
+- **Mini player is hidden until something is queued** (decision; the old "resting first track" is gone). It rises
+  in the first time it appears. Failed play requests show a toast (`ui/shell/toast_layer.dart`).
+- **Account menu**: avatar shows the user's initial; menu offers sign out / switch server (stops playback first).
+
+Known gaps / follow-ups:
+
+- Not tested against a library with thousands of albums yet. Things to watch: Library paging time, memory of the
+  metadata list, `getArtists` size, cover cache growth.
+- API-key login is unit-tested but not tried against a server that advertises `apiKeyAuthentication` (the demo does
+  not).
+- Pull-to-refresh / automatic refresh of Home after playing: Home rows refresh only when invalidated (Retry) or on
+  restart. Invalidate `recent`/`frequent` when scrobbling lands (M3).
+- Library "Songs" and "Genres" tabs, and the Home chips beyond filtering rows, are M7.
 
 ## M3 — Playback
 
@@ -81,7 +122,8 @@ Replace these as the milestones below land. Each is a known, deliberate stand-in
 - Album page (and artist page): header, track list, play/shuffle, star.
 - Lyrics: `getLyricsBySongId` (when `songLyrics` advertised), LRCLIB fallback, plain-vs-synced handling (the
   list already supports both; plain lyrics never auto-scroll).
-- Real stream info for the quality tag (codec, bit depth, sample rate) instead of the hard-coded string.
+- Quality tag: it shows the file's own format from the server metadata (`Track.qualityLabel`); once playing, show what the
+  engine reports (transcoded vs. original).
 - `star`/`unstar` for the heart; persist liked state; keep the pop + particle burst.
 - Restore last queue/position on launch.
 
@@ -188,6 +230,5 @@ janky). Current profile baseline (60 Hz, this machine): build ≈ 1 ms, raster �
 
 - Keep `go_router` page transitions as fade + 14 px rise, or move to shared-axis for deeper pages (album/artist)?
 - Menu button (top of rail): expand/collapse the rail with labels, or open a drawer?
-- Should the mini player hide when nothing has ever played, or always show the resting first track?
 - Where do "Daily Mix" style generated playlists come from on a Navidrome server (smart playlists vs. none)?
 - Real "Radio" source: Navidrome internet radio stations only, or also similar-artist radio?
