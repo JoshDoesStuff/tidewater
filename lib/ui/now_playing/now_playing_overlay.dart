@@ -36,6 +36,9 @@ final npCoverKey = GlobalKey(debugLabel: 'npCover');
 
 const _designW = 1280.0;
 const _designH = 800.0;
+
+/// Width of the queue when docked beside the player.
+const _dockWidth = 420.0;
 const _idleAfter = Duration(milliseconds: 3500);
 const _idleTick = Duration(milliseconds: 250);
 
@@ -290,6 +293,9 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
     );
   }
 
+  bool _queueDocked(BuildContext context) =>
+      ref.watch(queueSidePanelProvider) && MediaQuery.sizeOf(context).width >= 1000;
+
   // ---- build -----------------------------------------------------------------
 
   @override
@@ -304,6 +310,10 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
     // With nothing to show, idle mode lays out like lyrics-off (cover centered).
     final lyricsAvailable = ref.watch(lyricsStateProvider.select((v) => v.isLoading || (v.value?.isEmpty == false)));
     final mode = ref.watch(vizModeProvider);
+    // The queue docks beside the player when there is room (and it is asked
+    // for); otherwise it floats over it.
+    final docked = _queueDocked(context);
+    final queueOpen = ref.watch(queueOpenProvider);
 
     return FadeTransition(
       opacity: CurvedAnimation(parent: _fade, curve: Motion.emphasized, reverseCurve: Curves.easeIn),
@@ -321,18 +331,25 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
               ColoredBox(color: scheme.surface),
               CustomPaint(painter: _BackdropPainter(scheme.primaryContainer.withValues(alpha: .6))),
               Visualizer(mode: mode, ringRect: _ringRect),
-              FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox(
-                  width: _designW,
-                  height: _designH,
-                  child: BurstLayer(
-                    key: _burstKey,
-                    color: scheme.primary,
-                    child: _design(context, idle: idle, lyricsOn: lyricsOn, idleLyrics: lyricsOn && lyricsAvailable),
+              // The player makes room for the docked queue by shrinking.
+              AnimatedPadding(
+                duration: Motion.of(context, Motion.slow),
+                curve: Motion.curve(context, Motion.emphasized),
+                padding: EdgeInsets.only(right: docked && queueOpen ? _dockWidth + 40 : 0),
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: _designW,
+                    height: _designH,
+                    child: BurstLayer(
+                      key: _burstKey,
+                      color: scheme.primary,
+                      child: _design(context, idle: idle, lyricsOn: lyricsOn, idleLyrics: lyricsOn && lyricsAvailable),
+                    ),
                   ),
                 ),
               ),
+              if (docked) const Positioned(right: 20, top: 20, bottom: 20, width: _dockWidth, child: QueuePanel()),
               _idleProgress(context, idle),
             ],
           ),
@@ -475,14 +492,16 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
               onTap: () => ref.read(vizPopupOpenProvider.notifier).set(false),
             ),
           ),
-        if (ref.watch(queueOpenProvider))
+        // Queue as a popup (outside tap closes it).
+        if (!_queueDocked(context) && ref.watch(queueOpenProvider))
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
               onTap: () => ref.read(queueOpenProvider.notifier).set(false),
             ),
           ),
-        const Positioned(right: 36, top: 100, bottom: 36, width: 440, child: QueuePanel()),
+        if (!_queueDocked(context))
+          const Positioned(right: 36, top: 100, bottom: 36, width: 440, child: QueuePanel()),
         const Positioned(right: 44, top: 112, child: VizPicker()),
       ],
     );
@@ -555,6 +574,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
       children: [
         ExpressiveIconButton(
           icon: Icons.close_fullscreen_rounded,
+          glyph: glyphFor(GlyphKind.collapse, size: 24, onPress: true),
           size: 56,
           squareRadius: 18,
           tooltip: 'Close (Esc)',
@@ -573,6 +593,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
         ),
         ExpressiveIconButton(
           icon: Icons.auto_awesome_rounded,
+          glyph: glyphFor(GlyphKind.visualizer, size: 26),
           size: 56,
           squareRadius: 18,
           selected: mode != VizMode.off || popup,
@@ -582,6 +603,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
         const SizedBox(width: 16),
         ExpressiveIconButton(
           icon: Icons.queue_music_rounded,
+          glyph: glyphFor(GlyphKind.queue, size: 26, onPress: true),
           size: 56,
           squareRadius: 18,
           selected: ref.watch(queueOpenProvider),
@@ -706,7 +728,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
             children: [
               ExpressiveIconButton(
                 icon: Icons.shuffle_rounded,
-                glyph: glyphFor(GlyphKind.shuffle, size: 26),
+                glyph: glyphFor(GlyphKind.shuffle, size: 26, onPress: true),
                 size: 56,
                 squareRadius: 18,
                 selected: state.shuffle,
@@ -722,6 +744,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
               const SizedBox(width: 12),
               ExpressiveIconButton(
                 icon: state.repeat == LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
+                glyph: glyphFor(state.repeat == LoopMode.one ? GlyphKind.repeatOne : GlyphKind.repeat, size: 26, onPress: true),
                 size: 56,
                 squareRadius: 18,
                 selected: state.repeat != LoopMode.off,
@@ -736,6 +759,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
                 const SizedBox(width: 12),
                 ExpressiveIconButton(
                   icon: Icons.lyrics_rounded,
+                  glyph: glyphFor(GlyphKind.lyrics, size: 26, onPress: true),
                   size: 56,
                   squareRadius: 18,
                   selected: lyricsOn,
@@ -1043,6 +1067,7 @@ class _LyricsCard extends ConsumerWidget {
               top: 14,
               child: ExpressiveIconButton(
                 icon: Icons.lyrics_rounded,
+                glyph: glyphFor(GlyphKind.lyrics, size: 22, onPress: true),
                 size: 48,
                 iconSize: 20,
                 squareRadius: 14,

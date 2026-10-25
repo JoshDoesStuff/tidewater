@@ -81,7 +81,7 @@ class _SearchPillState extends State<SearchPill> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.search_rounded, color: scheme.onSurfaceVariant),
+                  AnimatedGlyph(kind: GlyphKind.search, size: 24, color: scheme.onSurfaceVariant, hovered: _hovered || _focus.hasFocus),
                   const SizedBox(width: 16),
                   Expanded(
                     child: TextField(

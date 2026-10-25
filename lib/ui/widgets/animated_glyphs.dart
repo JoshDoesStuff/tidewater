@@ -34,7 +34,7 @@ mixin _PlayOnEdge<T extends StatefulWidget> on State<T>, SingleTickerProviderSta
   }
 }
 
-enum GlyphKind { list, cards, sort, filter, next, previous, shuffle, menu }
+enum GlyphKind { list, cards, sort, filter, next, previous, shuffle, menu, repeat, repeatOne, lyrics, queue, back, search, close, collapse, visualizer }
 
 /// A small 24 x 24 stroke icon drawn in code, with its own one-shot motion:
 /// list rows retract and return, card tiles pop in a wave, sort bars retract
@@ -164,6 +164,84 @@ class _GlyphPainter extends CustomPainter {
           final dx = 4.0 * _bump(i * .14);
           canvas.drawLine(Offset(4 + dx, y), Offset(20 + dx * .5, y), line);
         }
+      case GlyphKind.repeat:
+        _repeat(canvas, line, one: false);
+      case GlyphKind.repeatOne:
+        _repeat(canvas, line, one: true);
+      case GlyphKind.lyrics:
+        // A speech bubble whose two lines type themselves in.
+        canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(3, 4, 18, 13), const Radius.circular(3.5)), line);
+        canvas.drawPath(
+          Path()
+            ..moveTo(8, 17)
+            ..lineTo(8, 21)
+            ..lineTo(12, 17),
+          line,
+        );
+        final typed = _running ? [Curves.easeOut.transform((t / .5).clamp(0.0, 1.0)), Curves.easeOut.transform(((t - .25) / .5).clamp(0.0, 1.0))] : [1.0, 1.0];
+        canvas.drawLine(const Offset(7, 9), Offset(7 + 10 * typed[0], 9), line);
+        canvas.drawLine(const Offset(7, 13), Offset(7 + 6 * typed[1], 13), line);
+      case GlyphKind.queue:
+        // Lines pull in one after another while the note bobs.
+        const lengths = [11.0, 11.0, 6.0];
+        for (var i = 0; i < 3; i++) {
+          final y = 6.0 + i * 5;
+          canvas.drawLine(Offset(3, y), Offset(3 + lengths[i] * (1 - .55 * _bump(i * .12)), y), line);
+        }
+        final bob = -3.0 * _bump(.1, .7);
+        canvas.drawCircle(Offset(17.5, 17.5 + bob), 2.5, line);
+        canvas.drawLine(Offset(20, 17.5 + bob), Offset(20, 6 + bob), line);
+      case GlyphKind.back:
+        final nudge = -3.5 * _bump(0, .7);
+        canvas.drawLine(Offset(20 + nudge * .4, 12), Offset(5 + nudge, 12), line);
+        canvas.drawPath(
+          Path()
+            ..moveTo(11 + nudge, 6)
+            ..lineTo(5 + nudge, 12)
+            ..lineTo(11 + nudge, 18),
+          line,
+        );
+      case GlyphKind.search:
+        // The lens roams in a small circle, as if looking around.
+        final swing = _running ? math.sin(math.pi * t) : 0.0;
+        final a = t * 2 * math.pi * 1.2;
+        final o = Offset(2.2 * math.cos(a), 2.2 * math.sin(a)) * swing;
+        canvas.drawCircle(const Offset(10.5, 10.5) + o, 6.5, line);
+        canvas.drawLine(const Offset(15.5, 15.5) + o, const Offset(21, 21) + o * .6, line);
+      case GlyphKind.close:
+        // A turn of 90 degrees; the cross looks the same at the end.
+        canvas.translate(12, 12);
+        canvas.rotate(_running ? math.pi / 2 * Curves.easeInOutBack.transform(t) : 0);
+        canvas.drawLine(const Offset(-6.5, -6.5), const Offset(6.5, 6.5), line);
+        canvas.drawLine(const Offset(6.5, -6.5), const Offset(-6.5, 6.5), line);
+      case GlyphKind.collapse:
+        // Two corner arrows squeeze toward the middle and let go.
+        final d = 2.6 * _bump(0, .7);
+        canvas.drawLine(Offset(3 + d, 3 + d), Offset(10 + d, 10 + d), line);
+        canvas.drawPath(
+          Path()
+            ..moveTo(10 + d, 5.5 + d)
+            ..lineTo(10 + d, 10 + d)
+            ..lineTo(5.5 + d, 10 + d),
+          line,
+        );
+        canvas.drawLine(Offset(21 - d, 21 - d), Offset(14 - d, 14 - d), line);
+        canvas.drawPath(
+          Path()
+            ..moveTo(14 - d, 18.5 - d)
+            ..lineTo(14 - d, 14 - d)
+            ..lineTo(18.5 - d, 14 - d),
+          line,
+        );
+      case GlyphKind.visualizer:
+        // A little equalizer: four bars that dance, each on its own beat.
+        const base = [9.0, 15.0, 11.0, 6.0];
+        for (var i = 0; i < 4; i++) {
+          final dance = _running ? math.sin(t * 2 * math.pi * (1.5 + i * .35) + i) * math.sin(math.pi * t) : 0.0;
+          final h = (base[i] * (1 + .55 * dance)).clamp(3.0, 20.0);
+          final x = 4.5 + i * 5;
+          canvas.drawLine(Offset(x, 20), Offset(x, 20 - h), line..strokeWidth = 2.6);
+        }
     }
   }
 
@@ -192,28 +270,80 @@ class _GlyphPainter extends CustomPainter {
     canvas.drawLine(Offset(19 + nudge, 5.5), Offset(19 + nudge, 18.5), line);
   }
 
-  /// Two arrows crossing left to right, each traced on from its start.
+  /// Draws [path] up to the fraction [p] of its total length, across contours.
+  void _trace(Canvas canvas, Path path, double p, Paint paint) {
+    final metrics = path.computeMetrics().toList();
+    var left = metrics.fold<double>(0, (a, m) => a + m.length) * p;
+    for (final m in metrics) {
+      if (left <= 0) break;
+      canvas.drawPath(m.extractPath(0, math.min(left, m.length)), paint);
+      left -= m.length;
+    }
+  }
+
+  /// Straight-line shuffle: one line runs corner to corner with a gap where the
+  /// other crosses it; both end in arrowheads. They draw on, then the heads pop.
   void _shuffle(Canvas canvas, Paint line) {
-    final a = Path()
-      ..moveTo(3, 6.5)
-      ..cubicTo(9, 6.5, 12, 17.5, 19, 17.5);
-    final b = Path()
-      ..moveTo(3, 17.5)
-      ..cubicTo(9, 17.5, 12, 6.5, 19, 6.5);
-    for (final (i, path) in [a, b].indexed) {
+    final down = Path()
+      ..moveTo(4, 4)
+      ..lineTo(9.5, 9.5)
+      ..moveTo(14, 14)
+      ..lineTo(20, 20);
+    final up = Path()
+      ..moveTo(4, 20)
+      ..lineTo(20, 4);
+    for (final (i, path) in [down, up].indexed) {
       final p = _running ? Curves.easeInOut.transform(((t - i * .12) / .7).clamp(0.0, 1.0)) : 1.0;
-      for (final m in path.computeMetrics()) {
-        canvas.drawPath(m.extractPath(0, m.length * p), line);
-      }
-      final y = i == 0 ? 17.5 : 6.5;
-      // Arrowhead appears as its line arrives.
-      final head = _running ? ((p - .7) / .3).clamp(0.0, 1.0) : 1.0;
+      _trace(canvas, path, p, line);
+      final head = _running ? ((p - .75) / .25).clamp(0.0, 1.0) : 1.0;
       if (head > 0) {
         final h = Paint.from(line)..color = color.withValues(alpha: head);
-        final tip = Offset(19.5, y);
-        canvas.drawLine(tip + const Offset(-3, -3), tip, h);
-        canvas.drawLine(tip + const Offset(-3, 3), tip, h);
+        final tip = i == 0 ? const Offset(20, 20) : const Offset(20, 4);
+        final dy = i == 0 ? -5.0 : 5.0;
+        canvas.drawLine(tip, tip + Offset(0, dy), h);
+        canvas.drawLine(tip, tip + const Offset(-5, 0), h);
       }
+    }
+  }
+
+  /// Two rounded arrow loops. The loop is symmetric under a half turn, so it
+  /// spins 180 degrees and lands looking the same; the "1" stays put.
+  void _repeat(Canvas canvas, Paint line, {required bool one}) {
+    canvas.save();
+    canvas.translate(12, 12);
+    canvas.rotate(_running ? math.pi * Curves.easeInOutCubic.transform(t) : 0);
+    canvas.translate(-12, -12);
+    canvas.drawPath(
+      Path()
+        ..moveTo(4, 12)
+        ..lineTo(4, 11)
+        ..arcToPoint(const Offset(8, 7), radius: const Radius.circular(4))
+        ..lineTo(20, 7)
+        ..moveTo(17, 4)
+        ..lineTo(20, 7)
+        ..lineTo(17, 10),
+      line,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(20, 12)
+        ..lineTo(20, 13)
+        ..arcToPoint(const Offset(16, 17), radius: const Radius.circular(4))
+        ..lineTo(4, 17)
+        ..moveTo(7, 14)
+        ..lineTo(4, 17)
+        ..lineTo(7, 20),
+      line,
+    );
+    canvas.restore();
+    if (one) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(10.5, 10.5)
+          ..lineTo(12.5, 9)
+          ..lineTo(12.5, 15),
+        line..strokeWidth = 1.8,
+      );
     }
   }
 

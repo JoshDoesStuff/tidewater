@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
+import 'package:tidewater/app/providers/settings_providers.dart' show queueSidePanelProvider;
 import 'package:tidewater/app/providers/ui_providers.dart';
 import 'package:tidewater/core/playback/play_queue.dart';
 
@@ -23,6 +24,12 @@ Future<void> closeNowPlaying(WidgetTester tester, ProviderContainer c) async {
   await advance(tester, const Duration(seconds: 1));
   await disposeApp(tester);
 }
+
+/// The box the 1280 x 800 player canvas is scaled to fit.
+Finder _playerBox() => find.ancestor(
+      of: find.byWidgetPredicate((w) => w is SizedBox && w.width == 1280 && w.height == 800),
+      matching: find.byType(FittedBox),
+    );
 
 void main() {
   testWidgets('the queue button opens the panel with the whole queue', (tester) async {
@@ -124,5 +131,29 @@ void main() {
     await advance(tester, const Duration(seconds: 1));
     expect(c.read(queueOpenProvider), isFalse);
     await disposeApp(tester);
+  });
+
+  testWidgets('docked, the queue sits beside the player and the player shrinks to make room', (tester) async {
+    final c = await openNowPlaying(tester);
+    final cover = _playerBox();
+    final before = tester.getSize(cover);
+    await tester.tap(find.byTooltip('Queue (Q)'));
+    await advance(tester, const Duration(seconds: 1));
+    expect(tester.getSize(cover).width, lessThan(before.width), reason: 'the player gave up room');
+    final panel = tester.getRect(find.text('Queue'));
+    expect(panel.left, greaterThan(tester.getSize(find.byType(MaterialApp)).width - 460));
+    await closeNowPlaying(tester, c);
+  });
+
+  testWidgets('as a popup the player keeps its size', (tester) async {
+    final c = await openNowPlaying(tester);
+    c.read(queueSidePanelProvider.notifier).set(false);
+    await advance(tester, const Duration(milliseconds: 300));
+    final before = tester.getSize(_playerBox());
+    await tester.tap(find.byTooltip('Queue (Q)'));
+    await advance(tester, const Duration(seconds: 1));
+    expect(tester.getSize(_playerBox()), before);
+    expect(find.text('Queue'), findsOneWidget);
+    await closeNowPlaying(tester, c);
   });
 }

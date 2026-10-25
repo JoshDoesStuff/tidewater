@@ -107,6 +107,7 @@ Build in milestones; stop after each so I can run it.
 6. **Now Playing:** overlay + hero transition, lyrics list, lyrics toggle, volume slider, idle mode, simulated visualizer with all styles + picker.
 7. **Motion polish pass** against the demo list above (ripples, tilt, reveals, heart burst, wash, ambient).
 8. **Search, playlists, offline cache, settings, real visualizer.**
+9. **Settings overhaul:** grouped, searchable settings page with account, playback and about sections.
 After each milestone: `flutter analyze` clean, `flutter test` passing, summarize in ≤ 5 lines. Don't refactor unrelated files. Ask before adding packages not listed. Small, reviewable commits.
 
 ## Commands

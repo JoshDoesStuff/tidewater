@@ -133,6 +133,7 @@ pages that don't exist yet.
 | 6 | Now Playing | 🟡 (real audio, lyrics and queue; the visualizer is still simulated) |
 | 7 | Motion polish pass | 🟡 (most of the demo list is in; QA pass outstanding) |
 | 8 | Search, playlists, offline cache, settings, real visualizer | ⬜ (Settings partly ✅) |
+| 9 | Settings overhaul | ⬜ |
 
 ## What is simulated or stubbed today
 
@@ -214,8 +215,9 @@ Credits live in Settings and `third-party-licenses/`; add an entry for any new a
 
 Done: sidebar (Home, Library, Artists, Liked, Lists, Radio, Settings), cast button, list/cards toggle, sort and filter.
 
-To do: Next and Previous, the Shuffle button animation (redo), the sidebar Menu button, and then a pass over the
-remaining static icons (queue, repeat, lyrics, volume, visualizer picker).
+Also done: Next and Previous, Shuffle (straight lines), Menu, Repeat (rounded), Lyrics, Queue, Back, Search, Close,
+Visualizer (mini bars), Collapse. Still static: the volume speaker (has its own swap), title bar buttons, play on cards,
+login page icons. The queue also became a docked side panel (Settings switches it back to a popup).
 
 ## M6 — Now Playing (remaining)
 
@@ -264,6 +266,20 @@ Most of the demo list is in. Remaining and review items:
   FFmpeg, `flutter_soloud`, or a native audio tap). Same `VisualizerSource` interface; keep the 64-band,
   fast-attack/slow-decay smoothing. Say so in the UI until it ships.
 - Context menus (right click), drag and drop, multi-select.
+
+## M9 — Settings overhaul
+
+Settings today is one flat column of switches that grew a row at a time. Redo it as a real settings area:
+
+- Group the options under headings (Appearance, Playback, Library, Now Playing, Account, About) with a section nav or
+  tabs; the page should still scroll smoothly and keep the reveal animations.
+- Move the scattered preferences in here: view mode (cards/list), default Library tab and sorts, queue style
+  (side panel or popup), hide Japanese text, motion settings, visualizer style, Home layout options.
+- Account: server address, signed-in user, sign out, and a "forget cached covers" button with the cache size.
+- Playback: scrobbling, lyrics lookup, crossfade and ReplayGain when they exist (M8).
+- About: version, the credits and licences (currently the Credits card), links.
+- Add a search box that filters the settings.
+- Every preference stays persisted through `sharedPreferencesProvider`, with tests that each one survives a restart.
 
 ## Cross-cutting
 

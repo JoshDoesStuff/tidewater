@@ -177,3 +177,19 @@ class LikedAsCardsNotifier extends Notifier<bool> {
 }
 
 final likedAsCardsProvider = NotifierProvider<LikedAsCardsNotifier, bool>(LikedAsCardsNotifier.new);
+
+/// The queue docks beside Now Playing (shrinking the player to fit) instead
+/// of floating over it as a popup. Persisted.
+class QueueSidePanelNotifier extends Notifier<bool> {
+  static const _key = 'queue_side_panel';
+
+  @override
+  bool build() => ref.watch(sharedPreferencesProvider).getBool(_key) ?? true;
+
+  void set(bool value) {
+    state = value;
+    ref.read(sharedPreferencesProvider).setBool(_key, value);
+  }
+}
+
+final queueSidePanelProvider = NotifierProvider<QueueSidePanelNotifier, bool>(QueueSidePanelNotifier.new);

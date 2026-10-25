@@ -340,12 +340,16 @@ class ExpressivePillButton extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.onPressed,
+    this.glyph,
     this.filled = true,
     this.height = 56,
   });
 
   final String label;
   final IconData icon;
+
+  /// Animated artwork that replaces [icon]; plays on hover.
+  final GlyphKind? glyph;
   final VoidCallback onPressed;
 
   /// Primary fill, or the quieter tonal one.
@@ -379,7 +383,10 @@ class ExpressivePillButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 24, color: fg),
+                if (glyph != null)
+                  AnimatedGlyph(kind: glyph!, size: 24, color: fg, hovered: s.hovered)
+                else
+                  Icon(icon, size: 24, color: fg),
                 const SizedBox(width: 10),
                 Text(
                   label,

@@ -7,6 +7,7 @@ import '../../app/theme/motion.dart';
 import '../../core/models/track.dart';
 import '../../core/playback/play_queue.dart' show LoopMode;
 import '../shell/shell_keys.dart';
+import '../widgets/animated_glyphs.dart';
 import '../widgets/cover_art.dart';
 import '../widgets/effects/eq_bars.dart';
 import '../widgets/pressable.dart';
@@ -91,14 +92,14 @@ class _QueuePanelState extends ConsumerState<QueuePanel> {
                         ),
                       ),
                       _ToggleChip(
-                        icon: Icons.shuffle_rounded,
+                        glyph: GlyphKind.shuffle,
                         tooltip: shuffle ? 'Shuffle: on' : 'Shuffle: off',
                         selected: shuffle,
                         onTap: player.toggleShuffle,
                       ),
                       const SizedBox(width: 6),
                       _ToggleChip(
-                        icon: repeat == LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
+                        glyph: repeat == LoopMode.one ? GlyphKind.repeatOne : GlyphKind.repeat,
                         tooltip: switch (repeat) {
                           LoopMode.off => 'Repeat: off',
                           LoopMode.all => 'Repeat: all',
@@ -109,7 +110,7 @@ class _QueuePanelState extends ConsumerState<QueuePanel> {
                       ),
                       const SizedBox(width: 6),
                       _ToggleChip(
-                        icon: Icons.close_rounded,
+                        glyph: GlyphKind.close,
                         tooltip: 'Close queue (Q)',
                         selected: false,
                         onTap: () => ref.read(queueOpenProvider.notifier).set(false),
@@ -154,9 +155,9 @@ class _QueuePanelState extends ConsumerState<QueuePanel> {
 }
 
 class _ToggleChip extends StatelessWidget {
-  const _ToggleChip({required this.icon, required this.tooltip, required this.selected, required this.onTap});
+  const _ToggleChip({required this.glyph, required this.tooltip, required this.selected, required this.onTap});
 
-  final IconData icon;
+  final GlyphKind glyph;
   final String tooltip;
   final bool selected;
   final VoidCallback onTap;
@@ -178,7 +179,14 @@ class _ToggleChip extends StatelessWidget {
             color: selected ? scheme.primary : (s.hovered ? scheme.surfaceContainerHighest : scheme.surfaceContainerHigh),
             borderRadius: BorderRadius.circular(selected || s.pressed ? 14 : 22),
           ),
-          child: Icon(icon, size: 20, color: selected ? scheme.onPrimary : scheme.onSurface),
+          child: Center(
+            child: AnimatedGlyph(
+              kind: glyph,
+              size: 20,
+              color: selected ? scheme.onPrimary : scheme.onSurface,
+              active: s.pressed,
+            ),
+          ),
         ),
       ),
     );

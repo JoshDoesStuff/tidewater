@@ -71,6 +71,13 @@ class SettingsPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   _SwitchRow(
+                    title: 'Queue as a side panel',
+                    subtitle: 'Docks the queue beside Now Playing and shrinks the player to fit. Off opens it as a popup over the player. Narrow windows always use the popup.',
+                    value: ref.watch(queueSidePanelProvider),
+                    onChanged: ref.read(queueSidePanelProvider.notifier).set,
+                  ),
+                  const SizedBox(height: 8),
+                  _SwitchRow(
                     title: 'Hide Japanese text',
                     subtitle: 'Removes Japanese characters from artist, album, track and playlist names. A name that is only Japanese shows as a dash.',
                     value: ref.watch(hideJapaneseProvider),

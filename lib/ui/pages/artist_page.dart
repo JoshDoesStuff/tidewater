@@ -9,6 +9,7 @@ import '../widgets/art_tile.dart';
 import '../widgets/async_states.dart';
 import '../widgets/effects/letter_reveal.dart';
 import '../widgets/effects/stagger_in.dart';
+import '../widgets/animated_glyphs.dart';
 import '../widgets/expressive_buttons.dart';
 import '../widgets/shapes/morph_path.dart';
 import 'album_page.dart' show goBack;
@@ -32,6 +33,7 @@ class ArtistPage extends ConsumerWidget {
           children: [
             ExpressiveIconButton(
               icon: Icons.arrow_back_rounded,
+              glyph: glyphFor(GlyphKind.back, onPress: true),
               tooltip: 'Back',
               tone: ButtonTone.ghost,
               onPressed: () => goBack(context),
@@ -127,6 +129,7 @@ class _ArtistBody extends ConsumerWidget {
                       ExpressivePillButton(
                         label: 'Shuffle',
                         icon: Icons.shuffle_rounded,
+              glyph: GlyphKind.shuffle,
                         filled: false,
                         onPressed: () => player.playArtist(artist, shuffle: true),
                       ),
