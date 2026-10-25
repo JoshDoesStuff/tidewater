@@ -15,6 +15,7 @@ import 'package:tidewater/app/theme/album_scheme.dart';
 import 'package:tidewater/app/theme/motion.dart';
 import 'package:tidewater/core/color/cover_seed.dart';
 import 'package:tidewater/ui/widgets/effects/glyph_run.dart';
+import 'package:tidewater/ui/widgets/expressive_buttons.dart';
 import 'package:tidewater/ui/widgets/effects/letter_reveal.dart';
 import 'package:tidewater/ui/widgets/shapes/morph_path.dart';
 import 'package:tidewater/ui/widgets/wavy_progress.dart';
@@ -81,12 +82,14 @@ void main() {
 
   testWidgets('filter chips hug their labels and sit in one row', (tester) async {
     await _pumpApp(tester);
-    final all = tester.getRect(find.ancestor(of: find.text('All'), matching: find.byType(AnimatedContainer)).first);
-    final albums = tester.getRect(find.ancestor(of: find.text('Albums'), matching: find.byType(AnimatedContainer)).first);
-    expect(all.width, lessThan(200));
+    await tester.tap(find.text('Library'));
+    await _advance(tester, const Duration(seconds: 2));
+    final albums = tester.getRect(find.widgetWithText(ExpressiveChip, 'Albums'));
+    final songs = tester.getRect(find.widgetWithText(ExpressiveChip, 'Songs'));
     expect(albums.width, lessThan(200));
-    expect(albums.top, all.top);
-    expect(albums.left, greaterThan(all.right));
+    expect(songs.width, lessThan(200));
+    expect(songs.top, albums.top);
+    expect(songs.left, greaterThan(albums.right));
     await _dispose(tester);
   });
 

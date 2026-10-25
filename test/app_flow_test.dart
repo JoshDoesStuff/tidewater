@@ -185,16 +185,10 @@ void main() {
       await disposeApp(tester);
     });
 
-    testWidgets('chips switch what Home shows', (tester) async {
+    testWidgets('Home is one scrolling page with no tabs', (tester) async {
       await pumpApp(tester);
-      await tester.tap(find.widgetWithText(ExpressiveChip, 'Artists'));
-      await advance(tester, const Duration(seconds: 2));
-      expect(find.text('Jump back in'), findsNothing);
-      expect(find.text('Mira Vale'), findsWidgets);
-      await tester.tap(find.widgetWithText(ExpressiveChip, 'Playlists'));
-      await advance(tester, const Duration(seconds: 2));
-      expect(find.text('Late Night Drive'), findsOneWidget);
-      expect(find.text('2 songs'), findsOneWidget);
+      expect(find.byType(ExpressiveChip), findsNothing);
+      expect(find.text('Jump back in'), findsOneWidget);
       await disposeApp(tester);
     });
 
@@ -253,7 +247,9 @@ void main() {
 
     testWidgets('an artist card opens the artist instead of starting playback', (tester) async {
       final container = await pumpApp(tester);
-      await tester.tap(find.widgetWithText(ExpressiveChip, 'Artists')); // Home chip
+      await tester.tap(find.text('Library'));
+      await advance(tester, const Duration(seconds: 2));
+      await tester.tap(find.widgetWithText(ExpressiveChip, 'Artists'));
       await advance(tester, const Duration(seconds: 2));
       final card = find.ancestor(of: find.text('Ana Soleil').first, matching: find.byType(MediaCard));
       await tester.tapAt(tester.getTopLeft(card) + const Offset(50, 50)); // the cover
@@ -296,6 +292,17 @@ void main() {
       expect(find.text('3 folk albums'), findsOneWidget);
       expect(find.text('Glass Orchard'), findsNothing);
       expect(find.text('Low Tide Letters'), findsOneWidget);
+      await disposeApp(tester);
+    });
+
+    testWidgets('leaving a tab fades it out before the next one appears', (tester) async {
+      await openLibrary(tester);
+      expect(find.text('Low Tide Letters'), findsOneWidget);
+      await tester.tap(find.widgetWithText(ExpressiveChip, 'Songs'));
+      await advance(tester, const Duration(milliseconds: 60));
+      expect(find.text('Low Tide Letters'), findsOneWidget, reason: 'old tab is still fading out');
+      await advance(tester, const Duration(seconds: 2));
+      expect(find.text('Low Tide Letters'), findsNothing);
       await disposeApp(tester);
     });
 

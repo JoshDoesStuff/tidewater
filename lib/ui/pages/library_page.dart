@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,8 +40,37 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
   double _rowExtent = 0;
   double _rowGap = _gap;
 
+  static const _fadeOut = Duration(milliseconds: 160);
+
+  /// The tab whose content is on screen. It trails the selected tab by the
+  /// fade-out, so leaving a tab is a transition like entering one.
+  late LibraryTab _shown = ref.read(libraryTabProvider);
+  bool _leaving = false;
+  Timer? _swap;
+
+  void _switchTo(LibraryTab next) {
+    if (next == _shown && !_leaving) return;
+    _swap?.cancel();
+    void show() {
+      if (!mounted) return;
+      if (_scroll.hasClients) _scroll.jumpTo(0);
+      setState(() {
+        _shown = next;
+        _leaving = false;
+      });
+    }
+
+    if (Motion.reduced(context)) {
+      show();
+      return;
+    }
+    setState(() => _leaving = true);
+    _swap = Timer(_fadeOut, show);
+  }
+
   @override
   void dispose() {
+    _swap?.cancel();
     _scroll.dispose();
     super.dispose();
   }
@@ -63,6 +94,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
   @override
   Widget build(BuildContext context) {
     final tab = ref.watch(libraryTabProvider);
+    ref.listen(libraryTabProvider, (_, next) => _switchTo(next));
     final sort = ref.watch(librarySortProvider);
     final genre = ref.watch(libraryGenreProvider);
     final albums = ref.watch(libraryAlbumsProvider(sort));
@@ -70,7 +102,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     final playlists = ref.watch(playlistsProvider);
     // Only the Songs tab pulls in every song (thousands of rows of metadata).
     final songSort = ref.watch(librarySongSortProvider);
-    final songs = tab == LibraryTab.songs
+    final songs = (tab == LibraryTab.songs || _shown == LibraryTab.songs)
         ? ref.watch(sortedSongsProvider)
         : null;
     final text = Theme.of(context).textTheme;
@@ -243,14 +275,23 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                   ),
                 ),
               ),
-              ..._body(
-                tab,
-                sort,
-                albums,
-                shownAlbums,
-                artists,
-                playlists,
-                songs,
+              // The old tab fades out before the new one is built (and staggers
+              // in); without this the content vanished the instant a tab was picked.
+              SliverAnimatedOpacity(
+                opacity: _leaving ? 0 : 1,
+                duration: Motion.of(context, _fadeOut),
+                curve: Curves.easeIn,
+                sliver: SliverMainAxisGroup(
+                  slivers: _body(
+                    _shown,
+                    sort,
+                    albums,
+                    shownAlbums,
+                    artists,
+                    playlists,
+                    songs,
+                  ),
+                ),
               ),
             ],
           ),
@@ -378,13 +419,18 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
             sliver: SliverFixedExtentList(
               itemExtent: SongRow.height,
               delegate: SliverChildBuilderDelegate(
-                (context, i) => SongRow(
+                (context, i) => StaggerIn(
                   key: ValueKey(list[i].id),
-                  track: list[i],
-                  // Queue everything loaded, in the order shown, from this song.
-                  onPlay: () => ref
-                      .read(playbackProvider.notifier)
-                      .playTracks(list, index: i),
+                  // Only the first screenful staggers; rows scrolled in later
+                  // just fade up.
+                  index: i < 12 ? i : 0,
+                  child: SongRow(
+                    track: list[i],
+                    // Queue everything loaded, in the order shown, from this song.
+                    onPlay: () => ref
+                        .read(playbackProvider.notifier)
+                        .playTracks(list, index: i),
+                  ),
                 ),
                 childCount: list.length,
               ),

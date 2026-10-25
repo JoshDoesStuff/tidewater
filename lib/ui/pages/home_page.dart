@@ -15,7 +15,6 @@ import '../widgets/cover_art.dart';
 import '../widgets/effects/letter_reveal.dart';
 import '../widgets/effects/ripple.dart';
 import '../widgets/effects/stagger_in.dart';
-import '../widgets/expressive_buttons.dart';
 import '../widgets/pressable.dart';
 import '../widgets/shapes/morph_path.dart';
 import 'page_frame.dart';
@@ -32,7 +31,6 @@ String greetingFor(DateTime now) {
   return 'Good night';
 }
 
-enum _HomeFilter { all, albums, artists, playlists }
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -42,7 +40,6 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  _HomeFilter _filter = _HomeFilter.all;
 
   void _showAll(LibraryTab tab, [LibrarySort? sort]) {
     ref.read(libraryTabProvider.notifier).set(tab);
@@ -56,62 +53,27 @@ class _HomePageState extends ConsumerState<HomePage> {
     final newest = ref.watch(albumRowProvider(AlbumListType.newest));
     final recent = ref.watch(albumRowProvider(AlbumListType.recent));
     final frequent = ref.watch(albumRowProvider(AlbumListType.frequent));
-    final artists = ref.watch(artistsProvider);
-    final playlists = ref.watch(playlistsProvider);
 
     final sections = <Widget>[
-      switch (_filter) {
-        _HomeFilter.all => _jumpBackIn(newest, recent, frequent),
-        _ => const SizedBox.shrink(),
-      },
-      if (_filter == _HomeFilter.all || _filter == _HomeFilter.albums) ...[
-        SectionHeader(
-          title: 'Recently added',
-          onAction: () => _showAll(LibraryTab.albums, LibrarySort.recentlyAdded),
-        ),
+      _jumpBackIn(newest, recent, frequent),
+      SectionHeader(
+        title: 'Recently added',
+        onAction: () => _showAll(LibraryTab.albums, LibrarySort.recentlyAdded),
+      ),
+      _CardRow<Album>(
+        value: newest,
+        onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.newest)),
+        emptyTitle: 'No albums yet',
+        emptyMessage: 'Add music to your Navidrome library and it will show up here.',
+        card: (a) => AlbumCard(album: a, size: 112),
+      ),
+      if (frequent.value?.isNotEmpty ?? false) ...[
+        const SectionHeader(title: 'Most played', action: null),
         _CardRow<Album>(
-          value: newest,
-          onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.newest)),
-          emptyTitle: 'No albums yet',
-          emptyMessage: 'Add music to your Navidrome library and it will show up here.',
+          value: frequent,
+          onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.frequent)),
+          emptyTitle: 'Nothing played yet',
           card: (a) => AlbumCard(album: a, size: 112),
-        ),
-        if (_filter == _HomeFilter.albums && (recent.value?.isNotEmpty ?? false)) ...[
-          const SectionHeader(title: 'Recently played', action: null),
-          _CardRow<Album>(
-            value: recent,
-            onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.recent)),
-            emptyTitle: 'Nothing played yet',
-            card: (a) => AlbumCard(album: a, size: 112),
-          ),
-        ],
-        if (frequent.value?.isNotEmpty ?? false) ...[
-          const SectionHeader(title: 'Most played', action: null),
-          _CardRow<Album>(
-            value: frequent,
-            onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.frequent)),
-            emptyTitle: 'Nothing played yet',
-            card: (a) => AlbumCard(album: a, size: 112),
-          ),
-        ],
-      ],
-      if (_filter == _HomeFilter.artists) ...[
-        SectionHeader(title: 'Artists', onAction: () => _showAll(LibraryTab.artists)),
-        _CardRow(
-          value: artists,
-          onRetry: () => ref.invalidate(artistsProvider),
-          emptyTitle: 'No artists yet',
-          card: (a) => ArtistCard(artist: a, size: 112),
-        ),
-      ],
-      if (_filter == _HomeFilter.playlists) ...[
-        SectionHeader(title: 'Playlists', onAction: () => _showAll(LibraryTab.playlists)),
-        _CardRow(
-          value: playlists,
-          onRetry: () => ref.invalidate(playlistsProvider),
-          emptyTitle: 'No playlists yet',
-          emptyMessage: 'Playlists you make in Navidrome appear here.',
-          card: (p) => PlaylistCard(playlist: p, size: 112),
         ),
       ],
     ];
@@ -128,22 +90,6 @@ class _HomePageState extends ConsumerState<HomePage> {
               text: greetingFor(DateTime.now()),
               style: text.displaySmall,
               delay: const Duration(milliseconds: 100),
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              children: [
-                for (final (i, label) in ['All', 'Albums', 'Artists', 'Playlists'].indexed)
-                  StaggerIn(
-                    index: i,
-                    child: ExpressiveChip(
-                      label: label,
-                      selected: i == _filter.index,
-                      onTap: () => setState(() => _filter = _HomeFilter.values[i]),
-                    ),
-                  ),
-              ],
             ),
             ...sections,
           ],
