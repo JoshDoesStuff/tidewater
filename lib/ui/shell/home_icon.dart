@@ -1,13 +1,16 @@
 import 'dart:ui' show PathMetric;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../app/providers/settings_providers.dart';
 
 /// The Lucide "house" icon (ISC, https://lucide.dev) with its Lucide Animated
 /// door animation (MIT, pqoqubbw; see third-party-licenses), drawn in code
 /// because its animated version is a React component with no Lottie file.
-/// The door draws itself on as [progress] runs 0 to 1; at 0 and 1 the icon is
-/// complete, so it can sit in the rail at rest.
-class HomeIcon extends StatelessWidget {
+/// The door erases and draws itself on again as [progress] runs 0 to 1; at 0 and
+/// 1 the icon is complete, so it can sit in the rail at rest.
+class HomeIcon extends ConsumerWidget {
   const HomeIcon({super.key, required this.progress, required this.color, this.size = 22});
 
   final double progress;
@@ -15,13 +18,19 @@ class HomeIcon extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) {
-    return CustomPaint(size: Size.square(size), painter: _HomePainter(progress, color));
+  Widget build(BuildContext context, WidgetRef ref) {
+    return CustomPaint(
+      size: Size.square(size),
+      painter: _HomePainter(progress, color, ghost: ref.watch(iconGhostProvider)),
+    );
   }
 }
 
 class _HomePainter extends CustomPainter {
-  _HomePainter(this.progress, this.color);
+  _HomePainter(this.progress, this.color, {required this.ghost});
+
+  /// Keep a faint door under the redraw (a Settings option).
+  final bool ghost;
 
   final double progress;
   final Color color;
@@ -64,15 +73,15 @@ class _HomePainter extends CustomPainter {
       canvas.drawPath(door, paint);
       return;
     }
-    // A faint door stays put so it never vanishes, and the full-strength outline
-    // draws over it from the start up to `progress` of its length.
-    canvas.drawPath(door, Paint.from(paint)..color = color.withValues(alpha: .3));
-    final eased = Curves.easeOutCubic.transform(progress);
+    // The door erases back toward its start, then draws on again; optionally a
+    // faint copy stays under it so it never fully disappears.
+    if (ghost) canvas.drawPath(door, Paint.from(paint)..color = color.withValues(alpha: .3));
+    final eased = progress < .3 ? 1 - Curves.easeIn.transform(progress / .3) : Curves.easeOut.transform((progress - .3) / .7);
     for (final PathMetric m in door.computeMetrics()) {
       canvas.drawPath(m.extractPath(0, m.length * eased), paint);
     }
   }
 
   @override
-  bool shouldRepaint(_HomePainter old) => old.progress != progress || old.color != color;
+  bool shouldRepaint(_HomePainter old) => old.progress != progress || old.color != color || old.ghost != ghost;
 }

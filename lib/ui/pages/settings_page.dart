@@ -78,6 +78,13 @@ class SettingsPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   _SwitchRow(
+                    title: 'Faint icon while it redraws',
+                    subtitle: 'Some icons erase and draw themselves again when clicked. On keeps a faint copy of the icon underneath so it never fully disappears.',
+                    value: ref.watch(iconGhostProvider),
+                    onChanged: ref.read(iconGhostProvider.notifier).set,
+                  ),
+                  const SizedBox(height: 8),
+                  _SwitchRow(
                     title: 'Hide Japanese text',
                     subtitle: 'Removes Japanese characters from artist, album, track and playlist names. A name that is only Japanese shows as a dash.',
                     value: ref.watch(hideJapaneseProvider),

@@ -193,3 +193,19 @@ class QueueSidePanelNotifier extends Notifier<bool> {
 }
 
 final queueSidePanelProvider = NotifierProvider<QueueSidePanelNotifier, bool>(QueueSidePanelNotifier.new);
+
+/// While an icon redraws itself, keep a faint copy of it underneath instead of
+/// letting it disappear first. Persisted.
+class IconGhostNotifier extends Notifier<bool> {
+  static const _key = 'icon_ghost';
+
+  @override
+  bool build() => ref.watch(sharedPreferencesProvider).getBool(_key) ?? false;
+
+  void set(bool value) {
+    state = value;
+    ref.read(sharedPreferencesProvider).setBool(_key, value);
+  }
+}
+
+final iconGhostProvider = NotifierProvider<IconGhostNotifier, bool>(IconGhostNotifier.new);

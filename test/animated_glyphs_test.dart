@@ -1,8 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/ui/widgets/animated_glyphs.dart';
 
-Widget _host(Widget child) => MaterialApp(home: Center(child: child));
+Widget _host(Widget child, {bool ghost = false}) {
+  SharedPreferences.setMockInitialValues({'icon_ghost': ghost});
+  return FutureBuilder<SharedPreferences>(
+    future: SharedPreferences.getInstance(),
+    builder: (context, snapshot) => snapshot.hasData
+        ? ProviderScope(
+            overrides: [sharedPreferencesProvider.overrideWithValue(snapshot.data!)],
+            child: MaterialApp(home: Center(child: child)),
+          )
+        : const SizedBox(),
+  );
+}
 
 void main() {
   for (final kind in GlyphKind.values) {

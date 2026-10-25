@@ -1,8 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
 
+import '../../app/providers/settings_providers.dart';
 import '../../app/theme/motion.dart';
 
 /// Compositions are parsed once and shared.
@@ -41,7 +43,7 @@ enum GlyphKind { list, cards, sort, filter, next, previous, shuffle, menu, repea
 /// lengths pulling in, the filter bars pinch toward the middle, skip arrows
 /// shoot off and return, shuffle's two arrows trace across each other and the
 /// menu bars shift in a wave.
-class AnimatedGlyph extends StatefulWidget {
+class AnimatedGlyph extends ConsumerStatefulWidget {
   const AnimatedGlyph({
     super.key,
     required this.kind,
@@ -58,10 +60,10 @@ class AnimatedGlyph extends StatefulWidget {
   final bool active;
 
   @override
-  State<AnimatedGlyph> createState() => _AnimatedGlyphState();
+  ConsumerState<AnimatedGlyph> createState() => _AnimatedGlyphState();
 }
 
-class _AnimatedGlyphState extends State<AnimatedGlyph> with SingleTickerProviderStateMixin, _PlayOnEdge {
+class _AnimatedGlyphState extends ConsumerState<AnimatedGlyph> with SingleTickerProviderStateMixin, _PlayOnEdge {
   @override
   bool get hovered => widget.hovered;
   @override
@@ -79,14 +81,17 @@ class _AnimatedGlyphState extends State<AnimatedGlyph> with SingleTickerProvider
       animation: controller,
       builder: (context, _) => CustomPaint(
         size: Size.square(widget.size),
-        painter: _GlyphPainter(widget.kind, controller.value, widget.color),
+        painter: _GlyphPainter(widget.kind, controller.value, widget.color, ghost: ref.watch(iconGhostProvider)),
       ),
     );
   }
 }
 
 class _GlyphPainter extends CustomPainter {
-  _GlyphPainter(this.kind, this.t, this.color);
+  _GlyphPainter(this.kind, this.t, this.color, {required this.ghost});
+
+  /// Keep a faint copy of the icon under a redraw (a Settings option).
+  final bool ghost;
 
   final GlyphKind kind;
   final double t;
@@ -288,8 +293,8 @@ class _GlyphPainter extends CustomPainter {
           // A faint copy stays put so the icon never vanishes while it redraws.
           _ghost(canvas, circle, line);
           _ghost(canvas, slash, line);
-          _trace(canvas, circle, Curves.easeOut.transform((t / .6).clamp(0.0, 1.0)), line);
-          _trace(canvas, slash, Curves.easeOut.transform(((t - .4) / .5).clamp(0.0, 1.0)), line);
+          _trace(canvas, circle, _redraw(t / .75), line);
+          _trace(canvas, slash, _redraw((t - .15) / .85), line);
         } else {
           canvas.drawPath(circle, line);
           canvas.drawPath(slash, line);
@@ -331,8 +336,16 @@ class _GlyphPainter extends CustomPainter {
     canvas.drawLine(Offset(19 + nudge, 5.5), Offset(19 + nudge, 18.5), line);
   }
 
+  /// How much of a traced outline is showing at [u] (0 to 1): it first erases
+  /// back toward its start, then draws on again, ending complete.
+  static double _redraw(double u) {
+    final x = u.clamp(0.0, 1.0);
+    return x < .3 ? 1 - Curves.easeIn.transform(x / .3) : Curves.easeOut.transform((x - .3) / .7);
+  }
+
   /// [path] at low strength: the resting shape kept visible under a trace-on.
   void _ghost(Canvas canvas, Path path, Paint line) {
+    if (!ghost) return;
     canvas.drawPath(path, Paint.from(line)..color = color.withValues(alpha: .3));
   }
 
@@ -367,7 +380,7 @@ class _GlyphPainter extends CustomPainter {
       }
     }
     for (final (i, path) in [down, up].indexed) {
-      final p = _running ? Curves.easeInOut.transform(((t - i * .12) / .7).clamp(0.0, 1.0)) : 1.0;
+      final p = _running ? _redraw((t - i * .12) / .8) : 1.0;
       _trace(canvas, path, p, line);
       final head = _running ? ((p - .75) / .25).clamp(0.0, 1.0) : 1.0;
       if (head > 0) {
@@ -405,7 +418,7 @@ class _GlyphPainter extends CustomPainter {
       _ghost(canvas, Path()..moveTo(7, 15.5)..lineTo(4, 18.5)..lineTo(7, 21.5), line);
     }
     for (final (i, path) in [top, bottom].indexed) {
-      final p = _running ? Curves.easeInOut.transform(((t - i * .14) / .65).clamp(0.0, 1.0)) : 1.0;
+      final p = _running ? _redraw((t - i * .14) / .78) : 1.0;
       _trace(canvas, path, p, line);
       final head = _running ? ((p - .7) / .3).clamp(0.0, 1.0) : 1.0;
       if (head > 0) {
@@ -417,7 +430,7 @@ class _GlyphPainter extends CustomPainter {
       }
     }
     if (one) {
-      final fade = _running ? ((t - .6) / .4).clamp(0.0, 1.0) : 1.0;
+      final fade = _running ? ((_redraw(t / .9) - .5) / .5).clamp(0.0, 1.0) : 1.0;
       canvas.drawPath(
         Path()
           ..moveTo(10.6, 10.6)
@@ -431,7 +444,7 @@ class _GlyphPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_GlyphPainter old) => old.kind != kind || old.t != t || old.color != color;
+  bool shouldRepaint(_GlyphPainter old) => old.kind != kind || old.t != t || old.color != color || old.ghost != ghost;
 }
 
 /// A Lottie icon that rests on its first frame and plays once when hovered
