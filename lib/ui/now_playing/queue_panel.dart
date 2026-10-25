@@ -195,7 +195,6 @@ class _ToggleChip extends StatelessWidget {
               kind: glyph,
               size: 20,
               color: selected ? scheme.onPrimary : scheme.onSurface,
-              hovered: s.hovered,
               active: s.pressed,
             ),
           ),

@@ -285,6 +285,9 @@ class _GlyphPainter extends CustomPainter {
           ..moveTo(6, 6)
           ..lineTo(18, 18);
         if (_running) {
+          // A faint copy stays put so the icon never vanishes while it redraws.
+          _ghost(canvas, circle, line);
+          _ghost(canvas, slash, line);
           _trace(canvas, circle, Curves.easeOut.transform((t / .6).clamp(0.0, 1.0)), line);
           _trace(canvas, slash, Curves.easeOut.transform(((t - .4) / .5).clamp(0.0, 1.0)), line);
         } else {
@@ -328,6 +331,11 @@ class _GlyphPainter extends CustomPainter {
     canvas.drawLine(Offset(19 + nudge, 5.5), Offset(19 + nudge, 18.5), line);
   }
 
+  /// [path] at low strength: the resting shape kept visible under a trace-on.
+  void _ghost(Canvas canvas, Path path, Paint line) {
+    canvas.drawPath(path, Paint.from(line)..color = color.withValues(alpha: .3));
+  }
+
   /// Draws [path] up to the fraction [p] of its total length, across contours.
   void _trace(Canvas canvas, Path path, double p, Paint paint) {
     final metrics = path.computeMetrics().toList();
@@ -350,6 +358,14 @@ class _GlyphPainter extends CustomPainter {
     final up = Path()
       ..moveTo(4, 20)
       ..lineTo(20, 4);
+    if (_running) {
+      _ghost(canvas, down, line);
+      _ghost(canvas, up, line);
+      for (final tip in const [Offset(20, 20), Offset(20, 4)]) {
+        final dy = tip.dy > 10 ? -5.0 : 5.0;
+        _ghost(canvas, Path()..moveTo(tip.dx, tip.dy + dy)..lineTo(tip.dx, tip.dy)..lineTo(tip.dx - 5, tip.dy), line);
+      }
+    }
     for (final (i, path) in [down, up].indexed) {
       final p = _running ? Curves.easeInOut.transform(((t - i * .12) / .7).clamp(0.0, 1.0)) : 1.0;
       _trace(canvas, path, p, line);
@@ -382,6 +398,12 @@ class _GlyphPainter extends CustomPainter {
       (Offset(20, 5.5), const [Offset(-3, -3), Offset(-3, 3)]),
       (Offset(4, 18.5), const [Offset(3, -3), Offset(3, 3)]),
     ];
+    if (_running) {
+      _ghost(canvas, top, line);
+      _ghost(canvas, bottom, line);
+      _ghost(canvas, Path()..moveTo(17, 2.5)..lineTo(20, 5.5)..lineTo(17, 8.5), line);
+      _ghost(canvas, Path()..moveTo(7, 15.5)..lineTo(4, 18.5)..lineTo(7, 21.5), line);
+    }
     for (final (i, path) in [top, bottom].indexed) {
       final p = _running ? Curves.easeInOut.transform(((t - i * .14) / .65).clamp(0.0, 1.0)) : 1.0;
       _trace(canvas, path, p, line);
@@ -473,14 +495,15 @@ class _LottieGlyphState extends State<LottieGlyph> with SingleTickerProviderStat
   }
 }
 
-/// The cast button's icon: UseAnimations' "cast", waving when hovered.
+/// The cast button's icon: UseAnimations' "cast", waving when clicked.
 Widget castGlyph(BuildContext context, Color color, bool hovered, bool pressed) =>
-    LottieGlyph(asset: 'assets/icons/cast.json', color: color, hovered: hovered);
+    LottieGlyph(asset: 'assets/icons/cast.json', color: color, active: pressed);
 
-/// Builds a [GlyphKind] for an icon button: it plays when the pointer enters
-/// and again on each press.
-Widget Function(BuildContext, Color, bool, bool) glyphFor(GlyphKind kind, {double size = 22}) =>
-    (context, color, hovered, pressed) => AnimatedGlyph(kind: kind, color: color, size: size, hovered: hovered, active: pressed);
+/// Builds a [GlyphKind] for an icon button: it plays on each click, and also
+/// when the pointer enters if [hover] is set.
+Widget Function(BuildContext, Color, bool, bool) glyphFor(GlyphKind kind, {double size = 22, bool hover = false}) =>
+    (context, color, hovered, pressed) =>
+        AnimatedGlyph(kind: kind, color: color, size: size, hovered: hover && hovered, active: pressed);
 
 /// The volume speaker: UseAnimations' "volume" file scrubbed between its
 /// states. At [level] 0 (loud) the waves are out, at 1 (quiet) one wave has

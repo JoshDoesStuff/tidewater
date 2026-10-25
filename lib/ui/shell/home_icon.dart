@@ -64,10 +64,12 @@ class _HomePainter extends CustomPainter {
       canvas.drawPath(door, paint);
       return;
     }
-    // Draw-on: the door's outline from the start up to `progress` of its length.
+    // A faint door stays put so it never vanishes, and the full-strength outline
+    // draws over it from the start up to `progress` of its length.
+    canvas.drawPath(door, Paint.from(paint)..color = color.withValues(alpha: .3));
     final eased = Curves.easeOutCubic.transform(progress);
     for (final PathMetric m in door.computeMetrics()) {
-      canvas.drawPath(m.extractPath(0, m.length * eased), paint..color = color.withValues(alpha: eased.clamp(.0, 1.0)));
+      canvas.drawPath(m.extractPath(0, m.length * eased), paint);
     }
   }
 

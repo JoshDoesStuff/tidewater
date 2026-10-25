@@ -1,7 +1,6 @@
 # useAnimations
 
-Used for the Library, Cast, Artists, Lists, Radio and Settings icons (`assets/icons/`), and for
-the heart outline of the Liked icon (the shape is from its "heart-v2" file; the animation is drawn in code).
+Used for the Library, Cast, Artists, Lists, Radio, Settings and Volume icons (`assets/icons/`).
 Source: https://useanimations.com
 
 MIT License

@@ -361,7 +361,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
                   ),
                 ),
               ),
-              if (docked) const Positioned(right: 20, top: 20, bottom: 20, width: _dockWidth, child: QueuePanel(docked: true)),
+              if (docked) const Positioned(key: ValueKey('queue-dock'), right: 20, top: 20, bottom: 20, width: _dockWidth, child: QueuePanel(docked: true)),
               _idleProgress(context, idle),
             ],
           ),
@@ -513,8 +513,8 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
             ),
           ),
         if (!_queueDocked(context))
-          const Positioned(right: 36, top: 100, bottom: 36, width: 440, child: QueuePanel()),
-        const Positioned(right: 44, top: 112, child: VizPicker()),
+          const Positioned(key: ValueKey('queue-popup'), right: 36, top: 100, bottom: 36, width: 440, child: QueuePanel()),
+        const Positioned(key: ValueKey('viz-picker'), right: 44, top: 112, child: VizPicker()),
       ],
     );
   }
@@ -977,7 +977,7 @@ class _WideButton extends StatelessWidget {
           child: Ripple(
             color: scheme.onSecondaryContainer,
             child: Center(
-              child: AnimatedGlyph(kind: glyph, size: 26, color: scheme.onSecondaryContainer, hovered: s.hovered, active: s.pressed),
+              child: AnimatedGlyph(kind: glyph, size: 26, color: scheme.onSecondaryContainer, active: s.pressed),
             ),
           ),
         ),
@@ -1157,7 +1157,7 @@ class _LyricsButtonState extends State<_LyricsButton> {
     return ExpressiveIconButton(
       icon: Icons.lyrics_rounded,
       glyph: (context, color, hovered, pressed) =>
-          AnimatedGlyph(kind: GlyphKind.lyrics, size: 26, color: color, hovered: hovered, active: pressed || _entering),
+          AnimatedGlyph(kind: GlyphKind.lyrics, size: 26, color: color, active: pressed || _entering),
       size: 56,
       squareRadius: 18,
       selected: widget.selected,

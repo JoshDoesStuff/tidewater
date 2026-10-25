@@ -1,7 +1,6 @@
 # Lucide
 
-The Home sidebar icon uses the Lucide house shape (https://lucide.dev), and the
-Liked icon shares its stroke style.
+The Home sidebar icon uses the Lucide house shape (https://lucide.dev), and the in-code glyphs share its stroke style.
 The Home animation is from Lucide Animated, see `lucide-animated.md`.
 
 ISC License

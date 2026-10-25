@@ -38,7 +38,7 @@ class NavRail extends StatelessWidget {
           const SizedBox(height: 40),
           ExpressiveIconButton(
             icon: Icons.menu_rounded,
-            glyph: glyphFor(GlyphKind.menu, size: 24),
+            glyph: glyphFor(GlyphKind.menu, size: 24, hover: true),
             size: 56,
             iconSize: 24,
             squareRadius: 16,

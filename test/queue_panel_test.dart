@@ -156,4 +156,24 @@ void main() {
     expect(find.text('Queue'), findsOneWidget);
     await closeNowPlaying(tester, c);
   });
+
+  for (final docked in [true, false]) {
+    testWidgets('the queue ${docked ? 'side panel' : 'popup'} fades and slides in instead of appearing at once', (tester) async {
+      final c = await openNowPlaying(tester);
+      c.read(queueSidePanelProvider.notifier).set(docked);
+      await advance(tester, const Duration(milliseconds: 300));
+      double opacity() => tester
+          .widget<FadeTransition>(find.ancestor(of: find.text('Queue'), matching: find.byType(FadeTransition)).first)
+          .opacity
+          .value;
+      expect(opacity(), 0);
+      await tester.tap(find.byTooltip('Queue (Q)'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(opacity(), allOf(greaterThan(0), lessThan(1)), reason: 'partway through the transition');
+      await advance(tester, const Duration(seconds: 1));
+      expect(opacity(), 1);
+      await closeNowPlaying(tester, c);
+    });
+  }
 }

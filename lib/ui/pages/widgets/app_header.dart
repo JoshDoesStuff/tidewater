@@ -194,8 +194,15 @@ class _Avatar extends ConsumerWidget {
                   ? Icon(Icons.person_rounded, size: 24, color: scheme.onTertiaryContainer)
                   : Text(
                       initial,
+                      // Tight line box so the letter sits in the middle of the circle.
+                      textHeightBehavior: const TextHeightBehavior(
+                        applyHeightToFirstAscent: false,
+                        applyHeightToLastDescent: false,
+                      ),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontSize: 20,
+                            height: 1,
+                            leadingDistribution: TextLeadingDistribution.even,
                             fontWeight: FontWeight.w700,
                             color: scheme.onTertiaryContainer,
                           ),

@@ -174,7 +174,7 @@ class ExpressiveFab extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (glyph != null)
-                      AnimatedGlyph(kind: glyph!, size: 24, color: scheme.onPrimaryContainer, hovered: s.hovered)
+                      AnimatedGlyph(kind: glyph!, size: 24, color: scheme.onPrimaryContainer, active: s.pressed)
                     else
                       _Wiggle(
                         active: s.hovered,
@@ -384,7 +384,7 @@ class ExpressivePillButton extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (glyph != null)
-                  AnimatedGlyph(kind: glyph!, size: 24, color: fg, hovered: s.hovered)
+                  AnimatedGlyph(kind: glyph!, size: 24, color: fg, active: s.pressed)
                 else
                   Icon(icon, size: 24, color: fg),
                 const SizedBox(width: 10),
