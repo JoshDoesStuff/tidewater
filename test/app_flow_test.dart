@@ -12,7 +12,7 @@ import 'package:tidewater/core/api/server_config.dart';
 import 'package:tidewater/core/api/session_store.dart';
 import 'package:tidewater/core/models/album.dart';
 import 'package:tidewater/ui/pages/library_page.dart' show firstIndexForLetter;
-import 'package:tidewater/ui/pages/widgets/album_card.dart' show MediaCard, PlaylistCard, TrackCard;
+import 'package:tidewater/ui/pages/widgets/album_card.dart' show AlbumCard, MediaCard, PlaylistCard, TrackCard;
 import 'package:tidewater/ui/pages/widgets/song_row.dart';
 import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/ui/widgets/expressive_buttons.dart';
@@ -171,9 +171,9 @@ void main() {
     testWidgets('hero cards and rows come from the server', (tester) async {
       await pumpApp(tester);
       // recent -> heroes; frequent -> Most played; newest -> Recently added.
-      expect(find.text('Album · Mira Vale'), findsOneWidget);
+      expect(find.textContaining('Album · '), findsNWidgets(3));
       expect(find.text('Continue listening'), findsNothing, reason: 'nothing queued yet');
-      expect(find.text('Neon Cartography'), findsWidgets);
+      expect(find.byType(AlbumCard), findsWidgets);
       expect(find.text('Recently added'), findsOneWidget);
       await disposeApp(tester);
     });
@@ -181,11 +181,12 @@ void main() {
     testWidgets('the mini player only appears once something is queued', (tester) async {
       final container = await pumpApp(tester);
       expect(find.byTooltip('Next'), findsNothing);
-      await tester.tap(find.text('Glass Orchard').first);
+      final card = tester.widget<AlbumCard>(find.byType(AlbumCard).first);
+      await tester.tap(find.byWidget(card));
       await advance(tester, const Duration(seconds: 2));
-      expect(container.read(activeAlbumIdProvider), 'a0');
+      expect(container.read(activeAlbumIdProvider), card.album.id);
       expect(find.byTooltip('Next'), findsOneWidget);
-      expect(find.text('Lantern Season'), findsWidgets); // mini player + Continue listening
+      expect(find.text('Continue listening'), findsOneWidget);
       await container.read(playbackProvider.notifier).toggle();
       await disposeApp(tester);
     });
@@ -383,12 +384,20 @@ void main() {
   });
 
   group('liked songs, playlists and continue listening', () {
-    testWidgets('Home has a Liked songs row between Recently added and Most played', (tester) async {
+    testWidgets('Home has a Try something new row after Recently added, and no Liked row', (tester) async {
       await pumpApp(tester);
       final added = tester.getTopLeft(find.text('Recently added')).dy;
-      final liked = tester.getTopLeft(find.text('Liked songs')).dy;
-      expect(liked, greaterThan(added));
-      expect(find.text('Salt on the Window'), findsOneWidget);
+      final fresh = tester.getTopLeft(find.text('Try something new')).dy;
+      expect(fresh, greaterThan(added));
+      expect(find.text('Liked songs'), findsNothing);
+      await disposeApp(tester);
+    });
+
+    testWidgets('Jump back in has a random, a recently played and a recently added album', (tester) async {
+      await pumpApp(tester);
+      for (final tag in ['RANDOM', 'RECENTLY PLAYED', 'NEW']) {
+        expect(find.text(tag), findsOneWidget, reason: tag);
+      }
       await disposeApp(tester);
     });
 

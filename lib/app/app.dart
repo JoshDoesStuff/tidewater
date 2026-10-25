@@ -32,12 +32,11 @@ class TidewaterApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final reduceMotion = ref.watch(reduceMotionProvider);
     final brightness = ref.watch(darkThemeProvider) ? Brightness.dark : Brightness.light;
-    final japanese = ref.watch(japaneseTextProvider);
     final scheme = AlbumScheme.of(ref.watch(schemeSeedProvider), brightness);
     return MaterialApp.router(
       title: 'Tidewater',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.fromScheme(scheme, japanese: japanese),
+      theme: AppTheme.fromScheme(scheme),
       themeAnimationDuration: Duration.zero,
       routerConfig: ref.watch(routerProvider),
       scrollBehavior: const MaterialScrollBehavior().copyWith(
@@ -54,10 +53,7 @@ class TidewaterApp extends ConsumerWidget {
             tween: ColorSchemeTween(end: scheme),
             duration: reduced ? Duration.zero : Motion.recolor,
             curve: Curves.easeInOut,
-            builder: (context, animated, child) => Theme(
-              data: _themeMemo.of(animated, (s) => AppTheme.fromScheme(s, japanese: japanese), flag: japanese),
-              child: child!,
-            ),
+            builder: (context, animated, child) => Theme(data: _themeMemo.of(animated, AppTheme.fromScheme), child: child!),
             child: Listener(
               behavior: HitTestBehavior.translucent,
               onPointerDown: (e) => ref.read(pointerOriginProvider).value = e.position,

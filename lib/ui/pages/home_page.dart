@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -11,7 +12,6 @@ import '../../app/theme/app_theme.dart';
 import '../../app/theme/motion.dart';
 import '../../core/api/library_api.dart';
 import '../../core/models/album.dart';
-import '../../core/models/track.dart';
 import '../widgets/art_tile.dart';
 import '../widgets/async_states.dart';
 import '../widgets/cover_art.dart';
@@ -43,6 +43,15 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  static const _cardSize = 112.0;
+  static const _cardGap = 26.0;
+  static const _pagePad = 24.0 + 32.0;
+
+  final _random = math.Random();
+
+  /// The three hero picks, kept until their lists change so the carousel
+  /// doesn't reshuffle on every rebuild.
+  String? _randomId, _recentId, _newId;
 
   void _showAll(LibraryTab tab, [LibrarySort? sort]) {
     ref.read(libraryTabProvider.notifier).set(tab);
@@ -50,75 +59,121 @@ class _HomePageState extends ConsumerState<HomePage> {
     context.go(Destination.library.path);
   }
 
+  /// How many cards fit in one row at this window width.
+  static int _fit(double width) =>
+      (((width - _pagePad + _cardGap) / (_cardSize + _cardGap)).floor()).clamp(1, 20);
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final newest = ref.watch(albumRowProvider(AlbumListType.newest));
     final recent = ref.watch(albumRowProvider(AlbumListType.recent));
     final frequent = ref.watch(albumRowProvider(AlbumListType.frequent));
-    // Hearted songs, minus any un-hearted since the list loaded; a row of 20.
-    final liked = ref.watch(likedProvider);
-    final likedSongs = ref
-        .watch(likedSongsProvider)
-        .whenData((all) => [for (final t in all) if (liked.contains(t.id)) t].take(20).toList());
-
-    final sections = <Widget>[
-      _jumpBackIn(newest, recent),
-      SectionHeader(
-        title: 'Recently added',
-        onAction: () => _showAll(LibraryTab.albums, LibrarySort.recentlyAdded),
-      ),
-      _CardRow<Album>(
-        value: newest,
-        onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.newest)),
-        emptyTitle: 'No albums yet',
-        emptyMessage: 'Add music to your Navidrome library and it will show up here.',
-        card: (a) => AlbumCard(album: a, size: 112),
-      ),
-      if (likedSongs.value?.isNotEmpty ?? false) ...[
-        SectionHeader(title: 'Liked songs', onAction: () => context.go(Destination.liked.path)),
-        _CardRow<Track>(
-          value: likedSongs,
-          onRetry: () => ref.invalidate(likedSongsProvider),
-          emptyTitle: 'No liked songs yet',
-          card: (t) => TrackCard(tracks: likedSongs.requireValue, index: likedSongs.requireValue.indexOf(t), size: 112),
-        ),
-      ],
-      if (frequent.value?.isNotEmpty ?? false) ...[
-        const SectionHeader(title: 'Most played', action: null),
-        _CardRow<Album>(
-          value: frequent,
-          onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.frequent)),
-          emptyTitle: 'Nothing played yet',
-          card: (a) => AlbumCard(album: a, size: 112),
-        ),
-      ],
-    ];
+    final random = ref.watch(albumRowProvider(AlbumListType.random));
 
     return PageFrame(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 36, 32, PageFrame.bottomClearance),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const AppHeader(),
-            const SizedBox(height: 22),
-            LetterReveal(
-              text: greetingFor(DateTime.now()),
-              style: text.displaySmall,
-              delay: const Duration(milliseconds: 100),
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final fit = _fit(box.maxWidth);
+          final shown = newest.whenData((l) => l.take(fit).toList());
+          final heroes = _heroes(shown, recent, random);
+          final picked = {for (final h in heroes.albums) h.id};
+          final sections = <Widget>[
+            _jumpBackIn(newest, recent, heroes),
+            SectionHeader(
+              title: 'Recently added',
+              onAction: () => _showAll(LibraryTab.albums, LibrarySort.recentlyAdded),
             ),
-            ...sections,
-          ],
-        ),
+            _CardRow<Album>(
+              value: shown,
+              onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.newest)),
+              emptyTitle: 'No albums yet',
+              emptyMessage: 'Add music to your Navidrome library and it will show up here.',
+              card: (a) => AlbumCard(album: a, size: _cardSize),
+            ),
+            if (random.value?.isNotEmpty ?? false) ...[
+              SectionHeader(
+                title: 'Try something new',
+                action: 'Shuffle picks',
+                onAction: () {
+                  _randomId = null;
+                  ref.invalidate(albumRowProvider(AlbumListType.random));
+                },
+              ),
+              _CardRow<Album>(
+                value: random.whenData(
+                  (l) => [for (final a in l) if (!picked.contains(a.id)) a].take(fit).toList(),
+                ),
+                onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.random)),
+                emptyTitle: 'Nothing to suggest',
+                card: (a) => AlbumCard(album: a, size: _cardSize),
+              ),
+            ],
+            if (frequent.value?.isNotEmpty ?? false) ...[
+              const SectionHeader(title: 'Most played', action: null),
+              _CardRow<Album>(
+                value: frequent.whenData((l) => l.take(fit).toList()),
+                onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.frequent)),
+                emptyTitle: 'Nothing played yet',
+                card: (a) => AlbumCard(album: a, size: _cardSize),
+              ),
+            ],
+          ];
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 36, 32, PageFrame.bottomClearance),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const AppHeader(),
+                const SizedBox(height: 22),
+                LetterReveal(
+                  text: greetingFor(DateTime.now()),
+                  style: text.displaySmall,
+                  delay: const Duration(milliseconds: 100),
+                ),
+                ...sections,
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  /// Hero cards come from what was played last, topped up with the newest
-  /// albums; beside them sits Continue listening whenever a queue exists
-  /// (including the one restored from last time).
-  Widget _jumpBackIn(AsyncValue<List<Album>> newest, AsyncValue<List<Album>> recent) {
+  /// One album from all albums (random), one from recently played, one from
+  /// the Recently added row as shown. Kept stable until a list changes.
+  ({List<Album> albums, List<String> tags}) _heroes(
+    AsyncValue<List<Album>> shown,
+    AsyncValue<List<Album>> recent,
+    AsyncValue<List<Album>> random,
+  ) {
+    final taken = <String>{};
+    Album? choose(List<Album>? from, String? current, void Function(String?) set) {
+      final pool = [for (final a in from ?? const <Album>[]) if (!taken.contains(a.id)) a];
+      if (pool.isEmpty) return null;
+      final keep = pool.where((a) => a.id == current);
+      final a = keep.isNotEmpty ? keep.first : pool[_random.nextInt(pool.length)];
+      set(a.id);
+      taken.add(a.id);
+      return a;
+    }
+
+    final fromRecent = choose(recent.value, _recentId, (id) => _recentId = id);
+    final fromNew = choose(shown.value, _newId, (id) => _newId = id);
+    final fromAll = choose(random.value, _randomId, (id) => _randomId = id);
+    return (
+      albums: [?fromAll, ?fromRecent, ?fromNew],
+      tags: [if (fromAll != null) 'Random', if (fromRecent != null) 'Recently played', if (fromNew != null) 'New'],
+    );
+  }
+
+  /// Hero cards come from [heroes]; beside them sits Continue listening
+  /// whenever a queue exists (including the one restored from last time).
+  Widget _jumpBackIn(
+    AsyncValue<List<Album>> newest,
+    AsyncValue<List<Album>> recent,
+    ({List<Album> albums, List<String> tags}) picks,
+  ) {
     final Widget body;
     if (newest.hasError && !newest.hasValue) {
       body = ErrorPanel(error: newest.error!, onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.newest)));
@@ -131,11 +186,9 @@ class _HomePageState extends ConsumerState<HomePage> {
         message: 'Add music to your Navidrome server and it will show up here.',
       );
     } else {
-      final heroes = _distinct([...?recent.value, ...newest.requireValue]).take(3).toList();
-      final playedIds = {for (final a in recent.value ?? const <Album>[]) a.id};
       body = _Carousel(
-        heroes: heroes,
-        tags: [for (final a in heroes) playedIds.contains(a.id) ? 'Recently played' : 'New'],
+        heroes: picks.albums,
+        tags: picks.tags,
         resume: ref.watch(currentTrackProvider) != null,
       );
     }
@@ -148,13 +201,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  static List<Album> _distinct(Iterable<Album> albums) {
-    final seen = <String>{};
-    return [
-      for (final a in albums)
-        if (seen.add(a.id)) a,
-    ];
-  }
 }
 
 /// Horizontal row of cards with loading, error and empty states.
@@ -203,14 +249,17 @@ class _CardRow<T> extends StatelessWidget {
     }
     final items = value.requireValue;
     if (items.isEmpty) return EmptyPanel(icon: Icons.inbox_rounded, title: emptyTitle, message: emptyMessage);
+    // Callers trim the list to what fits, so the row never scrolls.
     return SizedBox(
       height: _rowHeight,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        clipBehavior: Clip.none,
-        itemCount: items.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 26),
-        itemBuilder: (context, i) => StaggerIn(index: i + 4, child: card(items[i])),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) const SizedBox(width: 26),
+            StaggerIn(index: i + 4, child: card(items[i])),
+          ],
+        ],
       ),
     );
   }
@@ -398,7 +447,11 @@ class _HeroCard extends ConsumerWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            tag == 'New' ? Icons.auto_awesome_rounded : Icons.history_rounded,
+                            switch (tag) {
+                              'New' => Icons.auto_awesome_rounded,
+                              'Random' => Icons.casino_rounded,
+                              _ => Icons.history_rounded,
+                            },
                             size: 14,
                             color: AppTheme.onArt,
                           ),

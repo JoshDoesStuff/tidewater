@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/models/json_util.dart' show NameFilter;
+
 /// Overridden in `main()` (and in tests) with the loaded instance.
 final sharedPreferencesProvider = Provider<SharedPreferences>(
   (ref) => throw UnimplementedError('sharedPreferencesProvider must be overridden'),
@@ -140,21 +142,26 @@ class LrclibEnabledNotifier extends Notifier<bool> {
 
 final lrclibEnabledProvider = NotifierProvider<LrclibEnabledNotifier, bool>(LrclibEnabledNotifier.new);
 
-/// Draw Japanese text (artist, album, track and playlist names) with Japanese
-/// fonts instead of the system's default CJK pick. Persisted.
-class JapaneseTextNotifier extends Notifier<bool> {
-  static const _key = 'japanese_text';
+/// Hide Japanese characters from every name (artist, album, track, playlist).
+/// Persisted; the models read it through [NameFilter] and the API refetches.
+class HideJapaneseNotifier extends Notifier<bool> {
+  static const _key = 'hide_japanese';
 
   @override
-  bool build() => ref.watch(sharedPreferencesProvider).getBool(_key) ?? true;
+  bool build() {
+    final hide = ref.watch(sharedPreferencesProvider).getBool(_key) ?? false;
+    NameFilter.hideJapanese = hide;
+    return hide;
+  }
 
   void set(bool value) {
+    NameFilter.hideJapanese = value;
     state = value;
     ref.read(sharedPreferencesProvider).setBool(_key, value);
   }
 }
 
-final japaneseTextProvider = NotifierProvider<JapaneseTextNotifier, bool>(JapaneseTextNotifier.new);
+final hideJapaneseProvider = NotifierProvider<HideJapaneseNotifier, bool>(HideJapaneseNotifier.new);
 
 /// Liked songs page: cards instead of a list. Persisted.
 class LikedAsCardsNotifier extends Notifier<bool> {

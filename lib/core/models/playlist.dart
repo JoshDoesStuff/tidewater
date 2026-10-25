@@ -13,7 +13,7 @@ class Playlist {
 
   factory Playlist.fromJson(Map<String, dynamic> j) => Playlist(
         id: asString(j['id']) ?? '',
-        name: asString(j['name']) ?? 'Untitled',
+        name: asName(j['name']) ?? 'Untitled',
         owner: asString(j['owner']),
         songCount: asInt(j['songCount']) ?? 0,
         duration: asSeconds(j['duration']),

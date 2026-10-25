@@ -1,11 +1,10 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../app/destinations.dart';
 import '../../app/theme/motion.dart';
 import '../widgets/expressive_buttons.dart';
 import '../widgets/pressable.dart';
+import 'rail_icon_motion.dart';
 
 /// Left navigation rail. Custom rather than Flutter's NavigationRail so the
 /// pill indicator can spring between items as in the demo. [compact] drops
@@ -93,7 +92,7 @@ class _RailItem extends StatefulWidget {
 
 class _RailItemState extends State<_RailItem> with SingleTickerProviderStateMixin {
   /// Plays once each time the item becomes the selected one, alongside the
-  /// page transition: the icon hops up, overshoots and wiggles.
+  /// page transition: each destination has its own icon motion.
   late final AnimationController _pop = AnimationController(vsync: this, duration: Motion.slow);
 
   Destination get destination => widget.destination;
@@ -158,18 +157,7 @@ class _RailItemState extends State<_RailItem> with SingleTickerProviderStateMixi
                       duration: Motion.of(context, Motion.fast),
                       child: AnimatedBuilder(
                         animation: _pop,
-                        builder: (context, child) {
-                          final t = _pop.value;
-                          // Hop up and settle, with a decaying wiggle.
-                          final hop = -7 * math.sin(math.pi * t.clamp(0, .5) * 2) * (1 - t);
-                          final turn = .35 * math.sin(t * math.pi * 3) * (1 - t);
-                          final grow = 1 + .3 * math.sin(math.pi * t) * (1 - t);
-                          return Transform.translate(
-                            offset: Offset(0, hop),
-                            child: Transform.rotate(angle: turn, child: Transform.scale(scale: grow, child: child)),
-                          );
-                        },
-                        child: Icon(destination.icon, size: 22, color: fg),
+                        builder: (context, _) => railIconMotion(destination, _pop.value, fg),
                       ),
                     ),
                   ],

@@ -24,11 +24,11 @@ class Track {
 
   factory Track.fromJson(Map<String, dynamic> j, {Album? fallbackAlbum}) => Track(
         id: asString(j['id']) ?? '',
-        title: asString(j['title']) ?? 'Unknown title',
-        artist: asString(j['artist']) ?? fallbackAlbum?.artist ?? 'Unknown artist',
+        title: asName(j['title']) ?? 'Unknown title',
+        artist: asName(j['artist']) ?? fallbackAlbum?.artist ?? 'Unknown artist',
         artistId: asString(j['artistId']),
         albumId: asString(j['albumId']) ?? fallbackAlbum?.id ?? '',
-        albumTitle: asString(j['album']) ?? fallbackAlbum?.title ?? '',
+        albumTitle: asName(j['album']) ?? fallbackAlbum?.title ?? '',
         // Tracks usually share the album's cover; fall back to it.
         coverArt: asString(j['coverArt']) ?? fallbackAlbum?.coverArt,
         duration: asSeconds(j['duration']),

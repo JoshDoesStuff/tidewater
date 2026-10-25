@@ -6,7 +6,7 @@ class Artist {
 
   factory Artist.fromJson(Map<String, dynamic> j) => Artist(
         id: asString(j['id']) ?? '',
-        name: asString(j['name']) ?? 'Unknown artist',
+        name: asName(j['name']) ?? 'Unknown artist',
         albumCount: asInt(j['albumCount']) ?? 0,
         coverArt: asString(j['coverArt']),
         starred: j['starred'] != null,

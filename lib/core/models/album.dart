@@ -20,8 +20,8 @@ class Album {
 
   factory Album.fromJson(Map<String, dynamic> j) => Album(
         id: asString(j['id']) ?? '',
-        title: asString(j['name'] ?? j['title'] ?? j['album']) ?? 'Unknown album',
-        artist: asString(j['artist']) ?? 'Unknown artist',
+        title: asName(j['name'] ?? j['title'] ?? j['album']) ?? 'Unknown album',
+        artist: asName(j['artist']) ?? 'Unknown artist',
         artistId: asString(j['artistId']),
         coverArt: asString(j['coverArt']),
         year: asInt(j['year']),

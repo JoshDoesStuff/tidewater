@@ -55,13 +55,9 @@ class ThemeMemo {
   ColorScheme? _scheme;
   ThemeData? _data;
 
-  bool? _flag;
-
-  /// [flag] is any extra input to [build]; changing it rebuilds the theme.
-  ThemeData of(ColorScheme scheme, ThemeData Function(ColorScheme) build, {bool flag = false}) {
-    if (!identical(scheme, _scheme) || flag != _flag) {
+  ThemeData of(ColorScheme scheme, ThemeData Function(ColorScheme) build) {
+    if (!identical(scheme, _scheme)) {
       _scheme = scheme;
-      _flag = flag;
       _data = build(scheme);
     }
     return _data!;
