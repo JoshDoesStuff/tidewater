@@ -109,7 +109,8 @@ class _AppShellState extends ConsumerState<AppShell> {
                   bottom: 0,
                   width: railWidth,
                   child: NavRail(
-                    selected: Destination.fromLocation(widget.location),
+                    // Album and artist pages belong to the Library.
+                    selected: Destination.fromLocation(widget.location) ?? Destination.library,
                     compact: compact,
                     onSelected: (d) => context.go(d.path),
                   ),

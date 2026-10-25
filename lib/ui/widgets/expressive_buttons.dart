@@ -315,3 +315,65 @@ class ExpressiveChipGroup extends StatelessWidget {
     );
   }
 }
+
+/// A pill button with an icon and a label: filled (primary) or tonal. Round at
+/// rest, squarer while pressed, like the other expressive buttons.
+class ExpressivePillButton extends StatelessWidget {
+  const ExpressivePillButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.filled = true,
+    this.height = 56,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  /// Primary fill, or the quieter tonal one.
+  final bool filled;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final bg = filled ? scheme.primary : scheme.secondaryContainer;
+    final fg = filled ? scheme.onPrimary : scheme.onSecondaryContainer;
+    return Pressable(
+      onTap: onPressed,
+      semanticLabel: label,
+      builder: (context, s) => AnimatedScale(
+        scale: s.pressed ? .96 : 1,
+        duration: Motion.of(context, Motion.fast),
+        curve: Motion.curve(context, Motion.spring),
+        child: AnimatedContainer(
+          duration: Motion.of(context, Motion.slow),
+          curve: Motion.curve(context, Motion.spring),
+          height: height,
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: s.hovered && !filled ? Color.lerp(bg, scheme.onSecondaryContainer, .08) : bg,
+            borderRadius: BorderRadius.circular(s.pressed ? 16 : height / 2),
+          ),
+          child: Ripple(
+            color: fg,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 24, color: fg),
+                const SizedBox(width: 10),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: fg),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

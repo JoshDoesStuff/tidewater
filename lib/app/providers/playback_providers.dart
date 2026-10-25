@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -23,6 +25,7 @@ final playbackEngineProvider = Provider<PlaybackEngine>((ref) {
 
 class PlaybackController extends Notifier<PlaybackState> {
   PlaybackEngine get _engine => ref.read(playbackEngineProvider);
+  final _random = math.Random();
 
   @override
   PlaybackState build() {
@@ -42,7 +45,9 @@ class PlaybackController extends Notifier<PlaybackState> {
         return;
       }
       ref.read(likedProvider.notifier).seed(queue);
-      await _engine.playQueue(queue, index: index, shuffle: shuffle);
+      // A shuffled play starts anywhere, not always on the first track.
+      final start = shuffle && index == 0 ? _random.nextInt(queue.length) : index;
+      await _engine.playQueue(queue, index: start, shuffle: shuffle);
     } on ApiException catch (e) {
       ref.read(toastProvider.notifier).show(
             e.isOffline ? 'Can\'t reach the server. Check your connection.' : e.message,
@@ -67,12 +72,12 @@ class PlaybackController extends Notifier<PlaybackState> {
       _load(() async => (await ref.read(apiProvider).getPlaylist(playlist.id)).tracks, shuffle: shuffle);
 
   /// All of an artist's albums, in the server's order.
-  Future<void> playArtist(Artist artist) => _load(() async {
+  Future<void> playArtist(Artist artist, {bool shuffle = false}) => _load(() async {
         final api = ref.read(apiProvider);
         final albums = (await api.getArtist(artist.id)).albums.take(12);
         final details = await Future.wait([for (final a in albums) api.getAlbum(a.id)]);
         return [for (final d in details) ...d.tracks];
-      });
+      }, shuffle: shuffle);
 
   /// Puts a saved session back, paused.
   Future<void> restore(SavedSession s) {

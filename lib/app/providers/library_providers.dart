@@ -92,3 +92,9 @@ final librarySortProvider =
 
 /// Genre filter for the album grid; null shows everything.
 final libraryGenreProvider = NotifierProvider<PickNotifier<String?>, String?>(() => PickNotifier<String?>(null));
+
+/// One album with its tracks (the album page).
+final albumDetailProvider = FutureProvider.family<AlbumDetail, String>((ref, id) => ref.watch(apiProvider).getAlbum(id));
+
+/// One artist with their albums (the artist page).
+final artistDetailProvider = FutureProvider.family<ArtistDetail, String>((ref, id) => ref.watch(apiProvider).getArtist(id));

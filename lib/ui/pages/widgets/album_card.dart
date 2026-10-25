@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/providers/playback_providers.dart';
 import '../../../app/theme/motion.dart';
@@ -9,6 +10,7 @@ import '../../../core/models/playlist.dart';
 import '../../widgets/art_tile.dart';
 import '../../widgets/effects/eq_bars.dart';
 import '../../widgets/effects/ripple.dart';
+import '../../widgets/link_text.dart';
 import '../../widgets/shapes/morph_path.dart';
 
 /// An album: squircle cover with title and artist underneath.
@@ -38,6 +40,8 @@ class AlbumCard extends ConsumerWidget {
       size: size,
       large: large,
       onTap: () => ref.read(playbackProvider.notifier).playAlbum(album),
+      onOpen: () => context.push('/album/${album.id}'),
+      onOpenSubtitle: album.artistId == null ? null : () => context.push('/artist/${album.artistId}'),
     );
   }
 }
@@ -62,6 +66,7 @@ class ArtistCard extends ConsumerWidget {
       size: size,
       large: large,
       onTap: () => ref.read(playbackProvider.notifier).playArtist(artist),
+      onOpen: () => context.push('/artist/${artist.id}'),
     );
   }
 }
@@ -109,6 +114,8 @@ class MediaCard extends StatefulWidget {
     this.round = false,
     this.size,
     this.large = false,
+    this.onOpen,
+    this.onOpenSubtitle,
   });
 
   final String title;
@@ -124,6 +131,12 @@ class MediaCard extends StatefulWidget {
   final bool round;
   final double? size;
   final bool large;
+
+  /// Opens the album/artist page (tapping the title). Null: plain text.
+  final VoidCallback? onOpen;
+
+  /// Opens whatever the subtitle names (an album's artist).
+  final VoidCallback? onOpenSubtitle;
 
   @override
   State<MediaCard> createState() => _MediaCardState();
@@ -220,20 +233,18 @@ class _MediaCardState extends State<MediaCard> {
       children: [
         cover,
         SizedBox(height: widget.large ? 14 : 12),
-        Text(
-          widget.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        LinkText(
+          text: widget.title,
+          onTap: widget.onOpen,
           style: text.bodyMedium?.copyWith(
             fontSize: widget.large ? 14.5 : 13,
             fontWeight: FontWeight.w700,
             color: active ? scheme.primary : scheme.onSurface,
           ),
         ),
-        Text(
-          widget.subtitle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        LinkText(
+          text: widget.subtitle,
+          onTap: widget.onOpenSubtitle,
           style: text.bodySmall?.copyWith(fontSize: widget.large ? 12.5 : 12, color: scheme.onSurfaceVariant),
         ),
       ],

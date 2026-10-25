@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/providers/lyrics_providers.dart';
 import '../../app/providers/playback_providers.dart';
@@ -18,6 +19,7 @@ import '../widgets/effects/letter_reveal.dart';
 import '../widgets/effects/particle_burst.dart';
 import '../widgets/effects/ripple.dart';
 import '../widgets/expressive_buttons.dart';
+import '../widgets/link_text.dart';
 import '../widgets/pressable.dart';
 import '../widgets/shapes/morph_path.dart';
 import '../widgets/shapes/morph_shape.dart';
@@ -201,6 +203,12 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
     final tl = me.globalToLocal(cover.localToGlobal(Offset.zero));
     final br = me.globalToLocal(cover.localToGlobal(cover.size.bottomRight(Offset.zero)));
     return Rect.fromPoints(tl, br);
+  }
+
+  /// Closes Now Playing and opens a page (the playing album or artist).
+  void _goTo(BuildContext context, String location) {
+    ref.read(nowPlayingOpenProvider.notifier).set(false);
+    GoRouter.of(context).push(location);
   }
 
   void _toggleLike() {
@@ -584,10 +592,9 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
       children: [
         _slideSwap(
           0,
-          Text(
-            'ALBUM · ${track.albumTitle}'.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          LinkText(
+            text: 'ALBUM · ${track.albumTitle}'.toUpperCase(),
+            onTap: track.albumId.isEmpty ? null : () => _goTo(context, '/album/${track.albumId}'),
             style: text.labelLarge?.copyWith(
               fontSize: 13,
               fontWeight: FontWeight.w700,
@@ -619,10 +626,9 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
         const SizedBox(height: 4),
         _slideSwap(
           1,
-          Text(
-            track.artist,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          LinkText(
+            text: track.artist,
+            onTap: track.artistId == null ? null : () => _goTo(context, '/artist/${track.artistId}'),
             style: text.titleLarge?.copyWith(fontSize: 24, fontWeight: FontWeight.w500, color: scheme.onSurfaceVariant),
           ),
         ),
