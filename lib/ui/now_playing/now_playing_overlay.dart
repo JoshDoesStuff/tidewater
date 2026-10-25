@@ -783,11 +783,14 @@ class _Tag extends StatelessWidget {
     return Container(
       height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 14),
-      alignment: Alignment.center,
       decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(10)),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(fontSize: 13, fontWeight: FontWeight.w500),
+      // widthFactor: hug the label instead of stretching across the row.
+      child: Center(
+        widthFactor: 1,
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(fontSize: 13, fontWeight: FontWeight.w500),
+        ),
       ),
     );
   }

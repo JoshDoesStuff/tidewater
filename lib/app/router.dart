@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../ui/pages/home_page.dart';
 import '../ui/pages/library_page.dart';
 import '../ui/pages/placeholder_page.dart';
+import '../ui/pages/settings_page.dart';
 import '../ui/shell/app_shell.dart';
 import 'destinations.dart';
 import 'theme/motion.dart';
@@ -27,6 +28,7 @@ GoRouter createRouter() => GoRouter(
 Widget _pageFor(Destination d) => switch (d) {
       Destination.home => const HomePage(),
       Destination.library => const LibraryPage(),
+      Destination.settings => const SettingsPage(),
       _ => PlaceholderPage(destination: d),
     };
 
