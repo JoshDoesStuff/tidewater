@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers/playback_providers.dart';
 import '../../app/theme/motion.dart';
+import '../widgets/pressable.dart';
 
 /// Volume: pill track with a gap-less filled part and a separate vertical
 /// handle that grows on hover and narrows/lengthens while dragging, tick dots
@@ -44,17 +45,27 @@ class _VolumeSliderState extends ConsumerState<VolumeSlider> with SingleTickerPr
     final active = _hover || _drag;
     return Row(
       children: [
-        SizedBox.square(
-          dimension: 28,
-          child: AnimatedBuilder(
-            animation: _bump,
-            builder: (context, child) => Transform.scale(
-              scale: 1 + .3 * (_bump.value < .4 ? _bump.value / .4 : 1 - (_bump.value - .4) / .6),
-              child: child,
+        Tooltip(
+          message: v == 0 ? 'Unmute (M)' : 'Mute (M)',
+          child: Pressable(
+            onTap: () => ref.read(playbackProvider.notifier).toggleMute(),
+            semanticLabel: v == 0 ? 'Unmute' : 'Mute',
+            builder: (context, s) => SizedBox.square(
+              dimension: 36,
+              child: Center(
+                child: AnimatedBuilder(
+                  animation: _bump,
+                  builder: (context, child) => Transform.scale(
+                    scale: (s.hovered ? 1.12 : 1) * (1 + .3 * (_bump.value < .4 ? _bump.value / .4 : 1 - (_bump.value - .4) / .6)),
+                    child: child,
+                  ),
+                  child: Icon(level.icon, size: 22, color: scheme.primary),
+                ),
+              ),
             ),
-            child: Icon(level.icon, size: 22, color: scheme.primary),
           ),
         ),
+        const SizedBox(width: 6),
         const SizedBox(width: 14),
         Expanded(
           child: LayoutBuilder(

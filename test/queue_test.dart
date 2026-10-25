@@ -352,7 +352,7 @@ void gaplessStateTests() {
     test('a "not playing" that lasts is believed', () async {
       await e.playQueue([_t('a', ms: 9000)]);
       (e.backendForTest as SimulatedBackend).emitPlaying(false);
-      await Future<void>.delayed(const Duration(milliseconds: 900));
+      await Future<void>.delayed(const Duration(milliseconds: 3200));
       expect(e.state.playing, isFalse);
       (e.backendForTest as SimulatedBackend).emitPlaying(true);
       await Future<void>.delayed(const Duration(milliseconds: 50));

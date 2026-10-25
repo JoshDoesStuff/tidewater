@@ -83,6 +83,22 @@ Future<void> run(LibraryApi api, QueueEngine e) async {
   await until(() => e.position > const Duration(seconds: 1), what: 'first track producing audio');
   check('plays and reports position', e.state.playing, 'at ${e.position}');
 
+  // How often does the engine report the position? The wavy progress bar
+  // extrapolates between reports, so it only needs a steady, modest rate.
+  var reports = 0;
+  var maxGap = Duration.zero;
+  var lastAt = DateTime.now();
+  final cadence = e.positions.listen((_) {
+    reports++;
+    final now = DateTime.now();
+    final gap = now.difference(lastAt);
+    lastAt = now;
+    if (gap > maxGap) maxGap = gap;
+  });
+  await Future<void>.delayed(const Duration(seconds: 3));
+  await cadence.cancel();
+  check('position is reported steadily', reports >= 12 && maxGap < const Duration(milliseconds: 600), '${(reports / 3).toStringAsFixed(1)} per second, longest gap ${maxGap.inMilliseconds} ms');
+
   // Pause and resume keep the position.
   await e.pause();
   await Future<void>.delayed(const Duration(milliseconds: 400));

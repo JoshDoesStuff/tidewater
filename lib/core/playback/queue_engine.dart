@@ -120,7 +120,7 @@ class QueueEngine implements PlaybackEngine {
     // track change). Only believe it if it lasts; otherwise the play button
     // would flicker to "paused" and back at every track.
     _stallTimer?.cancel();
-    _stallTimer = Timer(const Duration(milliseconds: 700), () {
+    _stallTimer = Timer(const Duration(seconds: 3), () {
       if (_intent && _opened && _playing) {
         _playing = false;
         _emit();

@@ -65,6 +65,8 @@ class _AppShellState extends ConsumerState<AppShell> {
       player.next();
     } else if (key == LogicalKeyboardKey.keyP) {
       player.previous();
+    } else if (key == LogicalKeyboardKey.keyM) {
+      player.toggleMute();
     } else if (key == LogicalKeyboardKey.keyL && npOpen) {
       ref.read(lyricsOnProvider.notifier).toggle();
     } else if (key == LogicalKeyboardKey.keyQ && npOpen) {

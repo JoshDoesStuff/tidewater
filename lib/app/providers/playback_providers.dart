@@ -112,6 +112,20 @@ class PlaybackController extends Notifier<PlaybackState> {
   }
 
   Future<void> setVolume(double v) => _engine.setVolume(v);
+
+  double? _beforeMute;
+
+  /// Mutes, or brings the volume back to where it was. Un-muting from a volume
+  /// that was dragged to zero goes to half.
+  Future<void> toggleMute() {
+    if (state.volume > 0) {
+      _beforeMute = state.volume;
+      return _engine.setVolume(0);
+    }
+    final back = _beforeMute;
+    _beforeMute = null;
+    return _engine.setVolume(back == null || back <= 0 ? .5 : back);
+  }
   Future<void> toggleShuffle() => _engine.setShuffle(!state.shuffle);
   Future<void> toggleRepeat() => _engine.setRepeat(state.repeat.next);
 }
