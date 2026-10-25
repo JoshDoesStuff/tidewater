@@ -89,8 +89,8 @@ void main() {
 
     testWidgets('hearts the server already has are filled in', (tester) async {
       await openAlbum(tester, 'a2');
-      // The filled heart on the row, and the Liked item in the rail.
-      expect(find.byIcon(Icons.favorite_rounded), findsNWidgets(2));
+      // The filled heart on the row (the rail's Liked icon is drawn in code).
+      expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
       await disposeApp(tester);
     });
 

@@ -2,7 +2,7 @@
 
 Used for the Home sidebar icon: the house outline and the door that draws itself on.
 The animation comes from Lucide Animated (https://lucide-animated.com), translated into Flutter code by Claude.
-The icon shape itself is from Lucide (https://lucide.dev), see the note at the end.
+The icon shape itself is from Lucide, see `lucide.md`.
 
 MIT License
 
@@ -26,8 +26,3 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----
-
-Note: the underlying icon artwork is Lucide, which is licensed separately under
-the ISC License (https://lucide.dev/license). Check that page for its exact
-copyright notice and add it here if you want the full text kept in the repo.

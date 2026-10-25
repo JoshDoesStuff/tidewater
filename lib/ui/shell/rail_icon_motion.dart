@@ -2,16 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
 import '../../app/destinations.dart';
+import 'code_icons.dart';
 import 'home_icon.dart';
 
-/// Sidebar icon artwork. Home is drawn in code ([HomeIcon]); the rest are
+/// Sidebar icon artwork. Home, Library and Liked are drawn in code; the rest are
 /// Lottie files in `assets/icons/` (credited in Settings). Each plays once when
 /// its page is selected and rests on its first frame, which is the whole icon.
 abstract final class RailIcons {
   static const _assets = {
-    Destination.library: 'assets/icons/library.json',
     Destination.artists: 'assets/icons/artists.json',
-    Destination.liked: 'assets/icons/liked.json',
     Destination.lists: 'assets/icons/lists.json',
     Destination.radio: 'assets/icons/radio.json',
     Destination.settings: 'assets/icons/settings.json',
@@ -30,6 +29,8 @@ abstract final class RailIcons {
 /// loads, the stock Material icon stands in. Artwork is recolored to [color].
 Widget railIconMotion(Destination d, double t, Color color, {LottieComposition? composition, double size = 22}) {
   if (d == Destination.home) return HomeIcon(progress: t, color: color, size: size);
+  if (d == Destination.liked) return HeartIcon(progress: t, color: color, size: size);
+  if (d == Destination.library) return LibraryIcon(progress: t, color: color, size: size);
   if (composition == null) return Icon(d.icon, size: size, color: color);
   // The artwork has padding inside its canvas, so draw it a little larger.
   final box = size * 1.3;

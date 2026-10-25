@@ -1,6 +1,6 @@
 # useAnimations
 
-Used for the Artists, Liked, Lists, Radio and Settings sidebar icons (`assets/icons/`).
+Used for the Artists, Lists, Radio and Settings sidebar icons (`assets/icons/`).
 Source: https://useanimations.com
 
 MIT License

@@ -8,7 +8,8 @@ void main() {
     for (final d in Destination.values) {
       final future = RailIcons.load(d);
       final comp = future == null ? null : await tester.runAsync(() => future);
-      if (d != Destination.home) expect(comp, isNotNull, reason: '${d.label} has an icon file');
+      const drawn = {Destination.home, Destination.library, Destination.liked};
+      if (!drawn.contains(d)) expect(comp, isNotNull, reason: '${d.label} has an icon file');
       for (final t in [0.0, .3, .7, 1.0]) {
         await tester.pumpWidget(
           MaterialApp(home: Center(child: railIconMotion(d, t, Colors.white, composition: comp))),
