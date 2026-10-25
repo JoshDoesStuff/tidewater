@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/material.dart' show PopupMenuItem, Scrollable;
+import 'package:flutter/material.dart' show PopupMenuItem, TextField;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/providers/library_providers.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
@@ -17,7 +18,7 @@ Future<ProviderContainer> openSongs(WidgetTester tester, {FakeLibraryApi? api}) 
   final c = await pumpApp(tester, api: api);
   await tester.tap(find.text('Library'));
   await advance(tester, const Duration(seconds: 2));
-  await tester.tap(find.widgetWithText(ExpressiveChip, 'Song'));
+  await tester.tap(find.widgetWithText(ExpressiveChip, 'Songs'));
   await advance(tester, const Duration(seconds: 2));
   return c;
 }
@@ -99,7 +100,7 @@ void main() {
     await disposeApp(tester);
   });
 
-  testWidgets('with hundreds of genres the menu still opens below the pill and scrolls', (tester) async {
+  testWidgets('the genre filter is a popup box with search, so hundreds of genres are easy', (tester) async {
     final albums = [
       for (var i = 0; i < 400; i++)
         Album(id: 'g$i', title: 'Album $i', artist: 'A', coverArt: 'c$i', genre: 'Genre ${i.toString().padLeft(3, '0')}'),
@@ -107,19 +108,43 @@ void main() {
     await pumpApp(tester, api: FakeLibraryApi(albums: albums));
     await tester.tap(find.text('Library'));
     await advance(tester, const Duration(seconds: 3));
-    await tester.tap(find.widgetWithText(ExpressiveChip, 'Album'));
-    await advance(tester, const Duration(seconds: 2));
-    final pill = tester.getRect(find.text('Genre').first);
     await tester.tap(find.text('Genre').first);
     await advance(tester, const Duration(milliseconds: 700));
-    final first = tester.getRect(find.widgetWithText(PopupMenuItem<String>, 'All genres'));
-    expect(first.top, greaterThan(pill.bottom), reason: 'first item at ${first.top}, pill bottom at ${pill.bottom}');
-    // It scrolls: a late genre exists in the tree only after scrolling to it.
-    await tester.drag(find.byType(Scrollable).last, const Offset(0, -3000));
-    await advance(tester, const Duration(milliseconds: 500));
-    expect(find.widgetWithText(PopupMenuItem<String>, 'Genre 399'), findsOneWidget);
-    await tester.tapAt(const Offset(300, 700));
-    await advance(tester, const Duration(milliseconds: 500));
+    expect(find.text('400 genres'), findsOneWidget);
+    expect(find.text('All genres'), findsOneWidget);
+    expect(find.text('Search genres'), findsOneWidget);
+    // Type to find one of the 400.
+    await tester.enterText(find.byType(TextField).last, 'genre 399');
+    await advance(tester, const Duration(milliseconds: 300));
+    expect(find.text('Genre 399'), findsOneWidget);
+    expect(find.text('Genre 001'), findsNothing);
+    expect(find.text('All genres'), findsNothing, reason: 'a search narrows the list');
+    await tester.tap(find.text('Genre 399'));
+    await advance(tester, const Duration(seconds: 1));
+    expect(find.text('1 genre 399 album'), findsOneWidget);
+    await disposeApp(tester);
+  });
+
+  testWidgets('the genre box: Enter picks the first match, a miss says so, All genres clears', (tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('Library'));
+    await advance(tester, const Duration(seconds: 2));
+    await tester.tap(find.text('Genre').first);
+    await advance(tester, const Duration(milliseconds: 600));
+    await tester.enterText(find.byType(TextField).last, 'zzz');
+    await advance(tester, const Duration(milliseconds: 300));
+    expect(find.textContaining('No genre matches'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).last, 'folk');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await advance(tester, const Duration(seconds: 1));
+    expect(find.text('3 folk albums'), findsOneWidget);
+    // Back to everything.
+    await tester.tap(find.text('Folk').first);
+    await advance(tester, const Duration(milliseconds: 600));
+    await tester.tap(find.text('All genres'));
+    await advance(tester, const Duration(seconds: 1));
+    expect(find.text('12 albums'), findsOneWidget);
     await disposeApp(tester);
   });
 

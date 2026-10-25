@@ -142,7 +142,7 @@ Replace these as the milestones below land. Each is a known, deliberate stand-in
 | `SimulatedVisualizerSource` (time-based, not from audio) | `core/playback/visualizer_source.dart` | M7 |
 | `SimulatedEngine` is still the engine in tests, previews and the perf tools (the app itself uses libmpv) | `core/playback/simulated_engine.dart` | stays (test double) |
 | No-op controls: menu button, search field, cast button | various | M7 |
-| Home chips Albums/Artists/Playlists only switch which rows show; Library has no Genres tab (Songs, with its own sort, shipped after M4) | `home_page.dart`, `library_page.dart` | M7 |
+| Home chips Albums/Artists/Playlists only switch which rows show; Library has no Genres tab (Songs, with its own sort, shipped after M4; the genre filter is a popup box with search) | `home_page.dart`, `library_page.dart` | M7 |
 | Playlist cards play on tap but there is no playlist page; the Artists, Lists and Radio rail pages are placeholders | `playback_providers.dart`, `placeholder_page.dart` | M7 |
 | The quality tag shows the file's own format from the server, not the engine's decoded format | `now_playing_overlay.dart` | M7 (with transcoding) |
 

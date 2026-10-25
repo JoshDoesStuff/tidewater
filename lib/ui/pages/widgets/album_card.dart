@@ -65,7 +65,9 @@ class ArtistCard extends ConsumerWidget {
       round: true,
       size: size,
       large: large,
-      onTap: () => ref.read(playbackProvider.notifier).playArtist(artist),
+      // Opens the artist (starting a dozen albums on a tap was a surprise).
+      onTap: () => context.push('/artist/${artist.id}'),
+      showPlay: false,
       onOpen: () => context.push('/artist/${artist.id}'),
     );
   }
@@ -112,6 +114,7 @@ class MediaCard extends StatefulWidget {
     this.active = false,
     this.playing = false,
     this.round = false,
+    this.showPlay = true,
     this.size,
     this.large = false,
     this.onOpen,
@@ -129,6 +132,9 @@ class MediaCard extends StatefulWidget {
 
   /// Circle at rest instead of a squircle (artists).
   final bool round;
+
+  /// Show the hover play button (an artist card opens a page instead).
+  final bool showPlay;
   final double? size;
   final bool large;
 
@@ -218,7 +224,7 @@ class _MediaCardState extends State<MediaCard> {
                   Positioned(
                     right: -6,
                     bottom: -6,
-                    child: _PlayPop(visible: _hovered && !active),
+                    child: _PlayPop(visible: widget.showPlay && _hovered && !active),
                   ),
                 ],
               ),

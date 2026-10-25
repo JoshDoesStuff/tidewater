@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/providers/library_providers.dart';
+import 'package:tidewater/app/app.dart' show routerProvider;
 import 'package:tidewater/app/providers/playback_providers.dart';
 import 'package:tidewater/app/providers/session_providers.dart';
 import 'package:tidewater/app/providers/ui_providers.dart';
@@ -250,15 +251,15 @@ void main() {
       await disposeApp(tester);
     });
 
-    testWidgets('an artist card queues their albums', (tester) async {
+    testWidgets('an artist card opens the artist instead of starting playback', (tester) async {
       final container = await pumpApp(tester);
       await tester.tap(find.widgetWithText(ExpressiveChip, 'Artists')); // Home chip
       await advance(tester, const Duration(seconds: 2));
       final card = find.ancestor(of: find.text('Ana Soleil').first, matching: find.byType(MediaCard));
       await tester.tapAt(tester.getTopLeft(card) + const Offset(50, 50)); // the cover
       await advance(tester, const Duration(seconds: 1));
-      expect(container.read(currentTrackProvider)?.artist, 'Ana Soleil');
-      await container.read(playbackProvider.notifier).toggle();
+      expect(container.read(routerProvider).state.uri.path, '/artist/ar-a2');
+      expect(container.read(playbackProvider).queue, isEmpty);
       await disposeApp(tester);
     });
   });
@@ -300,7 +301,7 @@ void main() {
 
     testWidgets('Artists and Playlists tabs have their own counts', (tester) async {
       await openLibrary(tester);
-      await tester.tap(find.widgetWithText(ExpressiveChip, 'Artist'));
+      await tester.tap(find.widgetWithText(ExpressiveChip, 'Artists'));
       await advance(tester, const Duration(seconds: 2));
       expect(find.text('12 artists'), findsOneWidget);
       await tester.tap(find.widgetWithText(ExpressiveChip, 'Playlists'));

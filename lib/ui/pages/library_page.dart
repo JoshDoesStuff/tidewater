@@ -15,6 +15,7 @@ import '../widgets/expressive_buttons.dart';
 import '../widgets/pressable.dart';
 import 'page_frame.dart';
 import 'widgets/album_card.dart';
+import 'widgets/genre_picker.dart';
 import 'widgets/song_row.dart';
 import '../../app/providers/playback_providers.dart';
 
@@ -196,21 +197,12 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                                   .set,
                             ),
                             const SizedBox(width: 6),
-                            _MenuPill<String>(
-                              icon: Icons.filter_list_rounded,
-                              label: genre ?? 'Genre',
-                              semanticLabel: genre == null
-                                  ? 'Filter by genre'
-                                  : 'Genre: $genre',
-                              value: genre ?? '',
-                              highlighted: genre != null,
-                              entries: [
-                                ('', 'All genres'),
-                                for (final g in genres) (g, g),
-                              ],
-                              onSelected: (g) => ref
+                            GenrePill(
+                              genres: genres,
+                              selected: genre,
+                              onSelected: ref
                                   .read(libraryGenreProvider.notifier)
-                                  .set(g.isEmpty ? null : g),
+                                  .set,
                             ),
                           ],
                           if (tab == LibraryTab.songs)
