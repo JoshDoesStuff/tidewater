@@ -91,8 +91,8 @@ final libraryTabProvider =
 final librarySortProvider =
     NotifierProvider<PickNotifier<LibrarySort>, LibrarySort>(() => PickNotifier(LibrarySort.recentlyAdded));
 
-/// Genre filter for the album grid; null shows everything.
-final libraryGenreProvider = NotifierProvider<PickNotifier<String?>, String?>(() => PickNotifier<String?>(null));
+/// Genres the album grid is filtered to; empty shows everything.
+final libraryGenreProvider = NotifierProvider<PickNotifier<Set<String>>, Set<String>>(() => PickNotifier<Set<String>>(const {}));
 
 /// One album with its tracks (the album page).
 final albumDetailProvider = FutureProvider.family<AlbumDetail, String>((ref, id) => ref.watch(apiProvider).getAlbum(id));

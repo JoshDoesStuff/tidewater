@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/providers/library_providers.dart';
@@ -290,6 +291,27 @@ void main() {
       expect(find.text('3 folk albums'), findsOneWidget);
       expect(find.text('Glass Orchard'), findsNothing);
       expect(find.text('Low Tide Letters'), findsOneWidget);
+      await disposeApp(tester);
+    });
+
+    testWidgets('ctrl+click on Genre opens a grid to pick several genres', (tester) async {
+      await openLibrary(tester);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.tap(find.text('Genre'));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await advance(tester, const Duration(milliseconds: 600));
+      expect(find.text('Pick genres'), findsOneWidget);
+      await tester.tap(find.text('Folk'));
+      await tester.pump();
+      await tester.tap(find.text('Electronic'));
+      await tester.pump();
+      expect(find.text('2 selected'), findsOneWidget);
+      await tester.tap(find.text('Apply'));
+      await advance(tester, const Duration(seconds: 2));
+      expect(find.text('2 genres'), findsOneWidget);
+      expect(find.text('Glass Orchard'), findsNothing); // Indie is filtered out
+      expect(find.text('Low Tide Letters'), findsOneWidget);
+      expect(find.text('Night Transit'), findsOneWidget);
       await disposeApp(tester);
     });
 

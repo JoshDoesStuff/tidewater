@@ -109,7 +109,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     // What the grid shows for the current tab.
     final List<Album> shownAlbums = [
       for (final a in albums.value?.albums ?? const <Album>[])
-        if (genre == null || a.genre == genre) a,
+        if (genre.isEmpty || genre.contains(a.genre)) a,
     ];
     final String subtitle;
     switch (tab) {
@@ -119,9 +119,11 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
           subtitle = albums.hasError ? 'Couldn\'t load albums' : 'Loading…';
         } else {
           final n = shownAlbums.length;
-          final label = genre != null
-              ? '$n ${genre.toLowerCase()} album${n == 1 ? '' : 's'}'
-              : '$n album${n == 1 ? '' : 's'}';
+          final label = genre.length == 1
+              ? '$n ${genre.first.toLowerCase()} album${n == 1 ? '' : 's'}'
+              : (genre.isEmpty
+                    ? '$n album${n == 1 ? '' : 's'}'
+                    : '$n album${n == 1 ? '' : 's'} in ${genre.length} genres');
           subtitle = loaded.complete ? label : '$label so far…';
         }
       case LibraryTab.songs:
@@ -321,10 +323,10 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
             _message(
               EmptyPanel(
                 icon: Icons.album_rounded,
-                title: ref.read(libraryGenreProvider) == null
+                title: ref.read(libraryGenreProvider).isEmpty
                     ? 'No albums yet'
                     : 'No albums in this genre',
-                message: ref.read(libraryGenreProvider) == null
+                message: ref.read(libraryGenreProvider).isEmpty
                     ? 'Add music to your Navidrome library and it will show up here.'
                     : null,
               ),
