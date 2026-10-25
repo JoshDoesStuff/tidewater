@@ -58,12 +58,8 @@ class CoverArt extends ConsumerStatefulWidget {
     required this.coverArt,
     required this.seedKey,
     this.resolution = 300,
-    this.label,
     this.child,
   });
-
-  /// Name shown as initials on the placeholder (artists have no cover to look at).
-  final String? label;
 
   /// Cover-art id from the server, or null.
   final String? coverArt;
@@ -119,7 +115,7 @@ class _CoverArtState extends ConsumerState<CoverArt> with SingleTickerProviderSt
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (!_covered) CustomPaint(painter: _PlaceholderPainter(widget.seedKey, widget.label)),
+        if (!_covered) CustomPaint(painter: _PlaceholderPainter(widget.seedKey)),
         if (id != null)
           Image(
             image: CoverImage(ref.watch(coverCacheProvider), id, widget.resolution),
@@ -182,21 +178,12 @@ const _gradientEnds = [
   (Alignment.centerLeft, Alignment.centerRight),
 ];
 
-/// Up to two capital letters from [label] ("Blacklolita vs Juggernaut." -> "BV").
-String initialsOf(String label) {
-  final words = label.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
-  if (words.isEmpty) return '';
-  String first(String w) => String.fromCharCode(w.runes.first).toUpperCase();
-  return words.length == 1 ? first(words[0]) : first(words[0]) + first(words[1]);
-}
-
 /// Gradient with one of several cheap decorations (picked from the key, so
 /// neighbors differ), and the [label]'s initials when there is one.
 class _PlaceholderPainter extends CustomPainter {
-  _PlaceholderPainter(this.key, this.label);
+  _PlaceholderPainter(this.key);
 
   final String key;
-  final String? label;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -241,24 +228,8 @@ class _PlaceholderPainter extends CustomPainter {
         canvas.drawCircle(Offset(w * .5, hgt * 1.02), hgt * .52, soft);
         canvas.drawCircle(Offset(w * .5, hgt * 1.02), hgt * .34, mid);
     }
-    final text = label == null ? '' : initialsOf(label!);
-    if (text.isNotEmpty && w >= 40) {
-      final painter = TextPainter(
-        text: TextSpan(
-          text: text,
-          style: TextStyle(
-            fontSize: w * .3,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1,
-            color: AppTheme.onArt.withValues(alpha: .88),
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      painter.paint(canvas, Offset((w - painter.width) / 2, (hgt - painter.height) / 2));
-    }
   }
 
   @override
-  bool shouldRepaint(_PlaceholderPainter old) => old.key != key || old.label != label;
+  bool shouldRepaint(_PlaceholderPainter old) => old.key != key;
 }

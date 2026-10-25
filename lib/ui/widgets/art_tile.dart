@@ -18,7 +18,6 @@ class ArtTile extends StatelessWidget {
     this.morph = 0,
     this.spin = 0,
     this.shadowAlpha = .28,
-    this.label,
     this.child,
   });
 
@@ -39,9 +38,6 @@ class ArtTile extends StatelessWidget {
   final double spin;
   final double shadowAlpha;
 
-  /// Initials on the placeholder; see [CoverArt.label].
-  final String? label;
-
   /// Painted over the art inside the clip (e.g. a [Ripple]).
   final Widget? child;
 
@@ -53,7 +49,7 @@ class ArtTile extends StatelessWidget {
       morph: morph,
       spin: spin,
       shadowAlpha: shadowAlpha,
-      child: CoverArt(coverArt: coverArt, seedKey: seedKey, resolution: resolution, label: label, child: child),
+      child: CoverArt(coverArt: coverArt, seedKey: seedKey, resolution: resolution, child: child),
     );
     return size == null ? tile : SizedBox.square(dimension: size, child: tile);
   }

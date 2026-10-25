@@ -72,9 +72,4 @@ void main() {
     expect(pairs.length, 60);
   });
 
-  test('initials are the first letters of the first two words', () {
-    expect(initialsOf('Blacklolita vs Juggernaut.'), 'BV');
-    expect(initialsOf('bleecher'), 'B');
-    expect(initialsOf('  '), '');
-  });
 }
