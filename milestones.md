@@ -13,6 +13,72 @@ Now Playing with lyrics/volume/idle/visualizers, Settings). Quality at wrap-up: 
 passing, `flutter build windows --release` succeeds, zero console errors on launch, no frame over 33 ms in the
 profile scenarios (`tool/perf_main.dart`). Working notes for future sessions: `docs/dev-notes.md`.
 
+## Milestone 3 wrap-up (done)
+
+The app plays music for real. Audio comes from libmpv (`media_kit`) behind the `AudioBackend` interface; a
+`QueueEngine` owns the queue, shuffle and repeat and keeps a two-item window (current + next) loaded so tracks join
+gaplessly. Plays are reported to the server (now playing, then a counted play after half the track or 4 minutes),
+the Windows media overlay and media keys work (`smtc_windows`), the last queue and position come back at launch,
+hearts are real (`star`/`unstar`), lyrics come from the server (optionally lrclib.net), and there are album and artist
+pages and a queue panel (drag to reorder, remove, jump). Quality at wrap-up: `flutter analyze` clean, 228 tests
+passing, release build bundles `libmpv-2.dll` and `smtc_windows.dll` and starts.
+
+Verified with the real thing, not just fakes (all against the user's own server):
+
+- `tool/engine_probe_main.dart` (audible, quiet): play, pause, seek, **gapless hand-over** at the end of a track,
+  next/previous, play next, shuffle, repeat-one, a missing track being reported and skipped, position reported 16
+  times a second with at most an 89 ms gap.
+- `tool/e2e_main.dart` + `tool/e2e_check.ps1`: Windows shows the playing track with its cover, and its media-key
+  Pause/Play/Next/Previous drive the real engine.
+- `tool/perf_real_main.dart` (profile, 180 Hz laptop panel, real covers/lyrics/engine): see "Performance" below.
+
+Decisions and discoveries that were not in the plan:
+
+- **Rust is now a build requirement** (`smtc_windows` compiles a Rust library). Install with `rustup`; a shell opened
+  before the install needs `~/.cargo/bin` on its PATH. `flutter_rust_bridge` is pinned to 2.11.1 in
+  `dependency_overrides` because the package's generated code refuses a newer runtime at startup.
+- Windows ignores `file://` covers in the media overlay (silently); it needs an `https://` URL, so the overlay is given
+  the server's cover URL (it carries the token, not the password).
+- libmpv quirks handled in `MediaKitBackend`: it reports "completed" at the end of *every* file, reports a negative
+  position while joining tracks, reports "not playing" for a moment at every track change (the engine waits 3 s
+  before believing it), and skips a broken file by itself and reports the error *after* moving on (so the engine
+  checks that something is really playing instead of guessing which track failed).
+- A track that fails is retried once, then skipped; at the end of the queue playback stops.
+- **Next always moves on** (even with repeat-one, even at the end of the queue); only a track ending by itself
+  follows repeat. Previous restarts the track when more than 3 s in.
+- Natural end of the queue (repeat off): rewinds to the first track, paused.
+- Shuffle keeps the playing track first and shuffles the rest; turning it off restores the original order around
+  the playing track. A shuffled lap that repeats is reshuffled.
+- A restored queue is paused, shows no color wash, and is only restored for the server and user it was saved for.
+- New settings: *Count plays on the server*, *Look up missing lyrics online* (lrclib.net; sends artist, title,
+  album and length, so it is opt-out and visible).
+- New keys: `M` mute (anywhere), `Q` queue (in Now Playing). Clicking the speaker also mutes.
+
+Performance, measured on real data at 180 Hz (frame budget 5.6 ms; use `tool/run_perf_real.ps1`):
+
+- Opening Now Playing, the queue panel and skipping tracks used to hitch 105-114 ms (first-time decode of the
+  full-size cover). Covers for the playing and next two tracks are now decoded ahead of time
+  (`cover_prefetch.dart`): those worst frames are now 9-26 ms.
+- The placeholder gradient painted under every loaded cover cost ~10 ms of raster time per frame on a screenful of
+  tiles. It is now dropped once the image is in. Library scrolling over cached covers went from p90 17.9 ms to 6.9 ms;
+  Now Playing at rest from 5.7 to 4.2 ms median.
+- Still heavy: scrolling the Library fast onto tiles that are *new* (p90 ~17 ms raster-bound). The remaining cost is
+  the first draw of new cover textures. Ideas: smaller covers for fast scrolls, `cacheExtent` tuning (now two rows
+  ahead), skipping the fade-in when scrolling fast.
+- Measurements on this machine are noisy when another app is using the GPU (frame times 1.5-3x worse for no
+  reason). Compare against the `startup` phase of the same run and repeat before trusting a regression.
+
+Known gaps / follow-ups:
+
+- The visualizer is still simulated (M7). The Now Playing quality tag shows the file's own format from the server, not
+  what the engine decodes (matters once transcoding is used; there is no transcoding setting yet).
+- The position is saved at pause, on queue changes and every 5 s, not on window close (up to 5 s lost on exit).
+- Failed counted plays are retried for as long as the app runs, not across restarts.
+- Hearts only exist for tracks; there is no starring of albums/artists from the UI yet.
+- No ReplayGain, crossfade or audio-device choice (M7). No sleep timer.
+- `Space` can still also activate a focused button (M5 item).
+- Playlists have cards that play but no playlist page (M7).
+
 ## Milestone 2 wrap-up (done)
 
 The app now runs on a real Navidrome/OpenSubsonic server: login (password or API key, secrets in Windows secure
@@ -27,7 +93,7 @@ playlists, paging, album detail with quality info, covers at 300/800, search, ra
 `flutter analyze` clean, 112 tests passing, Windows build and launch clean. **Also checked against the user's own server (Navidrome 0.64.2, 518 albums, 313 artists):** all albums load in two pages in about 0.6 s,
 119 covers gave 0 contrast failures. Still untested: a library with many thousands of albums.
 
-Next up is **M3 (Playback)**.
+Next up was **M3 (Playback)**, below.
 
 ## Where we are
 
@@ -40,9 +106,9 @@ pages that don't exist yet.
 |---|-----------|--------|
 | 1 | Shell | ✅ |
 | 2 | Server (login, OpenSubsonic, real library, cover cache) | ✅ (search/artist pages come later) |
-| 3 | Playback (real engine, queue, SMTC, scrobbling, album page) | ⬜ (UI 🟡 via `SimulatedEngine`) |
+| 3 | Playback (real engine, queue, SMTC, scrobbling, album page) | ✅ (gaps listed in the M3 section) |
 | 4 | Dynamic color + shapes | 🟡 (works, seeded from real covers; light-theme QA outstanding) |
-| 5 | Now Playing | 🟡 (works, simulated audio/visualizer/lyrics) |
+| 5 | Now Playing | 🟡 (real audio, lyrics and queue; the visualizer is still simulated) |
 | 6 | Motion polish pass | 🟡 (most of the demo list is in; QA pass outstanding) |
 | 7 | Search, playlists, offline cache, settings, real visualizer | ⬜ (Settings partly ✅) |
 
@@ -52,15 +118,15 @@ Replace these as the milestones below land. Each is a known, deliberate stand-in
 
 | Stand-in | Where | Replaced in |
 |----------|-------|-------------|
-| `SimulatedEngine` (clock only, no audio); it plays real tracks from the server but makes no sound | `core/playback/simulated_engine.dart` | M3 |
-| Fake synced lyrics (the same for every track) | `placeholderLyrics` in `core/lyrics/placeholder_lyrics.dart` | M3 |
 | `SimulatedVisualizerSource` (time-based, not from audio) | `core/playback/visualizer_source.dart` | M7 |
-| "Synced lyrics" tag follows the placeholder lyrics, not the track | `now_playing_overlay.dart` | M3 |
-| Volume, shuffle, repeat only change in-memory state | `SimulatedEngine` | M3 |
-| Liked tracks live in memory only (not read from or sent to the server) | `likedProvider` | M3 (`star`/`unstar`) |
-| No-op controls: menu button, search field, cast, queue button | various | M3/M7 |
+| `SimulatedEngine` is still the engine in tests, previews and the perf tools (the app itself uses libmpv) | `core/playback/simulated_engine.dart` | stays (test double) |
+| No-op controls: menu button, search field, cast button | various | M7 |
 | Home chips Albums/Artists/Playlists only switch which rows show; Library has no Songs or Genres tab | `home_page.dart`, `library_page.dart` | M7 |
-| Artist and playlist cards **play** on tap (artist = first 12 albums); there is no artist, album or playlist page | `playback_providers.dart` | M3 (album page), M7 |
+| Playlist cards play on tap but there is no playlist page; the Artists, Lists and Radio rail pages are placeholders | `playback_providers.dart`, `placeholder_page.dart` | M7 |
+| The quality tag shows the file's own format from the server, not the engine's decoded format | `now_playing_overlay.dart` | M7 (with transcoding) |
+
+(Replaced in M3: the simulated player, placeholder lyrics, in-memory hearts, the queue button, the album and artist
+pages.)
 
 (Replaced in M2: fake library, gradient-seeded scheme, list-index coupling, hard-coded Home/Library text, the
 account initial, sort, genre filter, "Show all", the A–Z rail.)
@@ -108,24 +174,12 @@ Known gaps / follow-ups:
   restart. Invalidate `recent`/`frequent` when scrobbling lands (M3).
 - Library "Songs" and "Genres" tabs, and the Home chips beyond filtering rows, are M7.
 
-## M3 — Playback
+## M3 — Playback (done; see the wrap-up above)
 
-- `PlaybackEngine` implementation on `media_kit` (+ `media_kit_libs_windows_audio`), wrapped so no media_kit types
-  leak; `SimulatedEngine` stays as the test/demo implementation.
-- Queue model: play next, add to queue, reorder, shuffle, repeat (off/all/one); gapless. Wire the Now Playing
-  queue button (currently a no-op).
-- Volume, mute, seek, previous-restarts-track behavior against the real engine.
-- Position reporting: real engines report coarsely. `WavyScrubber` already extrapolates between reports and
-  ignores small backwards corrections; verify with the real engine and apply the same smoothing to time labels.
-- SMTC / media keys / taskbar (`smtc_windows`), metadata + cover art.
-- Scrobbling: "now playing" at start, `submission=true` at 50 % or 4 minutes. Unit-test the rule.
-- Album page (and artist page): header, track list, play/shuffle, star.
-- Lyrics: `getLyricsBySongId` (when `songLyrics` advertised), LRCLIB fallback, plain-vs-synced handling (the
-  list already supports both; plain lyrics never auto-scroll).
-- Quality tag: it shows the file's own format from the server metadata (`Track.qualityLabel`); once playing, show what the
-  engine reports (transcoded vs. original).
-- `star`/`unstar` for the heart; persist liked state; keep the pop + particle burst.
-- Restore last queue/position on launch.
+Built: libmpv engine behind `AudioBackend`, queue (play next, add to queue, reorder, remove, shuffle, repeat
+off/all/one), gapless, volume/mute/seek, scrobbling, SMTC and media keys, album and artist pages, lyrics (server +
+lrclib), hearts, restore on launch, queue panel. Not done (moved to M7 or noted above): transcoding/format choice,
+ReplayGain, crossfade, device choice, saving the position on window close.
 
 ## M4 — Dynamic color + shapes (remaining)
 
@@ -183,8 +237,12 @@ Most of the demo list is in. Remaining and review items:
 reviewable commits, ask before adding packages not listed in `CLAUDE.md`.
 
 **Performance:** measure in `--profile`, never debug (debug is several times slower and makes animations look
-janky). Current profile baseline (measured at 60 Hz; the real displays are a 180 Hz laptop and a 144 Hz external monitor, so the frame budget is ~5.5-7 ms, not 16.7): build ≈ 1 ms, raster ≈ 5–6 ms; worst phase is track skips
-(recolor) at build p90 ≈ 6.7 ms. Budget: no frames > 33 ms in any scenario.
+janky). The real displays are a **180 Hz laptop panel and a 144 Hz external monitor**, so the frame budget is
+5.5-7 ms, not 16.7. Measure with real data: `tool/run_perf_real.ps1` (real server, covers, engine, lyrics; it reads
+the display's refresh rate and prints budgets for it) found problems the fake-data `tool/perf_main.dart` hid (first-time
+cover decodes, a gradient under every cover). Baseline at 180 Hz after M3: Now Playing steady build 0.6 / raster 2.7 /
+total 4.2 ms median (p99 6.3), idle mode 4.6 (p99 8), lyric changes 4.6 (p99 8.8), skips and queue never above 10 ms.
+Budget: no frames > 33 ms in any scenario, and steady states under the display's frame time.
 
 **Accessibility:**
 - Animated text must be hidden from semantics behind one stable label (per-letter nodes caused hundreds of

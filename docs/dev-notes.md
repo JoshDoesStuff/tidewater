@@ -117,3 +117,35 @@ The desktop is often locked, so screen capture of the real app returns the lock 
   the flight. Worth a look in M6.
 - **Servers**: a typed address with no scheme is tried as https then http; "Trust this server" accepts only that
   host's certificate. Navidrome ignores articles when sorting ("The Beatles" under B); the A–Z rail mimics that.
+
+## Playback, SMTC and measuring (added in M3)
+
+- **Build requirements**: Flutter, Visual Studio C++ workload, and **Rust** (`rustup`; `smtc_windows` compiles a Rust
+  library). A shell opened before Rust was installed does not have it: use
+  `$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")`
+  (PowerShell) or add `~/.cargo/bin` (Git Bash). `flutter_rust_bridge` is pinned to 2.11.1 in `dependency_overrides`;
+  without the pin the app logs "codegen version should be the same as runtime" and runs without media keys.
+- **Layers**: `core/playback/` (`PlayQueue`, `QueueEngine`, `AudioBackend`, `ScrobbleTracker`, `SavedSession`; pure Dart,
+  fully unit-tested) -> `app/playback/` (`MediaKitBackend`, `SmtcControls`: the only files that touch media_kit and
+  smtc_windows) -> providers. Tests and tools use `SimulatedEngine` (the same `QueueEngine` on a clock backend).
+  `testOverrides` gives the simulated engine a 1 hour tick, because its clock is a real `Stopwatch` that fake time does
+  not advance: set positions in tests with `container.read(positionProvider).value = ...`.
+- **Things that need the real thing**, each with a tool that prints `PROBE ok/FAIL`:
+  `tool/engine_probe_main.dart` (audio; audible but quiet), `tool/smtc_probe_main.dart` + `tool/smtc_check.ps1`
+  (reads the Windows media session back through the WinRT API in PowerShell and presses its buttons),
+  `tool/e2e_main.dart` + `tool/e2e_check.ps1` (the whole app), `tool/session_probe_main.dart` (secure storage),
+  `tool/server_check.dart` (the API). Run app-style tools with `Start-Process flutter.bat ... -RedirectStandardOutput`
+  and `WaitForExit`; `flutter run` needs `--no-pub` and the cargo PATH.
+- **libmpv/media_kit quirks** are listed in the M3 wrap-up in `milestones.md`; the ones that bite: its `completed` fires
+  per file, its `playing` blinks at every track change, positions can be negative, and it skips a failing file itself.
+  Never trust one event to mean one thing; check what is actually happening (is audio advancing?).
+- **Windows media overlay**: cover must be an `https://` URL; `file://` is silently ignored. The overlay counts time by
+  itself while playing, so only send the timeline on a seek or track change.
+- **Perf measuring rules**: use `tool/run_perf_real.ps1 -Only "scroll,np" -Url ... -User ... -Pass ...` and compare to the
+  `startup` phase of the same run (the GPU is shared; other apps make everything 1.5-3x slower). Bisect by
+  *removing things*, one at a time, and measuring: guessing (shadows? clip path? transform? RepaintBoundary?) was wrong
+  five times in a row; the culprit was a gradient painted under every image. Raster-bound phases are about what is
+  *drawn*, build-bound ones about what is *rebuilt*.
+- **Shell habits that cost time**: `git commit` after `;` ignores a failed `flutter analyze` (use `&&`); blind
+  `sed 'N,Md'` line-range edits mangled three files (re-read the lines first, or use the Edit tool); a heredoc with
+  apostrophes can fail in the Bash tool (use the Write tool); `flutter test --name=word` (no spaces).
