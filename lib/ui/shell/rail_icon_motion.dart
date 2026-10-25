@@ -3,23 +3,20 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../app/destinations.dart';
+import 'home_icon.dart';
 
 /// The one-shot animation a sidebar icon plays when its page is selected.
 /// [t] runs 0 to 1; every motion ends where it started. Each destination has
 /// its own so the rail feels alive without all icons doing the same thing.
 Widget railIconMotion(Destination d, double t, Color color, {double size = 22}) {
+  // Home is the Lucide house, drawn in code; its door draws itself on.
+  if (d == Destination.home) return HomeIcon(progress: t, color: color, size: size);
   final icon = Icon(d.icon, size: size, color: color);
   if (t == 0 || t == 1) return icon;
   final decay = 1 - t;
   switch (d) {
-    // Hops up, squashes on landing.
     case Destination.home:
-      final up = math.sin(math.pi * (t * 2).clamp(0, 1));
-      final land = t > .5 ? math.sin(math.pi * (t - .5) * 2) * decay : 0.0;
-      return Transform.translate(
-        offset: Offset(0, -8 * up),
-        child: Transform.scale(scaleX: 1 + .18 * land, scaleY: 1 - .22 * land, child: icon),
-      );
+      return icon;
     // Two cards shuffling past each other.
     case Destination.library:
       final swap = math.sin(math.pi * t);
