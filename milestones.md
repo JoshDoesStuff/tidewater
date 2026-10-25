@@ -24,8 +24,8 @@ Checked against a live server: Navidrome 0.64.2 (the public demo) via `tool/serv
 playlists, paging, album detail with quality info, covers at 300/800, search, random songs) and 40 real covers via
 `tool/real_covers_test.dart` (0 contrast failures in dark and light; black/white/gray art gets a neutral scheme).
 `flutter_secure_storage` round-trips on this machine (`tool/session_probe_main.dart`). Quality at wrap-up:
-`flutter analyze` clean, 112 tests passing, Windows build and launch clean. **Not yet checked: the user's own
-server with a 4k+ song library** (run the two tools above against it first).
+`flutter analyze` clean, 112 tests passing, Windows build and launch clean. **Also checked against the user's own server (Navidrome 0.64.2, 518 albums, 313 artists):** all albums load in two pages in about 0.6 s,
+119 covers gave 0 contrast failures. Still untested: a library with many thousands of albums.
 
 Next up is **M3 (Playback)**.
 
