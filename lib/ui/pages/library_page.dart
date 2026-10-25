@@ -22,7 +22,6 @@ class _LibraryPageState extends State<LibraryPage> {
   static const _cardWidth = 156.0;
 
   int _chip = 0;
-  final bool _reveal = revealOnce('library');
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +49,6 @@ class _LibraryPageState extends State<LibraryPage> {
                                   text: 'Library',
                                   style: text.displaySmall,
                                   delay: const Duration(milliseconds: 100),
-                                  animate: _reveal,
                                 ),
                                 Text(
                                   '1,284 albums · 96 GB',

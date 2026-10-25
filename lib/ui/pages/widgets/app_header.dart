@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../app/theme/motion.dart';
 import '../../widgets/expressive_buttons.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/shapes/morph_path.dart';
+import '../../widgets/shapes/morph_shape.dart';
 
 /// Search pill, cast button and avatar along the top of a page.
 class AppHeader extends StatelessWidget {
@@ -103,23 +105,29 @@ class _Avatar extends StatelessWidget {
     return Pressable(
       onTap: () {},
       semanticLabel: 'Account',
-      builder: (context, s) => AnimatedContainer(
-        duration: Motion.of(context, Motion.medium),
-        curve: Motion.curve(context, Motion.spring),
-        width: 48,
-        height: 48,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: scheme.tertiaryContainer,
-          borderRadius: BorderRadius.circular(s.hovered ? 14 : 24),
-        ),
-        child: Text(
-          'J',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: scheme.onTertiaryContainer,
+      // A circle at rest that springs into the scalloped "cookie" on hover
+      // and spins slowly, like the album tiles.
+      builder: (context, s) => SizedBox.square(
+        dimension: 48,
+        child: MorphShape(
+          params: const ShapeParams(lobes: 9, amp: .12, base: .9),
+          exponent: 2,
+          morph: s.hovered ? 1 : 0,
+          spin: s.hovered && !Motion.reduced(context) ? .9 : 0,
+          shadow: false,
+          child: ColoredBox(
+            color: scheme.tertiaryContainer,
+            child: Center(
+              child: Text(
+                'J',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onTertiaryContainer,
+                    ),
               ),
+            ),
+          ),
         ),
       ),
     );

@@ -44,27 +44,32 @@ class _PressableState extends State<Pressable> {
       enabled: enabled,
       label: widget.semanticLabel,
       onTap: widget.onTap,
-      child: FocusableActionDetector(
-        enabled: enabled,
-        mouseCursor: widget.cursor ?? (enabled ? SystemMouseCursors.click : MouseCursor.defer),
-        onShowHoverHighlight: (v) => _set(hovered: v),
-        onShowFocusHighlight: (v) => _set(focused: v),
-        actions: {
-          ActivateIntent: CallbackAction<ActivateIntent>(onInvoke: (_) {
-            widget.onTap?.call();
-            return null;
-          }),
-        },
-        shortcuts: const {
-          SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
-        },
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTapDown: (_) => _set(pressed: true),
-          onTapUp: (_) => _set(pressed: false),
-          onTapCancel: () => _set(pressed: false),
-          onTap: widget.onTap,
-          child: widget.builder(context, (hovered: _hovered, pressed: _pressed, focused: _focused)),
+      // Hover comes from a MouseRegion, not FocusableActionDetector, whose
+      // hover callback depends on the focus highlight mode.
+      child: MouseRegion(
+        cursor: widget.cursor ?? (enabled ? SystemMouseCursors.click : MouseCursor.defer),
+        onEnter: (_) => _set(hovered: true),
+        onExit: (_) => _set(hovered: false),
+        child: FocusableActionDetector(
+          enabled: enabled,
+          onShowFocusHighlight: (v) => _set(focused: v),
+          actions: {
+            ActivateIntent: CallbackAction<ActivateIntent>(onInvoke: (_) {
+              widget.onTap?.call();
+              return null;
+            }),
+          },
+          shortcuts: const {
+            SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (_) => _set(pressed: true),
+            onTapUp: (_) => _set(pressed: false),
+            onTapCancel: () => _set(pressed: false),
+            onTap: widget.onTap,
+            child: widget.builder(context, (hovered: _hovered, pressed: _pressed, focused: _focused)),
+          ),
         ),
       ),
     );

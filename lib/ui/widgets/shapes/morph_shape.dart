@@ -21,6 +21,7 @@ class MorphShape extends StatefulWidget {
     this.morph = 0,
     this.spin = 0,
     this.squareBase = true,
+    this.exponent = 4.2,
     this.shadow = true,
     this.shadowAlpha = .28,
   });
@@ -30,6 +31,9 @@ class MorphShape extends StatefulWidget {
   final double morph;
   final double spin;
   final bool squareBase;
+
+  /// Superellipse exponent of the resting outline (2 is a circle).
+  final double exponent;
   final bool shadow;
   final double shadowAlpha;
 
@@ -118,7 +122,7 @@ class _MorphShapeState extends State<MorphShape> with TickerProviderStateMixin {
     final m = _m.value;
     final rot = _rot.value;
     if (_path == null || _pathSize != size || _pathM != m || _pathRot != rot || _pathParams != _params) {
-      _path = morphPath(size, m: m, params: _params, rot: rot, squareBase: widget.squareBase);
+      _path = morphPath(size, m: m, params: _params, rot: rot, squareBase: widget.squareBase, exponent: widget.exponent);
       _pathSize = size;
       _pathM = m;
       _pathRot = rot;

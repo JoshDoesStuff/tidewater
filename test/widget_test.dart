@@ -13,6 +13,7 @@ import 'package:tidewater/app/providers/ui_providers.dart';
 import 'package:tidewater/app/theme/album_scheme.dart';
 import 'package:tidewater/app/theme/motion.dart';
 import 'package:tidewater/core/data/fake_library.dart';
+import 'package:tidewater/ui/widgets/effects/letter_reveal.dart';
 import 'package:tidewater/ui/widgets/shapes/morph_path.dart';
 
 /// Pumps the app and returns its provider container. Always call [_dispose]
@@ -79,6 +80,54 @@ void main() {
     await _advance(tester, const Duration(seconds: 2));
     expect(find.text('Jump back in'), findsOneWidget);
     await _dispose(tester);
+  });
+
+  testWidgets('page titles bounce in again on every tab change', (tester) async {
+    await _pumpApp(tester);
+    double firstLetterOpacity() {
+      final o = tester.widget<Opacity>(find.ancestor(of: find.text('G'), matching: find.byType(Opacity)).first);
+      return o.opacity;
+    }
+
+    expect(firstLetterOpacity(), 1); // settled after the first load
+    await tester.tap(find.text('Library'));
+    await _advance(tester, const Duration(seconds: 2));
+    await tester.tap(find.text('Home'));
+    await _advance(tester, const Duration(milliseconds: 600));
+    // Mid-reveal: the last letters have not arrived yet.
+    final last = tester.widget<Opacity>(find.ancestor(of: find.text('g'), matching: find.byType(Opacity)).first);
+    expect(last.opacity, lessThan(1));
+    await _advance(tester, const Duration(seconds: 3));
+    expect(firstLetterOpacity(), 1);
+    await _dispose(tester);
+  });
+
+  testWidgets('LetterSwap pops the old text out before the new text pops in', (tester) async {
+    final text = ValueNotifier('ab');
+    await tester.pumpWidget(MaterialApp(
+      home: ValueListenableBuilder<String>(
+        valueListenable: text,
+        builder: (context, t, _) => Center(child: LetterSwap(text: t, style: const TextStyle(fontSize: 20))),
+      ),
+    ));
+    await _advance(tester, const Duration(seconds: 2));
+    expect(find.text('a'), findsOneWidget);
+
+    text.value = 'xy';
+    await _advance(tester, const Duration(milliseconds: 250));
+    // Still showing the old letters, now on their way out.
+    expect(find.text('a'), findsOneWidget);
+    expect(find.text('x'), findsNothing);
+    final leaving = tester.widget<Opacity>(find.ancestor(of: find.text('a'), matching: find.byType(Opacity)).first);
+    expect(leaving.opacity, lessThan(1));
+
+    await _advance(tester, const Duration(milliseconds: 350));
+    // Swapped: new letters entering, old ones gone.
+    expect(find.text('a'), findsNothing);
+    expect(find.text('x'), findsOneWidget);
+    await _advance(tester, const Duration(seconds: 2));
+    final settled = tester.widget<Opacity>(find.ancestor(of: find.text('x'), matching: find.byType(Opacity)).first);
+    expect(settled.opacity, 1);
   });
 
   testWidgets('narrow window collapses rail labels and FAB', (tester) async {

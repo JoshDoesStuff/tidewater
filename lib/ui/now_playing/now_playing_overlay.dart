@@ -589,8 +589,10 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
           child: FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: LetterReveal(
-              text: track.title,
+            // Follows the live track (not the delayed one) so the old title
+            // pops out as soon as the track changes, then the new one pops in.
+            child: LetterSwap(
+              text: ref.watch(currentTrackProvider).title,
               style: text.displayMedium?.copyWith(
                 fontSize: 58,
                 fontWeight: FontWeight.w700,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers/settings_providers.dart';
 import '../../app/theme/motion.dart';
+import '../widgets/effects/letter_reveal.dart';
 import '../widgets/effects/ripple.dart';
 import '../widgets/pressable.dart';
 import 'page_frame.dart';
@@ -23,7 +24,11 @@ class SettingsPage extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Settings', style: text.displaySmall),
+            LetterReveal(
+              text: 'Settings',
+              style: text.displaySmall,
+              delay: const Duration(milliseconds: 100),
+            ),
             const SizedBox(height: 22),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 720),

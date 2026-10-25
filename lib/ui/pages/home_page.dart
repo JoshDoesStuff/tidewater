@@ -26,8 +26,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _chip = 0;
-  final bool _reveal = revealOnce('home');
-
   static const _heroes = [
     (index: 0, title: 'Glass Orchard', subtitle: 'Album · Mira Vale'),
     (index: 7, title: 'Daily Mix 1', subtitle: 'Playlist'),
@@ -54,8 +52,7 @@ class _HomePageState extends State<HomePage> {
             LetterReveal(
               text: 'Good evening',
               style: text.displaySmall,
-              delay: const Duration(milliseconds: 150),
-              animate: _reveal,
+              delay: const Duration(milliseconds: 100),
             ),
             const SizedBox(height: 14),
             Wrap(

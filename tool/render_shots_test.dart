@@ -91,6 +91,10 @@ void main() {
     await mouse.moveTo(const Offset(560, 380));
     await _advance(tester, const Duration(milliseconds: 1200));
     await shot('03-home-hover-hero');
+    // Hover the avatar: circle springs into the scalloped shape.
+    await mouse.moveTo(const Offset(1224, 64));
+    await _advance(tester, const Duration(milliseconds: 1200));
+    await shot('03b-avatar-hover');
     await mouse.moveTo(const Offset(700, 300));
 
     // Play an album: recolor, EQ badge, spinning mini cover.

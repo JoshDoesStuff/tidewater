@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/destinations.dart';
+import '../widgets/effects/letter_reveal.dart';
 import 'page_frame.dart';
 
 /// Stand-in for pages that land in later milestones.
@@ -19,7 +20,11 @@ class PlaceholderPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(destination.label, style: text.displaySmall),
+            LetterReveal(
+              text: destination.label,
+              style: text.displaySmall,
+              delay: const Duration(milliseconds: 100),
+            ),
             const SizedBox(height: 8),
             Text(
               'Coming in a later milestone.',
