@@ -159,8 +159,13 @@ janky). Current profile baseline (60 Hz, this machine): build ≈ 1 ms, raster �
   - Use `PreciseCubic` (`app/theme/precise_cubic.dart`) for easings, not Flutter's `Cubic`: its 0.001 bisection
     tolerance adds up to ~0.17 px of per-frame noise on a 58 px title. All `Motion` curves use it.
   - Never swap an animating widget for a transform-free one when it lands/leaves: the engine draws the two
-    slightly differently and the swap shows as a pop (2.8× the previous frame's change). Keep a never-identity
-    transform (1e-6 rad tilt) instead. Same applies to any future animated text/shape.
+    slightly differently and the swap shows as a pop (2.8× the previous frame's change).
+  - **Animate text as textures, like a browser does** (`ui/widgets/effects/glyph_run.dart`). Re-drawing glyph
+    outlines each frame at fractional positions makes stems shimmer (ink varied 0.5–0.7 % frame to frame) even when
+    positions are exact. Bake glyphs once into an atlas and draw all letters with one `drawRawAtlas` (per-sprite
+    transform and color): position jitter 0.070 → 0.006 px, ink shimmer 0.46 → 0.06 %. Per-glyph `drawImageRect`
+    with a color filter was NOT acceptable: it made the GPU do an off-screen pass per glyph per frame and
+    stalled raster (40 ms frames) while the theme recolored. Use `GlyphRun` for any future animated headline.
 - Add golden tests for key screens once the design settles; add an integration test for login → play.
 - CI: analyze + test on every push.
 

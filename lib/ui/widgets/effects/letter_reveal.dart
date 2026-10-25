@@ -1,81 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/motion.dart';
+import 'glyph_run.dart';
 
-/// Rotation (radians) added to every letter so its transform is never the
-/// identity; see the comment in [_letterRow].
-const _neverIdentity = 1e-6;
-
-/// One animated glyph row.
+/// Letter-by-letter pop-in, ported from the demo's `revealText`: each glyph
+/// rises .65em, untilts 10° and fades in on the spring curve over 720 ms,
+/// staggered by [stagger]. Plays every time the widget is built (e.g. on each
+/// tab change) and restarts when [text] changes. With reduced motion it is
+/// plain text.
 ///
-/// Built to stay cheap and steady while it moves:
-///  * no `Opacity` layers: the fade is the glyph color's alpha;
-///  * one `RepaintBoundary` for the row;
-///  * hidden from semantics while it animates, with one stable label for the
-///    whole string (per-letter nodes made every frame rebuild the
-///    accessibility tree);
-///  * letters never change rendering path when they land or leave (no swap
-///    to a transform-free widget), which is what removes the landing pop;
-///
-/// `pop` is 1 when a letter is in place and 0 when fully "out" (dropped .65em,
-/// tilted 10°); it may overshoot while a spring settles. `opacity` is
-/// separate so exits can fade across their whole length.
-Widget _letterRow(
-  BuildContext context, {
-  required String text,
-  required List<String> chars,
-  required TextStyle? style,
-  required ({double pop, double opacity}) Function(int i) state,
-}) {
-  final base = style ?? DefaultTextStyle.of(context).style;
-  final color = base.color ?? Theme.of(context).colorScheme.onSurface;
-  final em = base.fontSize ?? 14;
-  return Semantics(
-    label: text,
-    child: ExcludeSemantics(
-      child: RepaintBoundary(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            for (var i = 0; i < chars.length; i++)
-              () {
-                final (:pop, :opacity) = state(i);
-                final alpha = opacity.clamp(0.0, 1.0);
-                final glyph = Text(
-                  chars[i],
-                  softWrap: false,
-                  style: base.copyWith(color: alpha >= .999 ? color : color.withValues(alpha: alpha * color.a)),
-                );
-                // Letters stay in the SAME rendering path from the first frame
-                // to the last (like a CSS animation that never leaves its
-                // layer). Measured in the real engine
-                // (tool/letter_probe_main.dart): swapping to a plain,
-                // transform-free Text at the end made the final frame change
-                // 2.8x more than the one before it, a visible pop; a never-
-                // identity transform removed it (0.1x). The 1e-6 rad tilt is
-                // invisible and just keeps the matrix from being identity.
-                //
-                // Also deliberately NOT rounded to whole pixels: rounding made
-                // letters hop in 1 px steps (0.6 px rms jitter vs 0.07).
-                final dy = .65 * em * (1 - pop);
-                return Transform(
-                  alignment: Alignment.center,
-                  transform: Matrix4.translationValues(0, dy, 0)..rotateZ(.1745 * (1 - pop) + _neverIdentity),
-                  child: glyph,
-                );
-              }(),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-/// Letter-by-letter pop-in: each glyph rises .65em, untilts 10° and fades in
-/// on the spring curve, staggered by [stagger]. Plays every time the widget
-/// is built (e.g. on each tab change) and restarts when [text] changes. With
-/// reduced motion it is plain text.
+/// Letters are animated as textures ([GlyphRun]) like a browser does, which
+/// is what keeps the motion free of shimmer; see that class for why.
 class LetterReveal extends StatefulWidget {
   const LetterReveal({
     super.key,
@@ -130,31 +65,18 @@ class _LetterRevealState extends State<LetterReveal> with SingleTickerProviderSt
     super.dispose();
   }
 
+  LetterState _letter(int i) {
+    final elapsed = _c.value * _total.inMicroseconds / 1000;
+    final start = (widget.delay + widget.stagger * i).inMicroseconds / 1000;
+    final t = ((elapsed - start) / (_per.inMicroseconds / 1000)).clamp(0.0, 1.0);
+    final s = Motion.spring.transform(t);
+    return (pop: s, opacity: s);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_reduced) return Text(widget.text, style: widget.style, maxLines: 1, softWrap: false);
-    final chars = widget.text.characters.toList();
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (context, _) {
-        // Stays a letter row at rest (never swapped for a plain Text): the two
-        // space glyphs slightly differently (kerning) and the title would
-        // shift a pixel or two when the animation ends.
-        final elapsed = _c.value * _total.inMicroseconds / 1000;
-        return _letterRow(
-          context,
-          text: widget.text,
-          chars: chars,
-          style: widget.style,
-          state: (i) {
-            final start = (widget.delay + widget.stagger * i).inMicroseconds / 1000;
-            final t = ((elapsed - start) / (_per.inMicroseconds / 1000)).clamp(0.0, 1.0);
-            final s = Motion.spring.transform(t);
-            return (pop: s, opacity: s);
-          },
-        );
-      },
-    );
+    return GlyphRun(text: widget.text, style: widget.style, repaint: _c, state: _letter);
   }
 }
 
@@ -251,37 +173,26 @@ class _LetterSwapState extends State<LetterSwap> with SingleTickerProviderStateM
     super.dispose();
   }
 
+  /// Read at paint time, so it follows the phase without rebuilding.
+  LetterState _letter(int i) {
+    final exiting = _phase == _Phase.exiting;
+    final total = exiting ? _exitTotal(_shown) : _enterTotal(_shown);
+    final elapsed = _c.value * total.inMicroseconds / 1000;
+    final stagger = exiting ? _outStagger : _inStagger;
+    final per = (exiting ? _outPer : _inPer).inMicroseconds / 1000;
+    final t = ((elapsed - (stagger * i).inMicroseconds / 1000) / per).clamp(0.0, 1.0);
+    if (!exiting) {
+      final s = Motion.spring.transform(t);
+      return (pop: s, opacity: s);
+    }
+    // Exit: a smooth accelerating drop and fade. (The spring played backwards
+    // overshoots upward first, which read as a twitch.)
+    return (pop: 1 - Motion.exitMotion.transform(t), opacity: 1 - Motion.exitFade.transform(t));
+  }
+
   @override
   Widget build(BuildContext context) {
-    final plain = Text(_shown, style: widget.style, maxLines: 1, softWrap: false);
-    if (_reduced) return plain;
-    final chars = _shown.characters.toList();
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (context, _) {
-        final exiting = _phase == _Phase.exiting;
-        final total = exiting ? _exitTotal(_shown) : _enterTotal(_shown);
-        final elapsed = _c.value * total.inMicroseconds / 1000;
-        final stagger = exiting ? _outStagger : _inStagger;
-        final per = (exiting ? _outPer : _inPer).inMicroseconds / 1000;
-        return _letterRow(
-          context,
-          text: _shown,
-          chars: chars,
-          style: widget.style,
-          state: (i) {
-            final start = (stagger * i).inMicroseconds / 1000;
-            final t = ((elapsed - start) / per).clamp(0.0, 1.0);
-            if (!exiting) {
-              final s = Motion.spring.transform(t);
-              return (pop: s, opacity: s);
-            }
-            // Exit: a smooth accelerating drop and fade. (The spring played
-            // backwards overshoots upward first, which read as a twitch.)
-            return (pop: 1 - Motion.exitMotion.transform(t), opacity: 1 - Motion.exitFade.transform(t));
-          },
-        );
-      },
-    );
+    if (_reduced) return Text(_shown, style: widget.style, maxLines: 1, softWrap: false);
+    return GlyphRun(text: _shown, style: widget.style, repaint: _c, state: _letter);
   }
 }

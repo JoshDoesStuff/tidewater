@@ -18,6 +18,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:tidewater/app/theme/precise_cubic.dart';
+import 'package:tidewater/ui/widgets/effects/glyph_run.dart';
 
 const _text = 'ABCDEFGH';
 const _fontSize = 58.0;
@@ -40,21 +41,13 @@ const _palette = <(double, double, double)>[
 ];
 
 enum Variant {
-  /// Flutter's own Cubic (bisection, 0.001 tolerance).
-  flutterCurve,
+  /// Previous app rendering: glyph outlines drawn every frame (Text + Transform
+  /// with a never-identity tilt), exact easing.
+  outlines,
 
-  /// PreciseCubic: exact, like CSS cubic-bezier. Swaps to plain Text at rest.
-  preciseCurve,
-
-  /// Exact curve; the Transform is kept at rest (identity matrix).
-  preciseKeep,
-
-  /// Exact curve; a tiny permanent tilt so the transform is never identity
-  /// (the engine can never switch rendering path).
-  preciseTilted,
-
-  /// Exact curve; rotation dropped early so the tail is translation-only.
-  preciseEarlySnap,
+  /// Each letter baked to a texture once and animated as an image (like a
+  /// browser compositing inline-block spans).
+  textures,
 }
 
 const _exactSpring = PreciseCubic(.34, 1.56, .64, 1);
@@ -92,14 +85,15 @@ class Probe extends StatefulWidget {
 }
 
 class _Capture {
-  _Capture(this.centroids, this.pixels);
+  _Capture(this.centroids, this.pixels, this.ink);
   final List<({double x, double y})> centroids;
+  final List<double> ink;
   final Uint8List pixels;
 }
 
 class _ProbeState extends State<Probe> {
   final _key = GlobalKey();
-  Variant _variant = Variant.flutterCurve;
+  Variant _variant = Variant.outlines;
   double _elapsed = 0;
 
   @override
@@ -194,7 +188,7 @@ class _ProbeState extends State<Probe> {
     return _Capture([
       for (var i = 0; i < _text.length; i++)
         weight[i] == 0 ? (x: double.nan, y: double.nan) : (x: sumX[i] / weight[i] / dpr, y: sumY[i] / weight[i] / dpr),
-    ], Uint8List.fromList(bytes));
+    ], Uint8List.fromList(bytes), weight);
   }
 
   void _report(
@@ -233,6 +227,31 @@ class _ProbeState extends State<Probe> {
     }
     final rms = n == 0 ? 0 : math.sqrt(sumSq / n);
 
+    // Shimmer: a rigid letter that only moves/rotates keeps the same amount of
+    // ink (once fade is divided out). Outline rendering that re-draws the glyph
+    // at each fractional position makes stem width, and so ink, pulse.
+    var inkSq = 0.0;
+    var inkN = 0;
+    for (var i = 0; i < _text.length; i++) {
+      final series = <double>[];
+      for (var k = 0; k < caps.length; k++) {
+        series.add(alphas[k][i] > .9 ? caps[k].ink[i] / alphas[k][i] : double.nan);
+      }
+      final valid = series.where((v) => !v.isNaN).toList();
+      if (valid.length < 3) continue;
+      final mean = valid.reduce((a, b) => a + b) / valid.length;
+      for (var k = 2; k < series.length; k++) {
+        final a = series[k - 2];
+        final b = series[k - 1];
+        final c = series[k];
+        if (a.isNaN || b.isNaN || c.isNaN) continue;
+        final d2 = (c - 2 * b + a) / mean;
+        inkSq += d2 * d2;
+        inkN++;
+      }
+    }
+    final inkNoise = inkN == 0 ? 0 : math.sqrt(inkSq / inkN) * 100;
+
     // Landing: summed absolute pixel change between consecutive frames, over
     // the last frames. Entering: letters settle to rest, so changes should
     // shrink toward 0 with no spike at the end.
@@ -264,50 +283,35 @@ class _ProbeState extends State<Probe> {
         ? 'start: first change ${firstDiff.toStringAsFixed(1)} then ${after.toStringAsFixed(1)}'
         : 'landing: last change ${lastDiff.toStringAsFixed(1)} after ${before.toStringAsFixed(1)} '
             '(spike x${before == 0 ? 0 : (lastDiff / before).toStringAsFixed(1)})';
-    stdout.writeln('[$name] jitter rms=${rms.toStringAsFixed(3)}px worst=${worstSecond.toStringAsFixed(3)}px | $edge');
+    stdout.writeln('[$name] jitter rms=${rms.toStringAsFixed(3)}px worst=${worstSecond.toStringAsFixed(3)}px  '
+        'ink-shimmer=${inkNoise.toStringAsFixed(2)}% | $edge');
   }
 
   Widget _letters() {
-    final exact = _variant != Variant.flutterCurve;
     final children = <Widget>[];
     for (var i = 0; i < _text.length; i++) {
-      final p = _pop(i, _elapsed, exact: exact);
-      final alpha = _alpha(i, _elapsed, exact: exact);
+      final p = _pop(i, _elapsed, exact: true);
+      final alpha = _alpha(i, _elapsed, exact: true);
       final pal = _palette[i];
       final base = Color.from(alpha: 1, red: pal.$1, green: pal.$2, blue: pal.$3);
       final style = TextStyle(fontSize: _fontSize, fontWeight: FontWeight.w700, color: base, height: 1.1);
-      final glyph = Text(_text[i], style: style.copyWith(color: base.withValues(alpha: alpha)));
-      final settled = (1 - p).abs() < .004 && alpha >= .999;
-      final dy = .65 * _fontSize * (1 - p);
-      var rot = .1745 * (1 - p);
       switch (_variant) {
-        case Variant.flutterCurve:
-        case Variant.preciseCurve:
-          // Plain Text at rest, otherwise translate + rotate.
-          if (settled) {
-            children.add(glyph);
-            continue;
-          }
-        case Variant.preciseKeep:
-          break;
-        case Variant.preciseTilted:
-          rot += 1e-6;
-        case Variant.preciseEarlySnap:
-          if ((1 - p).abs() < .02) rot = 0;
-          if (settled) {
-            children.add(glyph);
-            continue;
-          }
+        case Variant.outlines:
+          children.add(Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.translationValues(0, .65 * _fontSize * (1 - p), 0)..rotateZ(.1745 * (1 - p) + 1e-6),
+            child: Text(_text[i], style: style.copyWith(color: base.withValues(alpha: alpha))),
+          ));
+        case Variant.textures:
+          children.add(GlyphRun(
+            text: _text[i],
+            style: style,
+            state: (_) => (pop: p, opacity: alpha),
+          ));
       }
-      children.add(Transform(
-        alignment: Alignment.center,
-        transform: Matrix4.translationValues(0, dy, 0)..rotateZ(rot),
-        child: glyph,
-      ));
     }
     return Row(mainAxisSize: MainAxisSize.min, children: children);
   }
-
   @override
   Widget build(BuildContext context) {
     return Directionality(

@@ -13,6 +13,7 @@ import 'package:tidewater/app/providers/ui_providers.dart';
 import 'package:tidewater/app/theme/album_scheme.dart';
 import 'package:tidewater/app/theme/motion.dart';
 import 'package:tidewater/core/data/fake_library.dart';
+import 'package:tidewater/ui/widgets/effects/glyph_run.dart';
 import 'package:tidewater/ui/widgets/effects/letter_reveal.dart';
 import 'package:tidewater/ui/widgets/shapes/morph_path.dart';
 import 'package:tidewater/ui/widgets/wavy_progress.dart';
@@ -85,19 +86,22 @@ void main() {
 
   testWidgets('page titles bounce in again on every tab change', (tester) async {
     await _pumpApp(tester);
-    // The reveal fades with the glyph color's alpha (no Opacity layers).
-    double alphaOf(String letter) => tester.widget<Text>(find.text(letter).first).style!.color!.a;
+    // Letters are textures; read each one's opacity from the render object.
+    // `.last`: while the route transition runs, the outgoing page's title is
+    // still in the tree underneath the incoming one.
+    List<double> letters() => tester.renderObject<RenderGlyphRun>(find.byType(GlyphRunLeaf).last).debugOpacities();
 
-    expect(alphaOf('G'), 1); // settled after the first load
+    expect(letters().every((o) => o == 1), isTrue); // settled after the first load
     await tester.tap(find.text('Library'));
     await _advance(tester, const Duration(seconds: 2));
     await tester.tap(find.text('Home'));
     await _advance(tester, const Duration(milliseconds: 600));
-    // Mid-reveal: the last letters have not arrived yet.
-    expect(alphaOf('g'), lessThan(1));
+    // Mid-reveal: the first letters are in, the last have not arrived yet.
+    final mid = letters();
+    expect(mid.first, greaterThan(.5));
+    expect(mid.last, lessThan(1));
     await _advance(tester, const Duration(seconds: 3));
-    expect(alphaOf('G'), 1);
-    expect(alphaOf('g'), 1);
+    expect(letters().every((o) => o == 1), isTrue);
     await _dispose(tester);
   });
 
@@ -109,32 +113,27 @@ void main() {
         builder: (context, t, _) => Center(child: LetterSwap(text: t, style: const TextStyle(fontSize: 20))),
       ),
     ));
+    final semantics = tester.ensureSemantics();
+    List<double> letters() => tester.renderObject<RenderGlyphRun>(find.byType(GlyphRunLeaf)).debugOpacities();
+
     await _advance(tester, const Duration(seconds: 2));
-    expect(find.text('a'), findsOneWidget);
+    expect(find.bySemanticsLabel('ab'), findsOneWidget);
+    expect(letters(), [1, 1]);
 
     text.value = 'xy';
     await _advance(tester, const Duration(milliseconds: 250));
-    // Still showing the old letters, now on their way out.
-    expect(find.text('a'), findsOneWidget);
-    expect(find.text('x'), findsNothing);
-    final leaving = tester.widget<Text>(find.text('a'));
-    expect(leaving.style!.color!.a, lessThan(1));
+    // Still the old text, now on its way out (first letter fading).
+    expect(find.bySemanticsLabel('ab'), findsOneWidget);
+    expect(find.bySemanticsLabel('xy'), findsNothing);
+    expect(letters().first, lessThan(1));
 
     await _advance(tester, const Duration(milliseconds: 350));
-    // Swapped: new letters entering, old ones gone.
-    expect(find.text('a'), findsNothing);
-    expect(find.text('x'), findsOneWidget);
+    // Swapped: the new text is entering, the old is gone.
+    expect(find.bySemanticsLabel('ab'), findsNothing);
+    expect(find.bySemanticsLabel('xy'), findsOneWidget);
     await _advance(tester, const Duration(seconds: 2));
-    final settled = tester.widget<Text>(find.text('x'));
-    expect(settled.style!.color!.a, 1);
-    // At rest the letters stay on the same rendering path as while moving: a
-    // transform that is never exactly identity (so landing doesn't pop) yet
-    // visually nil, and no Opacity layers.
-    final rest = tester.widget<Transform>(find.ancestor(of: find.text('x'), matching: find.byType(Transform)).first);
-    expect(rest.transform.isIdentity(), isFalse);
-    expect(rest.transform.entry(0, 1).abs(), lessThan(1e-5));
-    expect(rest.transform.entry(1, 3).abs(), lessThan(1e-9)); // no leftover translation
-    expect(find.ancestor(of: find.text('x'), matching: find.byType(Opacity)), findsNothing);
+    expect(letters(), [1, 1]);
+    semantics.dispose();
   });
 
   testWidgets('animated letters are hidden from semantics behind one stable label', (tester) async {
@@ -294,6 +293,7 @@ void main() {
     container.read(letterSpeedProvider.notifier).set(99);
     expect(container.read(letterSpeedProvider), LetterSpeedNotifier.max);
 
+    final semantics = tester.ensureSemantics();
     // (old title gone, new title showing) 300 ms after the text changes.
     Future<(bool, bool)> run(double speed) async {
       final text = ValueNotifier('ab');
@@ -306,13 +306,17 @@ void main() {
       await _advance(tester, const Duration(seconds: 3));
       text.value = 'xy';
       await _advance(tester, const Duration(milliseconds: 300));
-      final result = (find.text('a').evaluate().isEmpty, find.text('x').evaluate().isNotEmpty);
+      final result = (
+        find.bySemanticsLabel('ab').evaluate().isEmpty,
+        find.bySemanticsLabel('xy').evaluate().isNotEmpty,
+      );
       await tester.pumpWidget(const SizedBox());
       return result;
     }
 
     final slow = await run(.5);
     final fast = await run(3);
+    semantics.dispose();
     expect(slow, (false, false), reason: 'at 0.5x the old title is still leaving after 300 ms');
     expect(fast, (true, true), reason: 'at 3x the swap has already happened after 300 ms');
   });
