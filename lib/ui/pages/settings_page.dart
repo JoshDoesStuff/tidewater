@@ -20,7 +20,12 @@ class SettingsPage extends ConsumerWidget {
     final viz = ref.watch(vizModeProvider);
     return PageFrame(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 36, 32, PageFrame.bottomClearance),
+        padding: const EdgeInsets.fromLTRB(
+          24,
+          36,
+          32,
+          PageFrame.bottomClearance,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -69,7 +74,9 @@ class SettingsPage extends ConsumerWidget {
                   const SizedBox(height: 4),
                   Text(
                     'Shown behind Now Playing (V cycles). Levels are simulated for now, not read from the audio.',
-                    style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+                    style: text.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   Wrap(
@@ -77,7 +84,12 @@ class SettingsPage extends ConsumerWidget {
                     runSpacing: 4,
                     children: [
                       for (final m in VizMode.values)
-                        _ModeChip(label: m.label, selected: m == viz, onTap: () => ref.read(vizModeProvider.notifier).set(m)),
+                        _ModeChip(
+                          label: m.label,
+                          selected: m == viz,
+                          onTap: () =>
+                              ref.read(vizModeProvider.notifier).set(m),
+                        ),
                     ],
                   ),
                 ],
@@ -102,18 +114,29 @@ class _SpeedRow extends ConsumerWidget {
     final notifier = ref.read(letterSpeedProvider.notifier);
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-      decoration: BoxDecoration(color: scheme.surfaceContainerLow, borderRadius: BorderRadius.circular(24)),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Expanded(
-                child: Text('Track change speed', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                child: Text(
+                  'Track change speed',
+                  style: text.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
               Text(
                 '${speed.toStringAsFixed(1)}×',
-                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: scheme.primary),
+                style: text.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: scheme.primary,
+                ),
               ),
               const SizedBox(width: 8),
               TextButton(
@@ -126,13 +149,23 @@ class _SpeedRow extends ConsumerWidget {
             'How fast the old title pops out and the new one pops in on Now Playing.',
             style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
           ),
-          Slider(
-            value: speed,
-            min: LetterSpeedNotifier.min,
-            max: LetterSpeedNotifier.max,
-            divisions: 25,
-            label: '${speed.toStringAsFixed(1)}×',
-            onChanged: notifier.set,
+          // The stock Material Slider
+          // left Windows' accessibility tree inconsistent: hundreds of "will
+          // not be in the tree" errors from the moment this page opened. One
+          // explicit node instead.
+          Semantics(
+            container: true,
+            excludeSemantics: true,
+            slider: true,
+            label: 'Track change speed',
+            value: '${speed.toStringAsFixed(1)}×',
+            increasedValue:
+                '${(speed + .1).clamp(LetterSpeedNotifier.min, LetterSpeedNotifier.max).toStringAsFixed(1)}×',
+            decreasedValue:
+                '${(speed - .1).clamp(LetterSpeedNotifier.min, LetterSpeedNotifier.max).toStringAsFixed(1)}×',
+            onIncrease: () => notifier.set(speed + .1),
+            onDecrease: () => notifier.set(speed - .1),
+            child: _SpeedSlider(value: speed, onChanged: notifier.set),
           ),
         ],
       ),
@@ -141,7 +174,11 @@ class _SpeedRow extends ConsumerWidget {
 }
 
 class _ModeChip extends StatelessWidget {
-  const _ModeChip({required this.label, required this.selected, required this.onTap});
+  const _ModeChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;
@@ -158,7 +195,11 @@ class _ModeChip extends StatelessWidget {
         height: 40,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: selected ? scheme.primary : (s.hovered ? scheme.surfaceContainerHighest : scheme.surfaceContainerHigh),
+          color: selected
+              ? scheme.primary
+              : (s.hovered
+                    ? scheme.surfaceContainerHighest
+                    : scheme.surfaceContainerHigh),
           borderRadius: BorderRadius.circular(selected ? 20 : 12),
         ),
         child: Ripple(
@@ -170,10 +211,10 @@ class _ModeChip extends StatelessWidget {
               child: Text(
                 label,
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontSize: 14,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                      color: selected ? scheme.onPrimary : scheme.onSurface,
-                    ),
+                  fontSize: 14,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected ? scheme.onPrimary : scheme.onSurface,
+                ),
               ),
             ),
           ),
@@ -184,7 +225,12 @@ class _ModeChip extends StatelessWidget {
 }
 
 class _SwitchRow extends StatelessWidget {
-  const _SwitchRow({required this.title, required this.subtitle, required this.value, required this.onChanged});
+  const _SwitchRow({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
 
   final String title;
   final String subtitle;
@@ -195,33 +241,129 @@ class _SwitchRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    return Pressable(
+    // One toggle node for the whole row (title, hint and the switch itself
+    // would otherwise merge into one button with a toggle inside it).
+    return Semantics(
+      container: true,
+      excludeSemantics: true,
+      toggled: value,
+      label: title,
+      hint: subtitle,
       onTap: () => onChanged(!value),
-      semanticLabel: title,
-      builder: (context, s) => AnimatedContainer(
-        duration: Motion.of(context, Motion.fast),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        decoration: BoxDecoration(
-          color: s.hovered ? scheme.surfaceContainerHigh : scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(24),
+      child: Pressable(
+        onTap: () => onChanged(!value),
+        builder: (context, s) => AnimatedContainer(
+          duration: Motion.of(context, Motion.fast),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          decoration: BoxDecoration(
+            color: s.hovered
+                ? scheme.surfaceContainerHigh
+                : scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: text.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: text.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              IgnorePointer(
+                child: Switch(value: value, onChanged: onChanged),
+              ),
+            ],
+          ),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      ),
+    );
+  }
+}
+
+/// A plain slider for the track change speed: a pill track, a filled part and
+/// a handle, in steps of 0.1. Stands in for Material's `Slider`, which made
+/// Windows' accessibility tree fail on every update once this page was open.
+class _SpeedSlider extends StatelessWidget {
+  const _SpeedSlider({required this.value, required this.onChanged});
+
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  void _set(double dx, double width) {
+    final t = (dx / width).clamp(0.0, 1.0);
+    final raw =
+        LetterSpeedNotifier.min +
+        t * (LetterSpeedNotifier.max - LetterSpeedNotifier.min);
+    onChanged((raw * 10).round() / 10);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t =
+        (value - LetterSpeedNotifier.min) /
+        (LetterSpeedNotifier.max - LetterSpeedNotifier.min);
+    return LayoutBuilder(
+      builder: (context, box) {
+        final w = box.maxWidth;
+        return MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (d) => _set(d.localPosition.dx, w),
+            onHorizontalDragUpdate: (d) => _set(d.localPosition.dx, w),
+            child: SizedBox(
+              height: 40,
+              child: Stack(
+                alignment: Alignment.centerLeft,
                 children: [
-                  Text(title, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 2),
-                  Text(subtitle, style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
+                  Container(
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  Container(
+                    width: w * t,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: scheme.primary,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  Positioned(
+                    left: (w * t - 3).clamp(0.0, w - 6),
+                    child: Container(
+                      width: 6,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: scheme.primary,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(width: 16),
-            IgnorePointer(child: Switch(value: value, onChanged: onChanged)),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

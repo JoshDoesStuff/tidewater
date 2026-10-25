@@ -18,6 +18,7 @@ import 'package:tidewater/app/providers/playback_providers.dart';
 import 'package:tidewater/app/providers/session_providers.dart';
 import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/app/providers/system_media_providers.dart';
+import 'package:tidewater/app/providers/ui_providers.dart';
 import 'package:tidewater/core/api/library_api.dart';
 import 'package:tidewater/core/api/opensubsonic_client.dart';
 import 'package:tidewater/core/api/server_config.dart';
@@ -26,6 +27,8 @@ import 'package:tidewater/core/api/session_store.dart';
 const _url = String.fromEnvironment('TW_URL', defaultValue: 'https://demo.navidrome.org');
 const _user = String.fromEnvironment('TW_USER', defaultValue: 'demo');
 const _pass = String.fromEnvironment('TW_PASS', defaultValue: 'demo');
+const _go = String.fromEnvironment('TW_GO');
+const _shuffle = bool.fromEnvironment('TW_SHUFFLE');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,12 +62,28 @@ Future<void> main() async {
   for (final a in albums) {
     final d = await api.getAlbum(a.id);
     if (d.tracks.length >= 4) {
-      await player.playTracks(d.tracks);
+      await player.playTracks(d.tracks, shuffle: _shuffle);
       break;
     }
   }
   stdout.writeln('E2E started');
-  await Future<void>.delayed(const Duration(seconds: 50));
+  if (_shuffle) {
+    await Future<void>.delayed(const Duration(seconds: 3));
+    container.read(nowPlayingOpenProvider.notifier).set(true);
+    await Future<void>.delayed(const Duration(seconds: 3));
+    container.read(queueOpenProvider.notifier).set(true);
+    await Future<void>.delayed(const Duration(seconds: 3));
+    await player.next();
+    await Future<void>.delayed(const Duration(seconds: 3));
+    container.read(queueOpenProvider.notifier).set(false);
+    container.read(nowPlayingOpenProvider.notifier).set(false);
+  }
+  for (final page in _go.split(',').where((p) => p.isNotEmpty)) {
+    await Future<void>.delayed(const Duration(seconds: 6));
+    container.read(routerProvider).go(page);
+    stdout.writeln('E2E went to $page');
+  }
+  await Future<void>.delayed(const Duration(seconds: 8));
   stdout.writeln('E2E done');
   await player.stop();
   exit(0);

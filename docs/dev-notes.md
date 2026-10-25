@@ -149,3 +149,8 @@ The desktop is often locked, so screen capture of the real app returns the lock 
 - **Shell habits that cost time**: `git commit` after `;` ignores a failed `flutter analyze` (use `&&`); blind
   `sed 'N,Md'` line-range edits mangled three files (re-read the lines first, or use the Edit tool); a heredoc with
   apostrophes can fail in the Bash tool (use the Write tool); `flutter test --name=word` (no spaces).
+- **Never use Material's `Slider` here**: with it on screen Windows' accessibility tree failed on every update
+  ("Failed to update ui::AXTree ... will not be in the tree", hundreds of lines, even after leaving the page). Found by
+  running the real app (`tool/e2e_main.dart --dart-define=TW_GO=/settings,/home,...` navigates and the console is
+  counted) and removing page parts one per run. Settings uses a plain custom slider plus one explicit semantics node,
+  like the volume slider. Widget tests cannot see this class of bug; check a new control type in the real app.
