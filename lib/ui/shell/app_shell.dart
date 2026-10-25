@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/destinations.dart';
+import '../../app/providers/library_providers.dart';
 import '../../app/providers/playback_providers.dart';
 import '../../app/providers/cover_prefetch.dart';
 import '../../app/providers/scrobble_providers.dart';
@@ -13,6 +14,8 @@ import '../../app/providers/session_persistence.dart';
 import '../../app/providers/system_media_providers.dart';
 import '../../app/providers/settings_providers.dart';
 import '../../app/providers/ui_providers.dart';
+import '../../app/theme/motion.dart';
+import '../../core/models/track.dart';
 import '../now_playing/now_playing_overlay.dart';
 import '../widgets/expressive_buttons.dart';
 import 'mini_player.dart';
@@ -48,6 +51,49 @@ class _AppShellState extends ConsumerState<AppShell> {
     HardwareKeyboard.instance.removeHandler(_onKey);
     _pointer.dispose();
     super.dispose();
+  }
+
+  /// What the FAB shuffles on this page: the whole library on Home, otherwise
+  /// the songs the page shows. Null hides it (Library, Artists, Settings...).
+  ({String label, Future<void> Function() run})? _shuffleFor(String location) {
+    final player = ref.read(playbackProvider.notifier);
+    if (location == Destination.home.path) {
+      return (label: 'Shuffle all', run: player.shuffleAll);
+    }
+    if (location == Destination.liked.path) {
+      return (
+        label: 'Shuffle liked',
+        run: () async {
+          final liked = ref.read(likedProvider);
+          final songs = [
+            for (final t in ref.read(likedSongsProvider).value ?? const <Track>[])
+              if (liked.contains(t.id)) t,
+          ];
+          if (songs.isNotEmpty) await player.playTracks(songs, shuffle: true);
+        },
+      );
+    }
+    final album = RegExp(r'^/album/([^/]+)$').firstMatch(location);
+    if (album != null) {
+      return (
+        label: 'Shuffle album',
+        run: () async {
+          final d = await ref.read(albumDetailProvider(album.group(1)!).future);
+          await player.playTracks(d.tracks, shuffle: true);
+        },
+      );
+    }
+    final playlist = RegExp(r'^/playlist/([^/]+)$').firstMatch(location);
+    if (playlist != null) {
+      return (
+        label: 'Shuffle playlist',
+        run: () async {
+          final d = await ref.read(playlistDetailProvider(playlist.group(1)!).future);
+          await player.playTracks(d.tracks, shuffle: true);
+        },
+      );
+    }
+    return null;
   }
 
   /// Space play/pause, N next, P previous, L lyrics, V visualizer style,
@@ -120,7 +166,9 @@ class _AppShellState extends ConsumerState<AppShell> {
                   width: railWidth,
                   child: NavRail(
                     // Album and artist pages belong to the Library.
-                    selected: Destination.fromLocation(widget.location) ?? Destination.library,
+                    selected: widget.location.startsWith('/playlist/')
+                        ? Destination.lists
+                        : (Destination.fromLocation(widget.location) ?? Destination.library),
                     compact: compact,
                     onSelected: (d) => context.go(d.path),
                   ),
@@ -134,11 +182,29 @@ class _AppShellState extends ConsumerState<AppShell> {
                 Positioned(
                   right: 32,
                   bottom: 24,
-                  child: ExpressiveFab(
-                    icon: Icons.shuffle_rounded,
-                    label: 'Shuffle all',
-                    extended: fabExtended,
-                    onPressed: () => ref.read(playbackProvider.notifier).shuffleAll(),
+                  child: Builder(
+                    builder: (context) {
+                      final shuffle = _shuffleFor(widget.location);
+                      final d = Motion.of(context, Motion.medium);
+                      return IgnorePointer(
+                        ignoring: shuffle == null,
+                        child: AnimatedOpacity(
+                          opacity: shuffle == null ? 0 : 1,
+                          duration: d,
+                          child: AnimatedScale(
+                            scale: shuffle == null ? .8 : 1,
+                            duration: d,
+                            curve: Motion.curve(context, Motion.spring),
+                            child: ExpressiveFab(
+                              icon: Icons.shuffle_rounded,
+                              label: shuffle?.label ?? 'Shuffle all',
+                              extended: fabExtended,
+                              onPressed: () => shuffle?.run(),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
                 const Positioned.fill(child: WashLayer()),

@@ -92,7 +92,10 @@ class PlaylistCard extends ConsumerWidget {
       shape: ShapeKind.forKey(playlist.id),
       size: size,
       large: large,
-      onTap: () => ref.read(playbackProvider.notifier).playPlaylist(playlist),
+      // Opens the playlist (its page has Play and Shuffle), like an artist.
+      onTap: () => context.push('/playlist/${playlist.id}'),
+      showPlay: false,
+      onOpen: () => context.push('/playlist/${playlist.id}'),
     );
   }
 }

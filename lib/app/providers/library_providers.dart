@@ -167,3 +167,7 @@ final likedSongsProvider = FutureProvider.autoDispose<List<Track>>((ref) async {
   scheduleMicrotask(() => ref.read(likedProvider.notifier).seed(songs, addOnly: true));
   return songs;
 });
+
+/// One playlist with its songs (the playlist page).
+final playlistDetailProvider =
+    FutureProvider.family<PlaylistDetail, String>((ref, id) => ref.watch(apiProvider).getPlaylist(id));

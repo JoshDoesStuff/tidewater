@@ -223,7 +223,7 @@ class _CarouselSkeleton extends StatelessWidget {
               const Expanded(child: SkeletonBox(height: 200, radius: 32)),
               if (i < 2 || showQuick) const SizedBox(width: 12),
             ],
-            if (showQuick) const SkeletonBox(width: 244, height: 200, radius: 32),
+            if (showQuick) const SkeletonBox(width: 300, height: 200, radius: 32),
           ],
         );
       },
@@ -260,7 +260,7 @@ class _CarouselState extends State<_Carousel> {
       builder: (context, box) {
         final showQuick = box.maxWidth >= 900 && widget.resume;
         final gaps = 12.0 * (n - 1) + (showQuick ? 12 : 0);
-        final total = box.maxWidth - gaps - (showQuick ? 244 : 0);
+        final total = box.maxWidth - gaps - (showQuick ? _ContinueListening.width : 0);
         return TweenAnimationBuilder<List<double>>(
           tween: _WeightsTween(end: _weights),
           duration: Motion.of(context, Motion.slow),
@@ -269,6 +269,10 @@ class _CarouselState extends State<_Carousel> {
             final sum = w.fold<double>(0, (a, b) => a + b);
             return Row(
               children: [
+                if (showQuick) ...[
+                  SizedBox(width: _ContinueListening.width, child: StaggerIn(index: 0, child: const _ContinueListening())),
+                  const SizedBox(width: 12),
+                ],
                 for (var i = 0; i < n; i++) ...[
                   MouseRegion(
                     onEnter: (_) => setState(() => _hover = i),
@@ -285,14 +289,8 @@ class _CarouselState extends State<_Carousel> {
                       ),
                     ),
                   ),
-                  if (i < n - 1 || showQuick) const SizedBox(width: 12),
+                  if (i < n - 1) const SizedBox(width: 12),
                 ],
-                if (showQuick)
-                  MouseRegion(
-                    onEnter: (_) => setState(() => _hover = n),
-                    onExit: (_) => setState(() => _hover = -1),
-                    child: SizedBox(width: 244, child: StaggerIn(index: n, child: const _ContinueListening())),
-                  ),
               ],
             );
           },
@@ -424,9 +422,12 @@ class _HeroCard extends ConsumerWidget {
 }
 
 /// Picks up the queue (restored from last time or already playing): cover,
-/// title, how far along it is, and a button to resume or pause.
+/// title, how far along it is, and a button to resume or pause. Hovering
+/// lifts the card, tints it with the accent and springs the button bigger.
 class _ContinueListening extends ConsumerWidget {
   const _ContinueListening();
+
+  static const width = 300.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -436,100 +437,109 @@ class _ContinueListening extends ConsumerWidget {
     final playing = ref.watch(playbackProvider.select((s) => s.playing));
     if (track == null) return const SizedBox.shrink();
     final position = ref.watch(positionProvider);
+    final d = Motion.of(context, Motion.medium);
+    final spring = Motion.curve(context, Motion.spring);
     return Pressable(
       onTap: () => ref.read(playbackProvider.notifier).toggle(),
       semanticLabel: '${playing ? 'Pause' : 'Continue'} ${track.title}, ${track.artist}',
-      builder: (context, s) => AnimatedContainer(
-        duration: Motion.of(context, Motion.fast),
-        clipBehavior: Clip.antiAlias,
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
-        decoration: BoxDecoration(
-          color: s.hovered ? scheme.surfaceContainer : scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(s.pressed ? 28 : 32),
-        ),
-        child: Ripple(
-          color: scheme.onSurface,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Continue listening',
-                style: text.titleMedium?.copyWith(fontSize: 16, fontWeight: FontWeight.w700, height: 1.2),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  ArtTile(
-                    coverArt: track.coverArt,
-                    seedKey: track.albumId,
-                    resolution: 150,
-                    size: 56,
-                    params: ShapeKind.cookie.params,
-                    morph: 1,
-                    spin: playing && !Motion.reduced(context) ? .72 : 0,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          track.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: text.bodyMedium?.copyWith(fontSize: 14, fontWeight: FontWeight.w700),
-                        ),
-                        Text(
-                          track.artist,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: text.bodySmall?.copyWith(fontSize: 12, color: scheme.onSurfaceVariant),
-                        ),
-                      ],
+      builder: (context, s) => AnimatedScale(
+        scale: s.pressed ? .97 : (s.hovered ? 1.03 : 1),
+        duration: d,
+        curve: spring,
+        child: AnimatedContainer(
+          duration: d,
+          curve: Motion.standard,
+          clipBehavior: Clip.antiAlias,
+          padding: const EdgeInsets.fromLTRB(22, 16, 22, 16),
+          decoration: BoxDecoration(
+            color: Color.lerp(scheme.surfaceContainerLow, scheme.primaryContainer, s.hovered ? .45 : 0),
+            borderRadius: BorderRadius.circular(s.hovered ? 40 : 32),
+          ),
+          child: Ripple(
+            color: scheme.onSurface,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Continue listening',
+                  style: text.titleMedium?.copyWith(fontSize: 17, fontWeight: FontWeight.w700, height: 1.2),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    ArtTile(
+                      coverArt: track.coverArt,
+                      seedKey: track.albumId,
+                      resolution: 300,
+                      size: 64,
+                      params: ShapeKind.cookie.params,
+                      morph: 1,
+                      spin: (playing || s.hovered) && !Motion.reduced(context) ? .72 : 0,
                     ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Row(
-                children: [
-                  Expanded(
-                    child: ValueListenableBuilder<Duration>(
-                      valueListenable: position,
-                      builder: (context, p, _) {
-                        final total = track.duration.inMilliseconds;
-                        final done = total <= 0 ? 0.0 : (p.inMilliseconds / total).clamp(0.0, 1.0);
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(3),
-                          child: LinearProgressIndicator(
-                            value: done,
-                            minHeight: 5,
-                            backgroundColor: scheme.surfaceContainerHighest,
-                            valueColor: AlwaysStoppedAnimation(scheme.primary),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            track.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.bodyMedium?.copyWith(fontSize: 15.5, fontWeight: FontWeight.w700, height: 1.25),
                           ),
-                        );
-                      },
+                          const SizedBox(height: 2),
+                          Text(
+                            track.artist,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.bodySmall?.copyWith(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  AnimatedContainer(
-                    duration: Motion.of(context, Motion.medium),
-                    curve: Motion.curve(context, Motion.spring),
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: scheme.primary,
-                      borderRadius: BorderRadius.circular(playing ? 14 : 22),
+                  ],
+                ),
+                const Spacer(),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ValueListenableBuilder<Duration>(
+                        valueListenable: position,
+                        builder: (context, p, _) {
+                          final total = track.duration.inMilliseconds;
+                          final done = total <= 0 ? 0.0 : (p.inMilliseconds / total).clamp(0.0, 1.0);
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: done,
+                              minHeight: 6,
+                              backgroundColor: scheme.surfaceContainerHighest,
+                              valueColor: AlwaysStoppedAnimation(scheme.primary),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                    child: Icon(
-                      playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                      size: 24,
-                      color: scheme.onPrimary,
+                    const SizedBox(width: 16),
+                    AnimatedContainer(
+                      duration: d,
+                      curve: spring,
+                      width: s.hovered ? 56 : 48,
+                      height: s.hovered ? 56 : 48,
+                      decoration: BoxDecoration(
+                        color: scheme.primary,
+                        borderRadius: BorderRadius.circular(playing ? 16 : (s.hovered ? 28 : 24)),
+                      ),
+                      child: Icon(
+                        playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                        size: s.hovered ? 28 : 25,
+                        color: scheme.onPrimary,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

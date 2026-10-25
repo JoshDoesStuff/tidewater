@@ -18,6 +18,8 @@ import 'page_frame.dart';
 import 'widgets/album_card.dart';
 import 'widgets/genre_picker.dart';
 import 'widgets/song_row.dart';
+import 'widgets/view_toggle.dart';
+import '../../app/providers/settings_providers.dart';
 import '../../app/providers/playback_providers.dart';
 
 class LibraryPage extends ConsumerStatefulWidget {
@@ -228,7 +230,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                                   .set,
                             ),
                           ],
-                          if (tab == LibraryTab.songs)
+                          if (tab == LibraryTab.songs) ...[
                             _MenuPill<SongSort>(
                               icon: Icons.sort_rounded,
                               label: songSort.label,
@@ -241,6 +243,12 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                                   .read(librarySongSortProvider.notifier)
                                   .set,
                             ),
+                            const SizedBox(width: 6),
+                            ViewToggle(
+                              cards: ref.watch(likedAsCardsProvider),
+                              onChanged: ref.read(likedAsCardsProvider.notifier).set,
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 22),
@@ -371,6 +379,16 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                 message: 'Add music to your Navidrome library and it will show up here.',
               ),
             ),
+          ];
+        }
+        if (ref.watch(likedAsCardsProvider)) {
+          return [
+            _grid(list.length, (i) => TrackCard(tracks: list, index: i, large: true)),
+            if (s.hasError)
+              _message(
+                ErrorPanel(error: s.error!, compact: true, onRetry: () => ref.invalidate(libraryAllSongsProvider)),
+                bottom: true,
+              ),
           ];
         }
         _columns = 1;
@@ -732,7 +750,7 @@ class AlphaRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final shown = [for (var i = 0; i < _letters.length; i += 2) _letters[i]];
+    final shown = _letters;
     final present = <String>{
       for (final l in _letters)
         if (firstIndexForLetter(titles, l) >= 0) l,
@@ -741,7 +759,7 @@ class AlphaRail extends StatelessWidget {
       constraints: const BoxConstraints(maxHeight: 520),
       child: Container(
         width: 22,
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: 4),
         decoration: BoxDecoration(
           color: scheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(11),
@@ -752,7 +770,7 @@ class AlphaRail extends StatelessWidget {
             for (final l in shown)
               Pressable(
                 onTap: () {
-                  // The rail shows every other letter; jump to this letter, or
+                  // Jump to this letter, or
                   // to the next one that exists.
                   final from = _letters.indexOf(l);
                   for (var i = from; i < _letters.length; i++) {
@@ -769,7 +787,7 @@ class AlphaRail extends StatelessWidget {
                   duration: Motion.of(context, Motion.medium),
                   curve: Motion.curve(context, Motion.spring),
                   width: 22,
-                  height: 22,
+                  height: 17,
                   alignment: Alignment.center,
                   transform: Matrix4.diagonal3Values(
                     s.hovered ? 1.35 : 1,

@@ -426,4 +426,47 @@ void main() {
       await disposeApp(tester);
     });
   });
+
+  group('shuffle button, playlist page, rail letters', () {
+    testWidgets('the shuffle button is on Home and Liked only, and shuffles what the page shows', (tester) async {
+      final container = await pumpApp(tester);
+      expect(find.text('Shuffle all'), findsOneWidget);
+      await tester.tap(find.text('Library').first);
+      await advance(tester, const Duration(seconds: 2));
+      final fade = find.ancestor(of: find.text('Shuffle all'), matching: find.byType(AnimatedOpacity));
+      expect(tester.widget<AnimatedOpacity>(fade.first).opacity, 0);
+      await tester.tap(find.text('Liked').first);
+      await advance(tester, const Duration(seconds: 2));
+      expect(find.text('Shuffle liked'), findsOneWidget);
+      await tester.tap(find.text('Shuffle liked'));
+      await advance(tester, const Duration(seconds: 1));
+      expect(container.read(playbackProvider).queue.map((t) => t.id), ['t-a2']);
+      await container.read(playbackProvider.notifier).toggle();
+      await disposeApp(tester);
+    });
+
+    testWidgets('a playlist card opens the playlist with its songs instead of playing', (tester) async {
+      final container = await pumpApp(tester);
+      await tester.tap(find.text('Lists').first);
+      await advance(tester, const Duration(seconds: 2));
+      await tester.tap(find.text('Late Night Drive'));
+      await advance(tester, const Duration(seconds: 2));
+      expect(container.read(routerProvider).state.uri.path, '/playlist/pl-1');
+      expect(container.read(playbackProvider).queue, isEmpty);
+      expect(find.text('Shuffle playlist'), findsOneWidget);
+      await disposeApp(tester);
+    });
+
+    testWidgets('the A-Z rail lists every letter', (tester) async {
+      await pumpApp(tester);
+      await tester.tap(find.text('Library').first);
+      await advance(tester, const Duration(seconds: 2));
+      await tester.tap(find.widgetWithText(ExpressiveChip, 'Songs'));
+      await advance(tester, const Duration(seconds: 2));
+      for (final l in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')) {
+        expect(find.bySemanticsLabel('Jump to $l'), findsOneWidget, reason: l);
+      }
+      await disposeApp(tester);
+    });
+  });
 }

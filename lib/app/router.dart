@@ -10,6 +10,7 @@ import '../ui/pages/liked_page.dart';
 import '../ui/pages/lists_page.dart';
 import '../ui/pages/login_page.dart';
 import '../ui/pages/placeholder_page.dart';
+import '../ui/pages/playlist_page.dart';
 import '../ui/pages/settings_page.dart';
 import '../ui/shell/app_shell.dart';
 import 'destinations.dart';
@@ -48,6 +49,10 @@ GoRouter createRouter({required bool Function() signedIn, Listenable? refresh}) 
             GoRoute(
               path: '/artist/:id',
               pageBuilder: (context, state) => _enterPage(state, ArtistPage(artistId: state.pathParameters['id']!)),
+            ),
+            GoRoute(
+              path: '/playlist/:id',
+              pageBuilder: (context, state) => _enterPage(state, PlaylistPage(playlistId: state.pathParameters['id']!)),
             ),
             for (final d in Destination.values)
               GoRoute(
