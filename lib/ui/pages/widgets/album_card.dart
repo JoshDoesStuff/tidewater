@@ -155,12 +155,14 @@ class _PlayPop extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final d = Motion.of(context, Motion.slow);
-    final c = Motion.curve(context, Motion.spring);
+    // Springy entrance, quick exit, so moving between cards never leaves a
+    // fading button behind.
+    final d = Motion.of(context, visible ? Motion.slow : Motion.fast);
+    final c = visible ? Motion.curve(context, Motion.spring) : Motion.standard;
     return IgnorePointer(
       child: AnimatedOpacity(
         opacity: visible ? 1 : 0,
-        duration: Motion.of(context, Motion.medium),
+        duration: Motion.of(context, visible ? Motion.medium : Motion.fast),
         child: AnimatedScale(
           scale: visible ? 1 : .3,
           duration: d,

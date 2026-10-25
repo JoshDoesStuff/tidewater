@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -70,6 +71,40 @@ void main() {
     expect(albums.width, lessThan(200));
     expect(albums.top, all.top);
     expect(albums.left, greaterThan(all.right));
+    await _dispose(tester);
+  });
+
+  testWidgets('hero play button is gone quickly when the pointer moves to another card', (tester) async {
+    await _pumpApp(tester);
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+
+    // Opacity of each hero-row play button (icons in the carousel band).
+    List<double> heroButtons() {
+      final icons = find.byIcon(Icons.play_arrow_rounded);
+      final values = <double>[];
+      for (var i = 0; i < icons.evaluate().length; i++) {
+        final y = tester.getCenter(icons.at(i)).dy;
+        if (y < 284 || y > 484) continue; // the Jump back in carousel
+        final fade = find.ancestor(of: icons.at(i), matching: find.byType(FadeTransition)).first;
+        values.add(tester.widget<FadeTransition>(fade).opacity.value);
+      }
+      return values;
+    }
+
+    await mouse.moveTo(const Offset(260, 380)); // first hero
+    await _advance(tester, const Duration(milliseconds: 1200));
+    final settled = heroButtons();
+    expect(settled.where((o) => o > .95).length, 1, reason: 'only the hovered hero shows its button');
+
+    await mouse.moveTo(const Offset(930, 380)); // third hero
+    await _advance(tester, const Duration(milliseconds: 200));
+    // 200 ms in, the carousel is still expanding, but the old button must be gone.
+    final moving = heroButtons();
+    expect(moving.where((o) => o > .1).length, lessThanOrEqualTo(1), reason: 'old button still visible: $moving');
+    await _advance(tester, const Duration(milliseconds: 1200));
+    expect(heroButtons().where((o) => o > .95).length, 1);
+    await mouse.removePointer();
     await _dispose(tester);
   });
 

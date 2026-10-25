@@ -265,16 +265,20 @@ class _HeroCard extends ConsumerWidget {
               Positioned(
                 right: 20,
                 bottom: 20,
+                // Springy entrance, but a quick exit: when the pointer moves to
+                // another card the old button must be gone before the new card
+                // has finished expanding.
                 child: AnimatedOpacity(
                   opacity: hovered ? 1 : 0,
-                  duration: d,
+                  duration: hovered ? d : Motion.of(context, Motion.fast),
+                  curve: hovered ? Curves.linear : Motion.standard,
                   child: AnimatedScale(
                     scale: hovered ? 1 : .5,
-                    duration: d,
-                    curve: c,
+                    duration: hovered ? d : Motion.of(context, Motion.fast),
+                    curve: hovered ? c : Motion.standard,
                     child: AnimatedContainer(
-                      duration: d,
-                      curve: c,
+                      duration: hovered ? d : Motion.of(context, Motion.fast),
+                      curve: hovered ? c : Motion.standard,
                       width: 52,
                       height: 52,
                       decoration: BoxDecoration(
