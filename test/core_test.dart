@@ -1,7 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tidewater/core/data/fake_library.dart';
+import 'package:tidewater/core/lyrics/placeholder_lyrics.dart';
 import 'package:tidewater/core/lyrics/lrc_parser.dart';
 import 'package:tidewater/core/playback/simulated_engine.dart';
+import 'support/fake_library.dart';
 import 'package:tidewater/core/playback/visualizer_source.dart';
 
 void main() {
@@ -30,17 +31,17 @@ void main() {
     });
 
     test('activeIndexAt picks the last started line', () {
-      expect(fakeLyrics.activeIndexAt(Duration.zero), 0);
-      expect(fakeLyrics.activeIndexAt(const Duration(seconds: 28)), 1);
-      expect(fakeLyrics.activeIndexAt(const Duration(seconds: 47)), 1);
-      expect(fakeLyrics.activeIndexAt(const Duration(seconds: 48)), 2);
-      expect(fakeLyrics.activeIndexAt(const Duration(minutes: 10)), fakeLyrics.lines.length - 1);
+      expect(placeholderLyrics.activeIndexAt(Duration.zero), 0);
+      expect(placeholderLyrics.activeIndexAt(const Duration(seconds: 28)), 1);
+      expect(placeholderLyrics.activeIndexAt(const Duration(seconds: 47)), 1);
+      expect(placeholderLyrics.activeIndexAt(const Duration(seconds: 48)), 2);
+      expect(placeholderLyrics.activeIndexAt(const Duration(minutes: 10)), placeholderLyrics.lines.length - 1);
     });
   });
 
   group('SimulatedEngine', () {
     test('plays, pauses, seeks and changes track', () async {
-      final e = SimulatedEngine(fakeTracks);
+      final e = SimulatedEngine(queue: fakeTracks);
       expect(e.state.playing, isFalse);
       await e.playIndex(3);
       expect(e.state.index, 3);
@@ -62,7 +63,7 @@ void main() {
     });
 
     test('previous restarts when well into the track', () async {
-      final e = SimulatedEngine(fakeTracks);
+      final e = SimulatedEngine(queue: fakeTracks);
       await e.playIndex(2);
       await e.seek(const Duration(seconds: 30));
       await e.previous();
@@ -72,7 +73,7 @@ void main() {
     });
 
     test('next wraps around the queue', () async {
-      final e = SimulatedEngine(fakeTracks);
+      final e = SimulatedEngine(queue: fakeTracks);
       await e.playIndex(fakeTracks.length - 1);
       await e.next();
       expect(e.state.index, 0);

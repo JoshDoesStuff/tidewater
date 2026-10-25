@@ -156,7 +156,7 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final duration = ref.watch(currentTrackProvider).duration;
+    final duration = ref.watch(currentTrackProvider.select((t) => t?.duration)) ?? Duration.zero;
     final position = ref.watch(positionProvider);
     final playing = ref.watch(playbackProvider.select((s) => s.playing));
     if (playing != _playing) {

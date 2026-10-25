@@ -13,26 +13,43 @@ import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/app/providers/ui_providers.dart';
 import 'package:tidewater/app/theme/album_scheme.dart';
 import 'package:tidewater/app/theme/motion.dart';
-import 'package:tidewater/core/data/fake_library.dart';
+import 'package:tidewater/core/color/cover_seed.dart';
 import 'package:tidewater/ui/widgets/effects/glyph_run.dart';
 import 'package:tidewater/ui/widgets/effects/letter_reveal.dart';
 import 'package:tidewater/ui/widgets/shapes/morph_path.dart';
 import 'package:tidewater/ui/widgets/wavy_progress.dart';
 
+import 'support/fake_library.dart';
+import 'support/test_app.dart';
+
 /// Pumps the app and returns its provider container. Always call [_dispose]
 /// at the end of a test that plays audio so the simulated clock stops.
-Future<ProviderContainer> _pumpApp(WidgetTester tester, {Size size = const Size(1280, 800)}) async {
-  SharedPreferences.setMockInitialValues({});
-  final prefs = await SharedPreferences.getInstance();
+Future<ProviderContainer> _pumpApp(
+  WidgetTester tester, {
+  Size size = const Size(1280, 800),
+  FakeLibraryApi? api,
+  bool signedIn = true,
+}) async {
+  final overrides = await testOverrides(api: api, signedIn: signedIn);
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(ProviderScope(
-    overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    retry: (_, _) => null,
+    overrides: overrides,
     child: const TidewaterApp(),
   ));
   await _advance(tester, const Duration(seconds: 2));
   return ProviderScope.containerOf(tester.element(find.byType(TidewaterApp)));
+}
+
+/// Queues album [index] and pauses, so Now Playing and the mini player have a
+/// track without the simulated clock running.
+Future<void> _startPaused(WidgetTester tester, ProviderContainer container, {int index = 0}) async {
+  final player = container.read(playbackProvider.notifier);
+  await player.playAlbum(fakeAlbums[index]);
+  await player.toggle();
+  await _advance(tester, const Duration(milliseconds: 600));
 }
 
 /// Advances fake time in 100 ms frames so route and implicit animations run.
@@ -53,10 +70,9 @@ Future<void> _dispose(WidgetTester tester) async {
 void main() {
   testWidgets('shell shows rail, mini player, FAB and Home', (tester) async {
     await _pumpApp(tester);
-    expect(find.text('Good evening'), findsNothing); // letters are separate widgets
     expect(find.text('Jump back in'), findsOneWidget);
     expect(find.text('Shuffle all'), findsOneWidget);
-    expect(find.text(fakeTracks.first.title), findsWidgets); // mini player
+    expect(find.byTooltip('Previous'), findsNothing, reason: 'no mini player until something plays');
     for (final d in Destination.values) {
       expect(find.text(d.label), findsWidgets);
     }
@@ -112,7 +128,7 @@ void main() {
     await _pumpApp(tester);
     await tester.tap(find.text('Library'));
     await _advance(tester, const Duration(seconds: 2));
-    expect(find.text('1,284 albums · 96 GB'), findsOneWidget);
+    expect(find.text('12 albums'), findsOneWidget);
     await tester.tap(find.text('Home'));
     await _advance(tester, const Duration(seconds: 2));
     expect(find.text('Jump back in'), findsOneWidget);
@@ -204,21 +220,21 @@ void main() {
   testWidgets('playing an album recolors the theme and starts playback', (tester) async {
     final container = await _pumpApp(tester);
     final before = Theme.of(tester.element(find.text('Jump back in'))).colorScheme.primary;
-    await container.read(playbackProvider.notifier).playIndex(6);
+    await container.read(playbackProvider.notifier).playAlbum(fakeAlbums[6]);
     await _advance(tester, const Duration(milliseconds: 100));
     expect(container.read(playbackProvider).playing, isTrue);
-    expect(container.read(activeAlbumIndexProvider), 6);
+    expect(container.read(activeAlbumIdProvider), 'a6');
     await _advance(tester, const Duration(seconds: 2));
     final after = Theme.of(tester.element(find.text('Jump back in'))).colorScheme.primary;
     expect(after, isNot(before));
-    expect(after, AlbumScheme.of(fakeAlbums[6], Brightness.dark).primary);
+    expect(after, AlbumScheme.of(CoverSeed.fromKey('a6'), Brightness.dark).primary);
     await container.read(playbackProvider.notifier).toggle();
     await _dispose(tester);
   });
 
   testWidgets('mini player opens Now Playing; Esc closes it', (tester) async {
     final container = await _pumpApp(tester);
-    await tester.tap(find.byTooltip('Previous').first, warnIfMissed: false);
+    await _startPaused(tester, container);
     container.read(nowPlayingOpenProvider.notifier).set(true);
     await _advance(tester, const Duration(seconds: 2));
     expect(find.text('Now playing'), findsOneWidget);
@@ -233,6 +249,7 @@ void main() {
 
   testWidgets('L toggles lyrics, V cycles visualizer style in Now Playing', (tester) async {
     final container = await _pumpApp(tester);
+    await _startPaused(tester, container);
     container.read(nowPlayingOpenProvider.notifier).set(true);
     await _advance(tester, const Duration(seconds: 2));
     expect(container.read(lyricsOnProvider), isTrue);
@@ -250,6 +267,7 @@ void main() {
 
   testWidgets('goes idle after 3.5 s while playing, never while paused', (tester) async {
     final container = await _pumpApp(tester);
+    await _startPaused(tester, container);
     container.read(nowPlayingOpenProvider.notifier).set(true);
     await _advance(tester, const Duration(seconds: 2));
     await _advance(tester, const Duration(seconds: 5));
@@ -266,7 +284,7 @@ void main() {
     await _dispose(tester);
   });
 
-  test('every album scheme keeps accent text readable (WCAG >= 4.5)', () {
+  test('every cover scheme keeps accent text readable (WCAG >= 4.5), incl. gray art', () {
     double lum(Color c) {
       double ch(double v) => v <= .03928 ? v / 12.92 : math.pow((v + .055) / 1.055, 2.4).toDouble();
       return .2126 * ch(c.r) + .7152 * ch(c.g) + .0722 * ch(c.b);
@@ -278,12 +296,23 @@ void main() {
       return (l1 > l2 ? l1 + .05 : l2 + .05) / (l1 > l2 ? l2 + .05 : l1 + .05);
     }
 
-    for (final album in fakeAlbums) {
-      final s = AlbumScheme.of(album, Brightness.dark);
-      // Active lyric (primary) and body text on the lyrics card / surface.
-      expect(ratio(s.primary, s.surfaceContainerHigh), greaterThanOrEqualTo(4.5), reason: album.title);
-      expect(ratio(s.onSurface, s.surface), greaterThanOrEqualTo(4.5), reason: album.title);
-      expect(ratio(s.onSurfaceVariant, s.surfaceContainerHigh), greaterThanOrEqualTo(4.5), reason: album.title);
+    // Placeholder hues from album ids, plus covers with no real color.
+    final seeds = <(String, CoverSeed)>[
+      for (final a in fakeAlbums) (a.title, CoverSeed.fromKey(a.id)),
+      for (final (name, argb) in [("pure gray", 0xff808080), ("near black", 0xff101010), ("near white", 0xfff0f0f0), ("pale gray-blue", 0xffa0a4aa)])
+        (name, CoverSeed(argb, muted: true)),
+      for (final (name, argb) in [("red", 0xffff0000), ("yellow", 0xffffff00), ("green", 0xff00ff00), ("blue", 0xff0000ff), ("dark navy", 0xff0b1230)])
+        (name, CoverSeed(argb)),
+    ];
+    for (final brightness in Brightness.values) {
+      for (final (name, seed) in seeds) {
+        final s = AlbumScheme.of(seed, brightness);
+        final why = "$name $brightness";
+        // Active lyric (primary) and body text on the lyrics card / surface.
+        expect(ratio(s.primary, s.surfaceContainerHigh), greaterThanOrEqualTo(4.5), reason: why);
+        expect(ratio(s.onSurface, s.surface), greaterThanOrEqualTo(4.5), reason: why);
+        expect(ratio(s.onSurfaceVariant, s.surfaceContainerHigh), greaterThanOrEqualTo(4.5), reason: why);
+      }
     }
   });
 

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/providers/cover_providers.dart';
 import '../../app/providers/playback_providers.dart';
 import '../../app/providers/settings_providers.dart';
 import '../../app/providers/ui_providers.dart';
@@ -182,7 +183,7 @@ class _WashLayerState extends ConsumerState<WashLayer>
     super.dispose();
   }
 
-  void _trigger() {
+  Future<void> _trigger() async {
     if (Motion.reduced(context)) return;
     final box = context.findRenderObject() as RenderBox?;
     final global = ref.read(pointerOriginProvider).value;
@@ -190,10 +191,14 @@ class _WashLayerState extends ConsumerState<WashLayer>
     _origin = (global != null && box != null)
         ? box.globalToLocal(global)
         : size.center(Offset.zero);
-    final album = ref.read(currentAlbumProvider);
+    final key = ref.read(currentCoverKeyProvider);
+    if (key == null) return;
+    // The new cover's colors are usually ready (the grid just showed it).
+    final seed = await ref.read(coverSeedProvider(key).future);
+    if (!mounted) return;
     final dark = ref.read(darkThemeProvider);
     _color = AlbumScheme.of(
-      album,
+      seed,
       dark ? Brightness.dark : Brightness.light,
     ).primary;
     _c.forward(from: 0);
@@ -201,11 +206,8 @@ class _WashLayerState extends ConsumerState<WashLayer>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(playbackProvider.select((s) => (s.index, s.started)), (
-      prev,
-      next,
-    ) {
-      if (prev != null && prev != next && next.$2) _trigger();
+    ref.listen(currentTrackIdProvider, (prev, next) {
+      if (next != null && prev != next) _trigger();
     });
     return ExcludeSemantics(
       child: IgnorePointer(

@@ -3,19 +3,23 @@ import 'package:flutter/material.dart';
 /// The only place colors are chosen. Everything else reads
 /// `Theme.of(context).colorScheme`.
 abstract final class AppTheme {
-  /// Seed used until a cover-art scheme exists (milestone 4). Hue of the first
-  /// demo album.
+  /// Seed used until the first album plays and its cover colors take over.
   static const seed = Color(0xFFFF7E5F);
 
   /// Foreground for text/icons drawn directly on top of cover art or a scrim.
   /// Art is not themed, so this is deliberately fixed.
   static const onArt = Color(0xFFFFFFFF);
 
-  static ColorScheme scheme(Brightness brightness, {Color seedColor = seed}) =>
-      ColorScheme.fromSeed(seedColor: seedColor, brightness: brightness);
+  /// [muted] is for art with no real color (gray, black-and-white): a neutral
+  /// scheme instead of one tinted by an arbitrary hue.
+  static ColorScheme scheme(Brightness brightness, {Color seedColor = seed, bool muted = false}) => ColorScheme.fromSeed(
+        seedColor: seedColor,
+        brightness: brightness,
+        dynamicSchemeVariant: muted ? DynamicSchemeVariant.neutral : DynamicSchemeVariant.tonalSpot,
+      );
 
-  static ThemeData build(Brightness brightness, {Color seedColor = seed}) =>
-      fromScheme(scheme(brightness, seedColor: seedColor));
+  static ThemeData build(Brightness brightness, {Color seedColor = seed, bool muted = false}) =>
+      fromScheme(scheme(brightness, seedColor: seedColor, muted: muted));
 
   static ThemeData fromScheme(ColorScheme scheme) {
     final base = ThemeData(colorScheme: scheme, useMaterial3: true);

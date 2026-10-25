@@ -34,6 +34,16 @@ enum ShapeKind {
 
   /// Kind used for the item at [index] (cards are assigned a shape by index).
   static ShapeKind forIndex(int index) => values[index % 5];
+
+  /// Kind for an album id: stable across runs, so an album keeps its shape
+  /// wherever it appears (grid card, mini player, Now Playing).
+  static ShapeKind forKey(String key) {
+    var h = 0x811c9dc5; // FNV-1a
+    for (final c in key.codeUnits) {
+      h = ((h ^ c) * 0x01000193) & 0x7fffffff;
+    }
+    return values[h % 5];
+  }
 }
 
 /// Outline at morph factor [m] (0 = superellipse, 1 = lobed shape).

@@ -1,19 +1,23 @@
-import 'dart:math' as math;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/fake_library.dart';
+import '../../core/api/api_exception.dart';
 import '../../core/lyrics/lyrics.dart';
+import '../../core/lyrics/placeholder_lyrics.dart';
 import '../../core/models/album.dart';
+import '../../core/models/artist.dart';
+import '../../core/models/playlist.dart';
 import '../../core/models/track.dart';
 import '../../core/playback/playback_engine.dart';
 import '../../core/playback/simulated_engine.dart';
 import '../../core/playback/visualizer_source.dart';
+import 'cover_providers.dart';
+import 'session_providers.dart';
+import 'ui_providers.dart';
 
-/// The engine behind the UI. A simulated one until real playback lands.
+/// The engine behind the UI. A simulated one until real playback lands (M3).
 final playbackEngineProvider = Provider<PlaybackEngine>((ref) {
-  final engine = SimulatedEngine(fakeTracks);
+  final engine = SimulatedEngine();
   ref.onDispose(engine.dispose);
   return engine;
 });
@@ -29,20 +33,50 @@ class PlaybackController extends Notifier<PlaybackState> {
     return engine.state;
   }
 
+  /// Runs a server request that ends in playback; a failure becomes a toast
+  /// instead of an unhandled error.
+  Future<void> _load(Future<List<Track>> Function() tracks) async {
+    try {
+      final queue = await tracks();
+      if (queue.isEmpty) {
+        ref.read(toastProvider.notifier).show('Nothing to play there.');
+        return;
+      }
+      await _engine.playQueue(queue);
+    } on ApiException catch (e) {
+      ref.read(toastProvider.notifier).show(
+            e.isOffline ? 'Can\'t reach the server. Check your connection.' : e.message,
+            error: true,
+          );
+    }
+  }
+
+  Future<void> playAlbum(Album album) => _load(() async => (await ref.read(apiProvider).getAlbum(album.id)).tracks);
+
+  Future<void> playPlaylist(Playlist playlist) =>
+      _load(() async => (await ref.read(apiProvider).getPlaylist(playlist.id)).tracks);
+
+  /// All of an artist's albums, in the server's order.
+  Future<void> playArtist(Artist artist) => _load(() async {
+        final api = ref.read(apiProvider);
+        final albums = (await api.getArtist(artist.id)).albums.take(12);
+        final details = await Future.wait([for (final a in albums) api.getAlbum(a.id)]);
+        return [for (final d in details) ...d.tracks];
+      });
+
+  Future<void> shuffleAll() => _load(() => ref.read(apiProvider).getRandomSongs(size: 50));
+
+  /// Jump within the current queue.
   Future<void> playIndex(int index) => _engine.playIndex(index);
 
-  /// Play/pause. The first press with nothing started plays the shown track.
+  /// Play/pause. With nothing queued there is nothing to start.
   Future<void> toggle() => state.playing ? _engine.pause() : _engine.play();
 
   Future<void> next() => _engine.next();
   Future<void> previous() => _engine.previous();
 
-  Future<void> shuffleAll() => _engine.playIndex(_random.nextInt(state.queue.length));
-
-  final _random = math.Random();
-
   Future<void> seekFraction(double f) {
-    final d = state.track.duration;
+    final d = state.track?.duration ?? Duration.zero;
     return _engine.seek(Duration(microseconds: (d.inMicroseconds * f.clamp(0.0, 1.0)).round()));
   }
 
@@ -66,21 +100,26 @@ final positionProvider = Provider<ValueNotifier<Duration>>((ref) {
   return n;
 });
 
-/// The track whose album is shown (the resting first track until started).
-final currentTrackProvider = Provider<Track>((ref) => ref.watch(playbackProvider.select((s) => s.track)));
+/// The track being played, or null until something has been queued.
+final currentTrackProvider = Provider<Track?>((ref) => ref.watch(playbackProvider.select((s) => s.track)));
 
-final currentAlbumProvider = Provider<Album>((ref) {
-  final albumId = ref.watch(currentTrackProvider).albumId;
-  return fakeAlbums.firstWhere((a) => a.id == albumId);
-});
+/// Id of the playing track (changes on every skip, even within one album).
+final currentTrackIdProvider = Provider<String?>((ref) => ref.watch(currentTrackProvider.select((t) => t?.id)));
 
-/// Index of the album that is the active one, or -1 before anything started.
-final activeAlbumIndexProvider = Provider<int>((ref) {
+/// The album that is the active one, or null before anything started.
+final activeAlbumIdProvider = Provider<String?>((ref) {
   final started = ref.watch(playbackProvider.select((s) => s.started));
-  return started ? ref.watch(playbackProvider.select((s) => s.index)) : -1;
+  return started ? ref.watch(currentTrackProvider.select((t) => t?.albumId)) : null;
 });
 
-final lyricsProvider = Provider<Lyrics>((ref) => fakeLyrics);
+/// Cover identity of the playing track (the scheme follows it).
+final currentCoverKeyProvider = Provider<CoverKey?>((ref) {
+  final track = ref.watch(currentTrackProvider);
+  return track == null ? null : (albumId: track.albumId, coverArt: track.coverArt);
+});
+
+/// STAND-IN: the same lyrics for every track (real lyrics in M3).
+final lyricsProvider = Provider<Lyrics>((ref) => placeholderLyrics);
 
 class LikedNotifier extends Notifier<Set<String>> {
   @override

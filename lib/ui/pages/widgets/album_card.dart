@@ -3,23 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers/playback_providers.dart';
 import '../../../app/theme/motion.dart';
-import '../../../core/data/fake_library.dart';
+import '../../../core/models/album.dart';
+import '../../../core/models/artist.dart';
+import '../../../core/models/playlist.dart';
 import '../../widgets/art_tile.dart';
 import '../../widgets/effects/eq_bars.dart';
 import '../../widgets/effects/ripple.dart';
 import '../../widgets/shapes/morph_path.dart';
 
-/// Squircle cover with title and artist underneath.
-///
-/// Hover lifts the card, morphs the tile into its scalloped shape (assigned
-/// by [index]), pops in a play button and tilts toward the cursor. Press
-/// scales it down. The playing album stays morphed, slowly spins and shows
-/// the EQ badge.
-class AlbumCard extends ConsumerStatefulWidget {
-  const AlbumCard({super.key, required this.index, this.size, this.large = false});
+/// An album: squircle cover with title and artist underneath.
+class AlbumCard extends ConsumerWidget {
+  const AlbumCard({super.key, required this.album, this.size, this.large = false});
 
-  /// Index into the library (also selects the shape).
-  final int index;
+  final Album album;
 
   /// Cover edge length. Null fills the available width (grid cells).
   final double? size;
@@ -28,10 +24,112 @@ class AlbumCard extends ConsumerStatefulWidget {
   final bool large;
 
   @override
-  ConsumerState<AlbumCard> createState() => _AlbumCardState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final active = ref.watch(activeAlbumIdProvider) == album.id;
+    final playing = active && ref.watch(playbackProvider.select((s) => s.playing));
+    return MediaCard(
+      title: album.title,
+      subtitle: album.artist,
+      coverArt: album.coverArt,
+      seedKey: album.id,
+      shape: ShapeKind.forKey(album.id),
+      active: active,
+      playing: playing,
+      size: size,
+      large: large,
+      onTap: () => ref.read(playbackProvider.notifier).playAlbum(album),
+    );
+  }
 }
 
-class _AlbumCardState extends ConsumerState<AlbumCard> {
+/// An artist: round cover that springs into a scalloped shape on hover.
+class ArtistCard extends ConsumerWidget {
+  const ArtistCard({super.key, required this.artist, this.size, this.large = false});
+
+  final Artist artist;
+  final double? size;
+  final bool large;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MediaCard(
+      title: artist.name,
+      subtitle: artist.albumCount == 1 ? '1 album' : '${artist.albumCount} albums',
+      coverArt: artist.coverArt,
+      seedKey: artist.id,
+      shape: ShapeKind.forKey(artist.id),
+      round: true,
+      size: size,
+      large: large,
+      onTap: () => ref.read(playbackProvider.notifier).playArtist(artist),
+    );
+  }
+}
+
+/// A playlist: squircle cover with its name and song count.
+class PlaylistCard extends ConsumerWidget {
+  const PlaylistCard({super.key, required this.playlist, this.size, this.large = false});
+
+  final Playlist playlist;
+  final double? size;
+  final bool large;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MediaCard(
+      title: playlist.name,
+      subtitle: playlist.songCount == 1 ? '1 song' : '${playlist.songCount} songs',
+      coverArt: playlist.coverArt,
+      seedKey: playlist.id,
+      shape: ShapeKind.forKey(playlist.id),
+      size: size,
+      large: large,
+      onTap: () => ref.read(playbackProvider.notifier).playPlaylist(playlist),
+    );
+  }
+}
+
+/// Cover with title and subtitle underneath.
+///
+/// Hover lifts the card, morphs the tile into its scalloped [shape], pops in
+/// a play button and tilts toward the cursor. Press scales it down. An
+/// [active] card stays morphed, slowly spins and (while [playing]) shows the
+/// EQ badge.
+class MediaCard extends StatefulWidget {
+  const MediaCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.coverArt,
+    required this.seedKey,
+    required this.shape,
+    required this.onTap,
+    this.active = false,
+    this.playing = false,
+    this.round = false,
+    this.size,
+    this.large = false,
+  });
+
+  final String title;
+  final String subtitle;
+  final String? coverArt;
+  final String seedKey;
+  final ShapeKind shape;
+  final VoidCallback onTap;
+  final bool active;
+  final bool playing;
+
+  /// Circle at rest instead of a squircle (artists).
+  final bool round;
+  final double? size;
+  final bool large;
+
+  @override
+  State<MediaCard> createState() => _MediaCardState();
+}
+
+class _MediaCardState extends State<MediaCard> {
   static const _maxTiltDeg = 6.0;
 
   bool _hovered = false;
@@ -49,11 +147,8 @@ class _AlbumCardState extends ConsumerState<AlbumCard> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final album = fakeAlbums[widget.index];
-    final active = ref.watch(activeAlbumIndexProvider) == widget.index;
-    final playing = active && ref.watch(playbackProvider.select((s) => s.playing));
+    final active = widget.active;
     final reduced = Motion.reduced(context);
-    final shape = ShapeKind.forIndex(widget.index).params;
     final morphed = _hovered || active;
 
     final cover = LayoutBuilder(
@@ -73,7 +168,7 @@ class _AlbumCardState extends ConsumerState<AlbumCard> {
             onTapDown: (_) => setState(() => _pressed = true),
             onTapUp: (_) => setState(() => _pressed = false),
             onTapCancel: () => setState(() => _pressed = false),
-            onTap: () => ref.read(playbackProvider.notifier).playIndex(widget.index),
+            onTap: widget.onTap,
             child: TweenAnimationBuilder<_Pose>(
               tween: _PoseTween(end: _Pose(tilt: reduced ? Offset.zero : _tilt, lift: _hovered && !reduced ? -4 : 0, scale: _pressed ? .94 : 1)),
               duration: reduced ? Duration.zero : (_hovered && !_pressed ? Motion.fast : Motion.medium),
@@ -94,8 +189,10 @@ class _AlbumCardState extends ConsumerState<AlbumCard> {
                   AspectRatio(
                     aspectRatio: 1,
                     child: ArtTile(
-                      album: album,
-                      params: shape,
+                      coverArt: widget.coverArt,
+                      seedKey: widget.seedKey,
+                      params: widget.shape.params,
+                      exponent: widget.round ? 2 : 4.2,
                       morph: morphed ? 1 : 0,
                       spin: active && !reduced ? .72 : 0,
                       child: Ripple(color: scheme.onPrimary, child: const SizedBox.expand()),
@@ -103,7 +200,7 @@ class _AlbumCardState extends ConsumerState<AlbumCard> {
                   ),
                   if (active)
                     Positioned.fill(
-                      child: IgnorePointer(child: Center(child: EqBadge(animating: playing))),
+                      child: IgnorePointer(child: Center(child: EqBadge(animating: widget.playing))),
                     ),
                   Positioned(
                     right: -6,
@@ -124,7 +221,7 @@ class _AlbumCardState extends ConsumerState<AlbumCard> {
         cover,
         SizedBox(height: widget.large ? 14 : 12),
         Text(
-          album.title,
+          widget.title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: text.bodyMedium?.copyWith(
@@ -134,7 +231,7 @@ class _AlbumCardState extends ConsumerState<AlbumCard> {
           ),
         ),
         Text(
-          album.artist,
+          widget.subtitle,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: text.bodySmall?.copyWith(fontSize: widget.large ? 12.5 : 12, color: scheme.onSurfaceVariant),

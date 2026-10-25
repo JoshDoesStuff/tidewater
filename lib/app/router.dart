@@ -3,15 +3,36 @@ import 'package:go_router/go_router.dart';
 
 import '../ui/pages/home_page.dart';
 import '../ui/pages/library_page.dart';
+import '../ui/pages/login_page.dart';
 import '../ui/pages/placeholder_page.dart';
 import '../ui/pages/settings_page.dart';
 import '../ui/shell/app_shell.dart';
 import 'destinations.dart';
 import 'theme/motion.dart';
 
-GoRouter createRouter() => GoRouter(
+const loginPath = '/login';
+
+/// [signedIn] is read on every navigation and whenever [refresh] fires, so
+/// signing in or out swaps between the login screen and the app.
+GoRouter createRouter({required bool Function() signedIn, Listenable? refresh}) => GoRouter(
       initialLocation: Destination.home.path,
+      refreshListenable: refresh,
+      redirect: (context, state) {
+        final onLogin = state.uri.path == loginPath;
+        if (!signedIn()) return onLogin ? null : loginPath;
+        return onLogin ? Destination.home.path : null;
+      },
       routes: [
+        GoRoute(
+          path: loginPath,
+          pageBuilder: (context, state) => CustomTransitionPage<void>(
+            key: state.pageKey,
+            child: const LoginPage(),
+            transitionDuration: Motion.slow,
+            transitionsBuilder: (context, animation, secondary, child) =>
+                FadeTransition(opacity: CurvedAnimation(parent: animation, curve: Motion.standard), child: child),
+          ),
+        ),
         ShellRoute(
           builder: (context, state, child) => AppShell(location: state.uri.path, child: child),
           routes: [

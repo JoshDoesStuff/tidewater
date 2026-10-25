@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
-import 'package:tidewater/core/data/fake_library.dart';
+import 'package:tidewater/core/lyrics/placeholder_lyrics.dart';
 import 'package:tidewater/ui/now_playing/lyrics_list.dart';
 import 'package:tidewater/ui/now_playing/lyrics_motion.dart';
 
@@ -95,17 +95,17 @@ void main() {
     expect(find.bySemanticsLabel('Lyrics'), findsOneWidget);
     String active() => tester.getSemantics(find.bySemanticsLabel('Lyrics')).value;
 
-    expect(active(), fakeLyrics.lines[0].text);
+    expect(active(), placeholderLyrics.lines[0].text);
     container.read(positionProvider).value = const Duration(seconds: 30); // past line 2 start (28 s)
     for (var i = 0; i < 40; i++) {
       await tester.pump(const Duration(milliseconds: 50)); // 2 s: every transition finishes
     }
-    expect(active(), fakeLyrics.lines[1].text);
+    expect(active(), placeholderLyrics.lines[1].text);
     container.read(positionProvider).value = const Duration(seconds: 100);
     for (var i = 0; i < 40; i++) {
       await tester.pump(const Duration(milliseconds: 50));
     }
-    expect(active(), fakeLyrics.lines[4].text); // 88 s line
+    expect(active(), placeholderLyrics.lines[4].text); // 88 s line
     expect(tester.takeException(), isNull);
     semantics.dispose();
   });

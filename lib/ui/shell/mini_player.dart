@@ -14,16 +14,14 @@ import 'shell_keys.dart';
 
 /// Floating pill at the bottom of the window: cover, title, transport,
 /// wavy progress and time. Clicking it opens Now Playing.
-class MiniPlayer extends ConsumerWidget {
-  const MiniPlayer({super.key});
+class _MiniPlayerBody extends ConsumerWidget {
+  const _MiniPlayerBody();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final album = ref.watch(currentAlbumProvider);
-    final track = ref.watch(currentTrackProvider);
-    final index = ref.watch(playbackProvider.select((s) => s.index));
+    final track = ref.watch(currentTrackProvider)!;
     final playing = ref.watch(playbackProvider.select((s) => s.playing));
     final controller = ref.read(playbackProvider.notifier);
     final position = ref.watch(positionProvider);
@@ -55,9 +53,10 @@ class MiniPlayer extends ConsumerWidget {
                     key: miniCoverKey,
                     dimension: 52,
                     child: ArtTile(
-                      album: album,
+                      coverArt: track.coverArt,
+                      seedKey: track.albumId,
                       size: 52,
-                      params: ShapeKind.forIndex(index).params.copyWith(amp: .07),
+                      params: ShapeKind.forKey(track.albumId).params.copyWith(amp: .07),
                       morph: playing ? 1 : 0,
                       spin: playing && !reduced ? .6 : 0,
                     ),
@@ -172,6 +171,38 @@ class _PlayButton extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// The pill, or nothing while no track has been queued. The first time it
+/// appears it rises and fades in.
+class MiniPlayer extends ConsumerWidget {
+  const MiniPlayer({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final has = ref.watch(currentTrackProvider.select((t) => t != null));
+    return has ? const _Entrance(child: _MiniPlayerBody()) : const SizedBox.shrink();
+  }
+}
+
+class _Entrance extends StatelessWidget {
+  const _Entrance({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Motion.of(context, Motion.slow),
+      curve: Motion.curve(context, Motion.emphasized),
+      builder: (context, t, child) => Opacity(
+        opacity: t.clamp(0.0, 1.0),
+        child: Transform.translate(offset: Offset(0, 24 * (1 - t)), child: child),
+      ),
+      child: child,
     );
   }
 }

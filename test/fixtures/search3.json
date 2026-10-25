@@ -1,0 +1,1 @@
+{"subsonic-response":{"status":"ok","version":"1.16.1","searchResult3":{"artist":[{"id":"ar-1","name":"Mira Vale","albumCount":1}],"album":[{"id":"al-1","name":"Glass Orchard","artist":"Mira Vale","songCount":10}],"song":[{"id":"tr-1","title":"Lantern Season","artist":"Mira Vale","album":"Glass Orchard","albumId":"al-1","duration":200}]}}}

@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../app/destinations.dart';
+import '../../app/providers/library_providers.dart';
 import '../../app/providers/playback_providers.dart';
 import '../../app/theme/app_theme.dart';
 import '../../app/theme/motion.dart';
-import '../../core/data/fake_library.dart';
+import '../../core/api/library_api.dart';
+import '../../core/models/album.dart';
 import '../widgets/art_tile.dart';
+import '../widgets/async_states.dart';
+import '../widgets/cover_art.dart';
 import '../widgets/effects/letter_reveal.dart';
 import '../widgets/effects/ripple.dart';
 import '../widgets/effects/stagger_in.dart';
@@ -17,30 +23,99 @@ import 'widgets/album_card.dart';
 import 'widgets/app_header.dart';
 import 'widgets/section_header.dart';
 
-class HomePage extends StatefulWidget {
+/// "Good morning", "Good afternoon", ... from the local hour.
+String greetingFor(DateTime now) {
+  final h = now.hour;
+  if (h >= 5 && h < 12) return 'Good morning';
+  if (h >= 12 && h < 18) return 'Good afternoon';
+  if (h >= 18 && h < 22) return 'Good evening';
+  return 'Good night';
+}
+
+enum _HomeFilter { all, albums, artists, playlists }
+
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  int _chip = 0;
-  static const _heroes = [
-    (index: 0, title: 'Glass Orchard', subtitle: 'Album · Mira Vale'),
-    (index: 7, title: 'Daily Mix 1', subtitle: 'Playlist'),
-    (index: 2, title: 'Low Tide Letters', subtitle: 'Album · Ana Soleil'),
-  ];
+class _HomePageState extends ConsumerState<HomePage> {
+  _HomeFilter _filter = _HomeFilter.all;
 
-  static const _quickPicks = [
-    (index: 6, title: 'Late Night Drive', subtitle: '64 songs'),
-    (index: 8, title: 'Focus', subtitle: 'Playlist'),
-    (index: 10, title: 'Liked Songs', subtitle: '842 songs'),
-  ];
+  void _showAll(LibraryTab tab, [LibrarySort? sort]) {
+    ref.read(libraryTabProvider.notifier).set(tab);
+    if (sort != null) ref.read(librarySortProvider.notifier).set(sort);
+    context.go(Destination.library.path);
+  }
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final newest = ref.watch(albumRowProvider(AlbumListType.newest));
+    final recent = ref.watch(albumRowProvider(AlbumListType.recent));
+    final frequent = ref.watch(albumRowProvider(AlbumListType.frequent));
+    final artists = ref.watch(artistsProvider);
+    final playlists = ref.watch(playlistsProvider);
+
+    final sections = <Widget>[
+      switch (_filter) {
+        _HomeFilter.all => _jumpBackIn(newest, recent, frequent),
+        _ => const SizedBox.shrink(),
+      },
+      if (_filter == _HomeFilter.all || _filter == _HomeFilter.albums) ...[
+        SectionHeader(
+          title: 'Recently added',
+          onAction: () => _showAll(LibraryTab.albums, LibrarySort.recentlyAdded),
+        ),
+        _CardRow<Album>(
+          value: newest,
+          onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.newest)),
+          emptyTitle: 'No albums yet',
+          emptyMessage: 'Add music to your Navidrome library and it will show up here.',
+          card: (a) => AlbumCard(album: a, size: 112),
+        ),
+        if (_filter == _HomeFilter.albums && (recent.value?.isNotEmpty ?? false)) ...[
+          const SectionHeader(title: 'Recently played', action: null),
+          _CardRow<Album>(
+            value: recent,
+            onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.recent)),
+            emptyTitle: 'Nothing played yet',
+            card: (a) => AlbumCard(album: a, size: 112),
+          ),
+        ],
+        if (frequent.value?.isNotEmpty ?? false) ...[
+          const SectionHeader(title: 'Most played', action: null),
+          _CardRow<Album>(
+            value: frequent,
+            onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.frequent)),
+            emptyTitle: 'Nothing played yet',
+            card: (a) => AlbumCard(album: a, size: 112),
+          ),
+        ],
+      ],
+      if (_filter == _HomeFilter.artists) ...[
+        SectionHeader(title: 'Artists', onAction: () => _showAll(LibraryTab.artists)),
+        _CardRow(
+          value: artists,
+          onRetry: () => ref.invalidate(artistsProvider),
+          emptyTitle: 'No artists yet',
+          card: (a) => ArtistCard(artist: a, size: 112),
+        ),
+      ],
+      if (_filter == _HomeFilter.playlists) ...[
+        SectionHeader(title: 'Playlists', onAction: () => _showAll(LibraryTab.playlists)),
+        _CardRow(
+          value: playlists,
+          onRetry: () => ref.invalidate(playlistsProvider),
+          emptyTitle: 'No playlists yet',
+          emptyMessage: 'Playlists you make in Navidrome appear here.',
+          card: (p) => PlaylistCard(playlist: p, size: 112),
+        ),
+      ],
+    ];
+
     return PageFrame(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 36, 32, PageFrame.bottomClearance),
@@ -50,7 +125,7 @@ class _HomePageState extends State<HomePage> {
             const AppHeader(),
             const SizedBox(height: 22),
             LetterReveal(
-              text: 'Good evening',
+              text: greetingFor(DateTime.now()),
               style: text.displaySmall,
               delay: const Duration(milliseconds: 100),
             ),
@@ -62,48 +137,150 @@ class _HomePageState extends State<HomePage> {
                 for (final (i, label) in ['All', 'Albums', 'Artists', 'Playlists'].indexed)
                   StaggerIn(
                     index: i,
-                    child: ExpressiveChip(label: label, selected: i == _chip, onTap: () => setState(() => _chip = i)),
+                    child: ExpressiveChip(
+                      label: label,
+                      selected: i == _filter.index,
+                      onTap: () => setState(() => _filter = _HomeFilter.values[i]),
+                    ),
                   ),
               ],
             ),
-            const SectionHeader(title: 'Jump back in'),
-            SizedBox(
-              height: 200,
-              child: _Carousel(
-                heroes: [for (final h in _heroes) (h.index, h.title, h.subtitle)],
-                quick: [for (final q in _quickPicks) (q.index, q.title, q.subtitle)],
-              ),
-            ),
-            const SectionHeader(title: 'Recently added'),
-            SizedBox(
-              height: 190,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                itemCount: 7,
-                separatorBuilder: (_, _) => const SizedBox(width: 26),
-                itemBuilder: (context, i) => StaggerIn(
-                  index: i + 4,
-                  child: AlbumCard(index: 3 + i, size: 112),
-                ),
-              ),
-            ),
+            ...sections,
           ],
         ),
       ),
     );
   }
+
+  /// Hero cards come from what was played last, topped up with the newest
+  /// albums; Quick picks are the most played (or newest again before there
+  /// is any history).
+  Widget _jumpBackIn(AsyncValue<List<Album>> newest, AsyncValue<List<Album>> recent, AsyncValue<List<Album>> frequent) {
+    final Widget body;
+    if (newest.hasError && !newest.hasValue) {
+      body = ErrorPanel(error: newest.error!, onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.newest)));
+    } else if (!newest.hasValue) {
+      body = const _CarouselSkeleton();
+    } else if (newest.requireValue.isEmpty && (recent.value?.isEmpty ?? true)) {
+      body = const EmptyPanel(
+        icon: Icons.library_music_rounded,
+        title: 'Your library is empty',
+        message: 'Add music to your Navidrome server and it will show up here.',
+      );
+    } else {
+      final heroes = _distinct([...?recent.value, ...newest.requireValue]).take(3).toList();
+      final quick = _distinct([...?frequent.value, ...newest.requireValue])
+          .where((a) => !heroes.contains(a))
+          .take(3)
+          .toList();
+      body = _Carousel(heroes: heroes, quick: quick);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader(title: 'Jump back in', action: null),
+        SizedBox(height: newest.hasValue && newest.requireValue.isEmpty ? null : 200, child: body),
+      ],
+    );
+  }
+
+  static List<Album> _distinct(Iterable<Album> albums) {
+    final seen = <String>{};
+    return [
+      for (final a in albums)
+        if (seen.add(a.id)) a,
+    ];
+  }
 }
 
-typedef _Item = (int, String, String);
+/// Horizontal row of cards with loading, error and empty states.
+class _CardRow<T> extends StatelessWidget {
+  const _CardRow({
+    required this.value,
+    required this.onRetry,
+    required this.card,
+    required this.emptyTitle,
+    this.emptyMessage,
+  });
 
-/// Three hero cards that spring wider on hover (the rest shrink) plus the
-/// Quick picks card. Weights animate on the spring curve.
+  final AsyncValue<List<T>> value;
+  final VoidCallback onRetry;
+  final Widget Function(T item) card;
+  final String emptyTitle;
+  final String? emptyMessage;
+
+  static const _rowHeight = 190.0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (value.hasError && !value.hasValue) {
+      return ErrorPanel(error: value.error!, onRetry: onRetry, compact: true);
+    }
+    if (!value.hasValue) {
+      return SizedBox(
+        height: _rowHeight,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: 8,
+          separatorBuilder: (_, _) => const SizedBox(width: 26),
+          itemBuilder: (_, _) => const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SkeletonBox(width: 112, height: 112, radius: 30),
+              SizedBox(height: 12),
+              SkeletonBox(width: 92, height: 12, radius: 6),
+              SizedBox(height: 6),
+              SkeletonBox(width: 64, height: 10, radius: 5),
+            ],
+          ),
+        ),
+      );
+    }
+    final items = value.requireValue;
+    if (items.isEmpty) return EmptyPanel(icon: Icons.inbox_rounded, title: emptyTitle, message: emptyMessage);
+    return SizedBox(
+      height: _rowHeight,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 26),
+        itemBuilder: (context, i) => StaggerIn(index: i + 4, child: card(items[i])),
+      ),
+    );
+  }
+}
+
+class _CarouselSkeleton extends StatelessWidget {
+  const _CarouselSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        final showQuick = box.maxWidth >= 900;
+        return Row(
+          children: [
+            for (var i = 0; i < 3; i++) ...[
+              const Expanded(child: SkeletonBox(height: 200, radius: 32)),
+              if (i < 2 || showQuick) const SizedBox(width: 12),
+            ],
+            if (showQuick) const SkeletonBox(width: 244, height: 200, radius: 32),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Hero cards that spring wider on hover (the rest shrink) plus the Quick
+/// picks card. Weights animate on the spring curve.
 class _Carousel extends StatefulWidget {
   const _Carousel({required this.heroes, required this.quick});
 
-  final List<_Item> heroes;
-  final List<_Item> quick;
+  final List<Album> heroes;
+  final List<Album> quick;
 
   @override
   State<_Carousel> createState() => _CarouselState();
@@ -124,7 +301,7 @@ class _CarouselState extends State<_Carousel> {
     final n = widget.heroes.length;
     return LayoutBuilder(
       builder: (context, box) {
-        final showQuick = box.maxWidth >= 900;
+        final showQuick = box.maxWidth >= 900 && widget.quick.isNotEmpty;
         final gaps = 12.0 * (n - 1) + (showQuick ? 12 : 0);
         final total = box.maxWidth - gaps - (showQuick ? 244 : 0);
         return TweenAnimationBuilder<List<double>>(
@@ -144,9 +321,7 @@ class _CarouselState extends State<_Carousel> {
                       child: StaggerIn(
                         index: i,
                         child: _HeroCard(
-                          index: widget.heroes[i].$1,
-                          title: widget.heroes[i].$2,
-                          subtitle: widget.heroes[i].$3,
+                          album: widget.heroes[i],
                           hovered: _hover == i,
                           weight: w[i],
                         ),
@@ -177,22 +352,14 @@ class _WeightsTween extends Tween<List<double>> {
   List<double> lerp(double t) {
     final a = begin ?? end!;
     final b = end!;
-    return [for (var i = 0; i < b.length; i++) a[i] + (b[i] - a[i]) * t];
+    return [for (var i = 0; i < b.length; i++) (i < a.length ? a[i] : b[i]) + (b[i] - (i < a.length ? a[i] : b[i])) * t];
   }
 }
 
 class _HeroCard extends ConsumerWidget {
-  const _HeroCard({
-    required this.index,
-    required this.title,
-    required this.subtitle,
-    required this.hovered,
-    required this.weight,
-  });
+  const _HeroCard({required this.album, required this.hovered, required this.weight});
 
-  final int index;
-  final String title;
-  final String subtitle;
+  final Album album;
   final bool hovered;
 
   /// The card's current (animated) share of the carousel: 1 at rest, 2.2 when
@@ -210,9 +377,10 @@ class _HeroCard extends ConsumerWidget {
     final text = Theme.of(context).textTheme;
     final d = Motion.of(context, Motion.slow);
     final c = Motion.curve(context, Motion.spring);
+    final subtitle = 'Album · ${album.artist}';
     return Pressable(
-      onTap: () => ref.read(playbackProvider.notifier).playIndex(index),
-      semanticLabel: '$title, $subtitle',
+      onTap: () => ref.read(playbackProvider.notifier).playAlbum(album),
+      semanticLabel: '${album.title}, $subtitle',
       builder: (context, s) => AnimatedContainer(
         duration: d,
         curve: c,
@@ -223,7 +391,7 @@ class _HeroCard extends ConsumerWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              ArtFill(album: fakeAlbums[index]),
+              CoverArt(coverArt: album.coverArt, seedKey: album.id, resolution: 800),
               DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -243,7 +411,7 @@ class _HeroCard extends ConsumerWidget {
                   children: [
                     // Overflowing text fades out softly instead of being sliced.
                     Text(
-                      title,
+                      album.title,
                       maxLines: 1,
                       overflow: TextOverflow.fade,
                       softWrap: false,
@@ -301,7 +469,7 @@ class _HeroCard extends ConsumerWidget {
 class _QuickPicks extends StatelessWidget {
   const _QuickPicks({required this.picks});
 
-  final List<_Item> picks;
+  final List<Album> picks;
 
   static const _kinds = [ShapeKind.cookie, ShapeKind.sunny, ShapeKind.clover];
 
@@ -318,8 +486,7 @@ class _QuickPicks extends StatelessWidget {
           children: [
             Text('Quick picks', style: text.titleMedium?.copyWith(fontSize: 16, fontWeight: FontWeight.w700, height: 1.2)),
             const SizedBox(height: 8),
-            for (final (i, (index, title, subtitle)) in picks.indexed)
-              _QuickPick(index: index, title: title, subtitle: subtitle, kind: _kinds[i % 3], reverse: i.isOdd),
+            for (final (i, album) in picks.indexed) _QuickPick(album: album, kind: _kinds[i % 3], reverse: i.isOdd),
           ],
         ),
       ),
@@ -328,17 +495,9 @@ class _QuickPicks extends StatelessWidget {
 }
 
 class _QuickPick extends ConsumerWidget {
-  const _QuickPick({
-    required this.index,
-    required this.title,
-    required this.subtitle,
-    required this.kind,
-    required this.reverse,
-  });
+  const _QuickPick({required this.album, required this.kind, required this.reverse});
 
-  final int index;
-  final String title;
-  final String subtitle;
+  final Album album;
   final ShapeKind kind;
   final bool reverse;
 
@@ -347,8 +506,8 @@ class _QuickPick extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     return Pressable(
-      onTap: () => ref.read(playbackProvider.notifier).playIndex(index),
-      semanticLabel: '$title, $subtitle',
+      onTap: () => ref.read(playbackProvider.notifier).playAlbum(album),
+      semanticLabel: '${album.title}, ${album.artist}',
       builder: (context, s) => AnimatedContainer(
         duration: Motion.of(context, Motion.fast),
         height: 46,
@@ -363,7 +522,9 @@ class _QuickPick extends ConsumerWidget {
           child: Row(
             children: [
               ArtTile(
-                album: fakeAlbums[index],
+                coverArt: album.coverArt,
+                seedKey: album.id,
+                resolution: 150,
                 size: 36,
                 params: kind.params,
                 morph: 1,
@@ -376,13 +537,13 @@ class _QuickPick extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
+                      album.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: text.bodyMedium?.copyWith(fontSize: 13.5, fontWeight: FontWeight.w700),
                     ),
                     Text(
-                      subtitle,
+                      album.artist,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: text.bodySmall?.copyWith(fontSize: 11.5, color: scheme.onSurfaceVariant),

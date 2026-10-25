@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'providers/playback_providers.dart';
+import 'providers/scheme_providers.dart';
+import 'providers/session_providers.dart';
 import 'providers/settings_providers.dart';
 import 'router.dart';
 import 'theme/album_scheme.dart';
@@ -11,8 +12,14 @@ import 'theme/app_theme.dart';
 import 'theme/motion.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final router = createRouter();
-  ref.onDispose(router.dispose);
+  // Signing in or out re-runs the router's redirect.
+  final refresh = ValueNotifier<int>(0);
+  ref.listen(sessionProvider, (_, _) => refresh.value++);
+  final router = createRouter(signedIn: () => ref.read(sessionProvider) != null, refresh: refresh);
+  ref.onDispose(() {
+    router.dispose();
+    refresh.dispose();
+  });
   return router;
 });
 
@@ -23,7 +30,7 @@ class TidewaterApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final reduceMotion = ref.watch(reduceMotionProvider);
     final brightness = ref.watch(darkThemeProvider) ? Brightness.dark : Brightness.light;
-    final scheme = AlbumScheme.of(ref.watch(currentAlbumProvider), brightness);
+    final scheme = AlbumScheme.of(ref.watch(schemeSeedProvider), brightness);
     return MaterialApp.router(
       title: 'Tidewater',
       debugShowCheckedModeBanner: false,

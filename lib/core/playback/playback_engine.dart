@@ -3,7 +3,7 @@ import '../models/track.dart';
 /// Immutable snapshot of the player.
 class PlaybackState {
   const PlaybackState({
-    required this.queue,
+    this.queue = const [],
     this.index = 0,
     this.started = false,
     this.playing = false,
@@ -15,17 +15,18 @@ class PlaybackState {
   final List<Track> queue;
   final int index;
 
-  /// False until something has actually been played; the UI still shows
-  /// the first track as a resting state.
+  /// False until something has actually been played.
   final bool started;
   final bool playing;
   final double volume;
   final bool shuffle;
   final bool repeat;
 
-  Track get track => queue[index];
+  /// The current track, or null while nothing has been queued.
+  Track? get track => index >= 0 && index < queue.length ? queue[index] : null;
 
   PlaybackState copyWith({
+    List<Track>? queue,
     int? index,
     bool? started,
     bool? playing,
@@ -34,7 +35,7 @@ class PlaybackState {
     bool? repeat,
   }) =>
       PlaybackState(
-        queue: queue,
+        queue: queue ?? this.queue,
         index: index ?? this.index,
         started: started ?? this.started,
         playing: playing ?? this.playing,
@@ -55,6 +56,10 @@ abstract class PlaybackEngine {
   /// Emits while playing, and on every seek or track change.
   Stream<Duration> get positions;
 
+  /// Replaces the queue and starts playing at [index].
+  Future<void> playQueue(List<Track> queue, {int index = 0});
+
+  /// Jumps to a track already in the queue.
   Future<void> playIndex(int index);
   Future<void> play();
   Future<void> pause();

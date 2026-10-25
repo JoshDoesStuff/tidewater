@@ -9,8 +9,6 @@ import '../../app/providers/playback_providers.dart';
 import '../../app/providers/settings_providers.dart';
 import '../../app/providers/ui_providers.dart';
 import '../../app/theme/motion.dart';
-import '../../core/data/fake_library.dart';
-import '../../core/models/album.dart';
 import '../../core/models/track.dart';
 import '../shell/shell_keys.dart';
 import '../widgets/art_tile.dart';
@@ -77,8 +75,10 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
   Timer? _idleTimer;
   Timer? _swapTimer;
   _Flight? _flight;
-  late int _shownIndex = ref.read(playbackProvider).index;
-  late int _kindIdx = _shownIndex % 5;
+  /// The track the screen shows. Lags the live track by the swap delay so the
+  /// old text can animate out first.
+  late Track? _shown = ref.read(currentTrackProvider);
+  late int _kindIdx = _shown == null ? 0 : ShapeKind.forKey(_shown!.albumId).index;
 
   @override
   void initState() {
@@ -167,11 +167,12 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
     _flight = _Flight((fromTL - toTL) / s, from.size.width / toW);
   }
 
-  void _onTrack(int index) {
+  void _onTrack(Track? track) {
+    if (track == null) return;
     if (!_visible || Motion.reduced(context)) {
       setState(() {
-        _shownIndex = index;
-        _kindIdx = index % 5;
+        _shown = track;
+        _kindIdx = ShapeKind.forKey(track.albumId).index;
       });
       return;
     }
@@ -185,8 +186,8 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
     _swapTimer = Timer(Duration(milliseconds: (190 / speed).round()), () {
       if (!mounted) return;
       setState(() {
-        _shownIndex = index;
-        _kindIdx = index % 5;
+        _shown = track;
+        _kindIdx = ShapeKind.forKey(track.albumId).index;
       });
     });
   }
@@ -201,7 +202,8 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
   }
 
   void _toggleLike() {
-    final id = fakeTracks[_shownIndex].id;
+    final id = _shown?.id;
+    if (id == null) return;
     final wasLiked = ref.read(likedProvider).contains(id);
     ref.read(likedProvider.notifier).toggle(id);
     if (!wasLiked) {
@@ -280,7 +282,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
   @override
   Widget build(BuildContext context) {
     ref.listen(nowPlayingOpenProvider, (p, open) => open ? _open() : _close());
-    ref.listen(playbackProvider.select((s) => s.index), (p, i) => _onTrack(i));
+    ref.listen(currentTrackIdProvider, (p, id) => _onTrack(ref.read(currentTrackProvider)));
     if (!_visible) return const SizedBox.shrink();
 
     final scheme = Theme.of(context).colorScheme;
@@ -329,8 +331,8 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
     final text = Theme.of(context).textTheme;
     final reduced = Motion.reduced(context);
     final playing = ref.watch(playbackProvider.select((s) => s.playing));
-    final album = fakeAlbums[_shownIndex];
-    final track = fakeTracks[_shownIndex];
+    final track = _shown ?? ref.watch(currentTrackProvider);
+    if (track == null) return const SizedBox.shrink();
     final slow = Motion.of(context, Motion.slow);
     final glideLeft = idle && !lyricsOn ? 420.0 : 100.0;
 
@@ -373,7 +375,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
                   ),
                 ),
               ),
-              Positioned.fill(child: _cover(album, playing, reduced)),
+              Positioned.fill(child: _cover(track, playing, reduced)),
             ],
           ),
         ),
@@ -392,7 +394,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
           top: 110,
           width: 580,
           height: 646,
-          child: _rise(0, _idleFade(idle, _rightColumn(context, album, track, lyricsOn))),
+          child: _rise(0, _idleFade(idle, _rightColumn(context, track, lyricsOn))),
         ),
 
         // Idle lyrics beside the cover.
@@ -463,7 +465,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
     );
   }
 
-  Widget _cover(Album album, bool playing, bool reduced) {
+  Widget _cover(Track track, bool playing, bool reduced) {
     return AnimatedBuilder(
       animation: Listenable.merge([_enter, _trackFx]),
       builder: (context, child) {
@@ -507,7 +509,9 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
           child: KeyedSubtree(
             key: npCoverKey,
             child: ArtTile(
-              album: album,
+              coverArt: track.coverArt,
+              seedKey: track.albumId,
+              resolution: 800,
               size: 440,
               params: ShapeKind.values[_kindIdx].params,
               morph: playing ? 1 : 0,
@@ -560,7 +564,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
     );
   }
 
-  Widget _rightColumn(BuildContext context, Album album, Track track, bool lyricsOn) {
+  Widget _rightColumn(BuildContext context, Track track, bool lyricsOn) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final controller = ref.read(playbackProvider.notifier);
@@ -577,7 +581,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
         _slideSwap(
           0,
           Text(
-            'ALBUM · ${album.title}'.toUpperCase(),
+            'ALBUM · ${track.albumTitle}'.toUpperCase(),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: text.labelLarge?.copyWith(
@@ -597,7 +601,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
             // Follows the live track (not the delayed one) so the old title
             // pops out as soon as the track changes, then the new one pops in.
             child: LetterSwap(
-              text: ref.watch(currentTrackProvider).title,
+              text: ref.watch(currentTrackProvider)?.title ?? track.title,
               speed: ref.watch(letterSpeedProvider),
               style: text.displayMedium?.copyWith(
                 fontSize: 58,
@@ -626,7 +630,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const _Tag(label: 'FLAC · 24-bit / 96 kHz'),
+              if (track.qualityLabel != null) _Tag(label: track.qualityLabel!),
               if (lyrics.synced) const _Tag(label: 'Synced lyrics'),
               _HeartChip(key: _heartKey, liked: liked, onTap: _toggleLike),
             ],
@@ -710,7 +714,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final position = ref.watch(positionProvider);
-    final duration = fakeTracks[_shownIndex].duration;
+    final duration = (_shown ?? ref.watch(currentTrackProvider))?.duration ?? Duration.zero;
     final style = text.bodySmall?.copyWith(fontSize: 13, fontWeight: FontWeight.w500, color: scheme.onSurfaceVariant);
     return Positioned(
       left: 0,

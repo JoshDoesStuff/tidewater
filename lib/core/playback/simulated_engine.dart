@@ -7,7 +7,7 @@ import 'playback_engine.dart';
 /// Plays nothing: advances a clock so the UI can be built and demoed before
 /// a real engine (media_kit, milestone 3) exists.
 class SimulatedEngine implements PlaybackEngine {
-  SimulatedEngine(List<Track> queue, {this.tick = const Duration(milliseconds: 33), math.Random? random})
+  SimulatedEngine({List<Track> queue = const [], this.tick = const Duration(milliseconds: 33), math.Random? random})
       : _state = PlaybackState(queue: queue),
         _random = random ?? math.Random();
 
@@ -31,7 +31,7 @@ class SimulatedEngine implements PlaybackEngine {
   @override
   Duration get position {
     final p = _base + _clock.elapsed;
-    final d = _state.track.duration;
+    final d = _state.track?.duration ?? Duration.zero;
     return p > d ? d : p;
   }
 
@@ -61,7 +61,7 @@ class SimulatedEngine implements PlaybackEngine {
   }
 
   void _onTick() {
-    if (position >= _state.track.duration) {
+    if (position >= (_state.track?.duration ?? Duration.zero)) {
       _advance();
       return;
     }
@@ -69,6 +69,7 @@ class SimulatedEngine implements PlaybackEngine {
   }
 
   void _advance() {
+    if (_state.queue.isEmpty) return;
     if (_state.repeat) {
       _jump(_state.index);
     } else {
@@ -98,7 +99,18 @@ class SimulatedEngine implements PlaybackEngine {
   }
 
   @override
+  Future<void> playQueue(List<Track> queue, {int index = 0}) async {
+    if (queue.isEmpty) return;
+    _stopClock();
+    _base = Duration.zero;
+    _emit(_state.copyWith(queue: queue, index: index.clamp(0, queue.length - 1), started: true, playing: true));
+    _startClock();
+    _positions.add(Duration.zero);
+  }
+
+  @override
   Future<void> playIndex(int index) async {
+    if (index < 0 || index >= _state.queue.length) return;
     _stopClock();
     _base = Duration.zero;
     _emit(_state.copyWith(index: index, started: true, playing: true));
@@ -108,6 +120,7 @@ class SimulatedEngine implements PlaybackEngine {
 
   @override
   Future<void> play() async {
+    if (_state.queue.isEmpty) return;
     if (_state.playing) return;
     _emit(_state.copyWith(playing: true, started: true));
     _startClock();
@@ -122,7 +135,7 @@ class SimulatedEngine implements PlaybackEngine {
 
   @override
   Future<void> seek(Duration to) async {
-    final d = _state.track.duration;
+    final d = _state.track?.duration ?? Duration.zero;
     _base = to < Duration.zero ? Duration.zero : (to > d ? d : to);
     _clock.reset();
     if (_state.playing) _clock.start();
@@ -130,10 +143,13 @@ class SimulatedEngine implements PlaybackEngine {
   }
 
   @override
-  Future<void> next() async => _jump(_nextIndex());
+  Future<void> next() async {
+    if (_state.queue.isNotEmpty) _jump(_nextIndex());
+  }
 
   @override
   Future<void> previous() async {
+    if (_state.queue.isEmpty) return;
     // Like most players: restart the track first, go back only near its start.
     if (position > const Duration(seconds: 3)) {
       await seek(Duration.zero);
