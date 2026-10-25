@@ -11,8 +11,8 @@ import '../../../app/theme/motion.dart';
 ///    whole string (per-letter nodes made every frame rebuild the
 ///    accessibility tree);
 ///  * letters at rest are plain `Text`, with no transform, and the last
-///    sub-pixel tail of a spring is snapped away;
-///  * vertical motion is rounded to whole device pixels so glyphs don't shimmer.
+///    sub-pixel tail of a spring is snapped away (this lands exactly on the
+///    rest position, verified by tool/letter_probe_main.dart).
 ///
 /// `pop` is 1 when a letter is in place and 0 when fully "out" (dropped .65em,
 /// tilted 10°); it may overshoot while a spring settles. `opacity` is
@@ -27,7 +27,6 @@ Widget _letterRow(
   final base = style ?? DefaultTextStyle.of(context).style;
   final color = base.color ?? Theme.of(context).colorScheme.onSurface;
   final em = base.fontSize ?? 14;
-  final dpr = MediaQuery.devicePixelRatioOf(context);
   return Semantics(
     label: text,
     child: ExcludeSemantics(
@@ -47,7 +46,10 @@ Widget _letterRow(
                 );
                 // At rest: exactly the plain text, no transform at all.
                 if ((1 - pop).abs() < .004 && alpha >= .999) return glyph;
-                final dy = (.65 * em * (1 - pop) * dpr).round() / dpr;
+                // Deliberately NOT rounded to whole pixels: measured in the real
+                // engine (tool/letter_probe_main.dart), rounding made letters
+                // hop in 1 px steps (0.6 px rms jitter vs 0.07 px unrounded).
+                final dy = .65 * em * (1 - pop);
                 return Transform(
                   alignment: Alignment.center,
                   transform: Matrix4.translationValues(0, dy, 0)..rotateZ(.1745 * (1 - pop)),
