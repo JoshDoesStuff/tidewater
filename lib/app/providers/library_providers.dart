@@ -77,9 +77,9 @@ class PickNotifier<T> extends Notifier<T> {
 }
 
 enum LibraryTab {
-  albums('Albums'),
-  artists('Artists'),
-  songs('Songs'),
+  songs('Song'),
+  albums('Album'),
+  artists('Artist'),
   playlists('Playlists');
 
   const LibraryTab(this.label);

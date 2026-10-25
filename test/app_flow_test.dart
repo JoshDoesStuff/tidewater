@@ -276,7 +276,7 @@ void main() {
       await openLibrary(tester, api: api);
       await tester.tap(find.text('Recently added').first);
       await advance(tester, const Duration(milliseconds: 600));
-      await tester.tap(find.text('Artist')); // menu item
+      await tester.tap(find.widgetWithText(PopupMenuItem<LibrarySort>, 'Artist')); // menu item
       await advance(tester, const Duration(seconds: 2));
       expect(api.calls, contains('getAlbumList:alphabeticalByArtist:0'));
       // Ana Soleil sorts before Dune Parade, Eli Marsh ...
@@ -300,7 +300,7 @@ void main() {
 
     testWidgets('Artists and Playlists tabs have their own counts', (tester) async {
       await openLibrary(tester);
-      await tester.tap(find.widgetWithText(ExpressiveChip, 'Artists'));
+      await tester.tap(find.widgetWithText(ExpressiveChip, 'Artist'));
       await advance(tester, const Duration(seconds: 2));
       expect(find.text('12 artists'), findsOneWidget);
       await tester.tap(find.widgetWithText(ExpressiveChip, 'Playlists'));

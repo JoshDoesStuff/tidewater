@@ -593,6 +593,13 @@ class _MenuPillState<T> extends State<_MenuPill<T>> {
               initialValue: widget.value,
               // Open *below* the pill. By default Flutter puts the selected item over the button.
               position: PopupMenuPosition.under,
+            // A menu taller than the room under the pill (hundreds of genres) is
+            // pushed up over the button; cap it so it scrolls instead. The pill
+            // sits ~130 px from the top; keep clear of the window's bottom edge.
+            constraints: BoxConstraints(
+              minWidth: 160,
+              maxHeight: (MediaQuery.sizeOf(context).height - 130 - 40).clamp(160.0, 700.0),
+            ),
               offset: const Offset(0, 8),
               clipBehavior: Clip.antiAlias,
               popUpAnimationStyle: AnimationStyle(

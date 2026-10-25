@@ -1,8 +1,10 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/material.dart' show PopupMenuItem, Scrollable;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/providers/library_providers.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
+import 'package:tidewater/core/models/album.dart';
 import 'package:tidewater/core/models/track.dart';
 import 'package:tidewater/ui/pages/widgets/album_card.dart';
 import 'package:tidewater/ui/widgets/expressive_buttons.dart';
@@ -15,7 +17,7 @@ Future<ProviderContainer> openSongs(WidgetTester tester, {FakeLibraryApi? api}) 
   final c = await pumpApp(tester, api: api);
   await tester.tap(find.text('Library'));
   await advance(tester, const Duration(seconds: 2));
-  await tester.tap(find.widgetWithText(ExpressiveChip, 'Songs'));
+  await tester.tap(find.widgetWithText(ExpressiveChip, 'Song'));
   await advance(tester, const Duration(seconds: 2));
   return c;
 }
@@ -46,7 +48,7 @@ void main() {
     final c = await openSongs(tester);
     await tester.tap(find.text('Title').first);
     await advance(tester, const Duration(milliseconds: 600));
-    await tester.tap(find.text('Artist').last);
+    await tester.tap(find.widgetWithText(PopupMenuItem<SongSort>, 'Artist'));
     await advance(tester, const Duration(seconds: 1));
     final artists = c.read(sortedSongsProvider).requireValue.songs.map((t) => t.artist.toLowerCase()).toList();
     expect(artists, [...artists]..sort());
@@ -90,10 +92,34 @@ void main() {
     final pill = tester.getRect(find.text('Recently added').first);
     await tester.tap(find.text('Recently added').first);
     await advance(tester, const Duration(milliseconds: 600));
-    final item = tester.getRect(find.text('Artist'));
+    final item = tester.getRect(find.widgetWithText(PopupMenuItem<LibrarySort>, 'Artist'));
     expect(item.top, greaterThan(pill.bottom), reason: 'menu item at ${item.top}, pill bottom at ${pill.bottom}');
-    await tester.tap(find.text('Artist'));
+    await tester.tap(find.widgetWithText(PopupMenuItem<LibrarySort>, 'Artist'));
     await advance(tester, const Duration(seconds: 1));
+    await disposeApp(tester);
+  });
+
+  testWidgets('with hundreds of genres the menu still opens below the pill and scrolls', (tester) async {
+    final albums = [
+      for (var i = 0; i < 400; i++)
+        Album(id: 'g$i', title: 'Album $i', artist: 'A', coverArt: 'c$i', genre: 'Genre ${i.toString().padLeft(3, '0')}'),
+    ];
+    await pumpApp(tester, api: FakeLibraryApi(albums: albums));
+    await tester.tap(find.text('Library'));
+    await advance(tester, const Duration(seconds: 3));
+    await tester.tap(find.widgetWithText(ExpressiveChip, 'Album'));
+    await advance(tester, const Duration(seconds: 2));
+    final pill = tester.getRect(find.text('Genre').first);
+    await tester.tap(find.text('Genre').first);
+    await advance(tester, const Duration(milliseconds: 700));
+    final first = tester.getRect(find.widgetWithText(PopupMenuItem<String>, 'All genres'));
+    expect(first.top, greaterThan(pill.bottom), reason: 'first item at ${first.top}, pill bottom at ${pill.bottom}');
+    // It scrolls: a late genre exists in the tree only after scrolling to it.
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, -3000));
+    await advance(tester, const Duration(milliseconds: 500));
+    expect(find.widgetWithText(PopupMenuItem<String>, 'Genre 399'), findsOneWidget);
+    await tester.tapAt(const Offset(300, 700));
+    await advance(tester, const Duration(milliseconds: 500));
     await disposeApp(tester);
   });
 
