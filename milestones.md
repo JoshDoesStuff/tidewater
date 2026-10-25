@@ -13,6 +13,27 @@ Now Playing with lyrics/volume/idle/visualizers, Settings). Quality at wrap-up: 
 passing, `flutter build windows --release` succeeds, zero console errors on launch, no frame over 33 ms in the
 profile scenarios (`tool/perf_main.dart`). Working notes for future sessions: `docs/dev-notes.md`.
 
+## Milestone 4 wrap-up (done)
+
+Most of M4 had already landed with the earlier milestones (scheme from real cover pixels, animated recolor,
+`MorphShape`, card behaviors, wavy progress); what was left is done:
+
+- **Light theme reviewed** (`flutter test tool/render_shots_test.dart --dart-define=TW_LIGHT=true` renders every main
+  screen to `build/shots-light`): Home, Library, Now Playing (cover halo, lyrics card, volume, visualizer mountains),
+  idle mode and login all read well; the contrast test already checks 4.5:1 for accent and body text in both
+  brightnesses, including gray and black-and-white art. No fixes were needed. Known soft spot: tonal buttons (previous/next,
+  FAB) and the progress track are pale on a pale background, which is how Material's light roles work.
+- **Recolor cost**: the fade now moves in 40 steps (~50 Hz) and builds one `ThemeData` per step (`ColorSchemeTween`,
+  `ThemeMemo`). Before, a 180 Hz display rebuilt the whole themed tree and a fresh `ThemeData` 144 times per recolor
+  (build p90 4.7 ms, almost the entire 5.6 ms budget); now 2.1 ms, and track skips measure 5.6 ms p90 total.
+- **Extracted colors are remembered** (`SeedStore`, in `shared_preferences`, up to 4000 covers, keyed by server and
+  cover id): a cover is decoded and quantized once ever, so the next launch (and a restored queue) themes instantly
+  with no cover download. Failed covers fall back to a color from the album id and are *not* remembered.
+- Now Playing shows no lyrics button and no lyrics card for a track without lyrics (suggestion from the user).
+
+Left for M6: the visual QA of the tonal-button contrast in light, and reduced-motion review of the stepped recolor
+(it already respects `disableAnimations` by being instant).
+
 ## Milestone 3 wrap-up (done)
 
 The app plays music for real. Audio comes from libmpv (`media_kit`) behind the `AudioBackend` interface; a
@@ -107,7 +128,7 @@ pages that don't exist yet.
 | 1 | Shell | ✅ |
 | 2 | Server (login, OpenSubsonic, real library, cover cache) | ✅ (search/artist pages come later) |
 | 3 | Playback (real engine, queue, SMTC, scrobbling, album page) | ✅ (gaps listed in the M3 section) |
-| 4 | Dynamic color + shapes | 🟡 (works, seeded from real covers; light-theme QA outstanding) |
+| 4 | Dynamic color + shapes | ✅ |
 | 5 | Now Playing | 🟡 (real audio, lyrics and queue; the visualizer is still simulated) |
 | 6 | Motion polish pass | 🟡 (most of the demo list is in; QA pass outstanding) |
 | 7 | Search, playlists, offline cache, settings, real visualizer | ⬜ (Settings partly ✅) |
@@ -181,17 +202,7 @@ off/all/one), gapless, volume/mute/seek, scrobbling, SMTC and media keys, album 
 lrclib), hearts, restore on launch, queue panel. Not done (moved to M7 or noted above): transcoding/format choice,
 ReplayGain, crossfade, device choice, saving the position on window close.
 
-## M4 — Dynamic color + shapes (remaining)
-
-Built: animated scheme per album (~800 ms), `MorphShape` (spring, spin, no-overshoot reduced motion), card hover
-morph/lift/tilt, wavy progress.
-
-- Real-cover seeding (see M2).
-- Light theme visual QA: never reviewed. Check every surface, the visualizers (alpha tuned for dark), the halo and
-  contrast in light.
-- Recolor cost: the whole tree rebuilds each frame for ~800 ms (build p90 ≈ 6.7 ms in profile on track skips).
-  Fine today; revisit if screens get heavier (e.g. scope the animated scheme to color-reading subtrees).
-- Cache schemes persistently if extraction proves slow on large libraries.
+## M4 — Dynamic color + shapes (done; see the wrap-up above)
 
 ## M5 — Now Playing (remaining)
 

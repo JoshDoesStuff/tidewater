@@ -9,7 +9,9 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../core/api/cover_cache.dart';
 import '../../core/color/cover_seed.dart';
+import 'seed_store.dart';
 import 'session_providers.dart';
+import 'settings_providers.dart';
 
 /// Where covers are cached. Tests override this with a temp folder.
 final coverRootProvider = Provider<Future<Directory> Function()>((ref) => () async {
@@ -58,14 +60,26 @@ Future<CoverSeed> seedFromImageBytes(Uint8List bytes) async {
   }
 }
 
-/// The seed color of a cover. Cached per cover for the whole session.
+final seedStoreProvider = Provider<SeedStore>((ref) => SeedStore(ref.watch(sharedPreferencesProvider)));
+
+/// The seed color of a cover. Cached per cover for the session and, once
+/// extracted, on disk ([SeedStore]) so the next launch skips decoding it.
 /// Failure (no art, offline, undecodable) yields a stable color from the
-/// album id so the app still recolors.
+/// album id so the app still recolors (and is not remembered).
 final coverSeedProvider = FutureProvider.family<CoverSeed, CoverKey>((ref, key) async {
   final art = key.coverArt;
   if (art == null) return CoverSeed.fromKey(key.albumId);
+  final config = ref.read(sessionProvider);
+  final storeKey = config == null ? null : '${CoverCache.serverFolder(config.baseUrl)}|$art';
+  final store = ref.read(seedStoreProvider);
+  if (storeKey != null) {
+    final known = store.get(storeKey);
+    if (known != null) return known;
+  }
   try {
-    return await seedFromImageBytes(await ref.watch(coverCacheProvider).get(art, size: 300));
+    final seed = await seedFromImageBytes(await ref.watch(coverCacheProvider).get(art, size: 300));
+    if (storeKey != null) store.put(storeKey, seed);
+    return seed;
   } catch (_) {
     return CoverSeed.fromKey(key.albumId);
   }
