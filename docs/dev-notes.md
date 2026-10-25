@@ -81,7 +81,7 @@ The desktop is often locked, so screen capture of the real app returns the lock 
 - Settings persisted: reduce motion, dark/light, visualizer style, track-change speed.
 - Keyboard: global handler in `app_shell.dart` (Space, N, P, L, V, Esc); ignored while an `EditableText` has focus.
   Known gap: Space can also activate a focused button.
-- Playback audio, the visualizer levels and lyrics are **simulated/fake** until M3/M7; say so in UI/docs, never fake silently.
+- Playback audio, the visualizer levels and lyrics are **simulated/fake** until M3/M8; say so in UI/docs, never fake silently.
 
 ## Don't
 
@@ -114,7 +114,7 @@ The desktop is often locked, so screen capture of the real app returns the lock 
   `flutter.bat`); in the Bash tool a heredoc containing apostrophes can fail, so write such files with the Write tool.
 - **Known pre-existing hitch**: opening Now Playing has 2-3 frames over 33 ms (max ~50 ms) in the profile run. M1 has
   the same numbers (checked at `f978439`), so it is not a regression; candidates: first build of the overlay plus
-  the flight. Worth a look in M6.
+  the flight. Worth a look in M7.
 - **Servers**: a typed address with no scheme is tried as https then http; "Trust this server" accepts only that
   host's certificate. Navidrome ignores articles when sorting ("The Beatles" under B); the A–Z rail mimics that.
 

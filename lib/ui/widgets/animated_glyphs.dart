@@ -34,11 +34,13 @@ mixin _PlayOnEdge<T extends StatefulWidget> on State<T>, SingleTickerProviderSta
   }
 }
 
-enum GlyphKind { list, cards, sort, filter }
+enum GlyphKind { list, cards, sort, filter, next, previous, shuffle, menu }
 
 /// A small 24 x 24 stroke icon drawn in code, with its own one-shot motion:
 /// list rows retract and return, card tiles pop in a wave, sort bars retract
-/// lengths pulling in, and the filter bars pinch toward the middle.
+/// lengths pulling in, the filter bars pinch toward the middle, skip arrows
+/// shoot off and return, shuffle's two arrows trace across each other and the
+/// menu bars shift in a wave.
 class AnimatedGlyph extends StatefulWidget {
   const AnimatedGlyph({
     super.key,
@@ -147,6 +149,71 @@ class _GlyphPainter extends CustomPainter {
           final y = 6.0 + i * 6;
           canvas.drawLine(Offset(12 - len / 2, y), Offset(12 + len / 2, y), line);
         }
+      case GlyphKind.next:
+        _skip(canvas, line);
+      case GlyphKind.previous:
+        canvas.translate(24, 0);
+        canvas.scale(-1, 1);
+        _skip(canvas, line);
+      case GlyphKind.shuffle:
+        _shuffle(canvas, line);
+      case GlyphKind.menu:
+        // Three bars slide right and settle back, one after another.
+        for (var i = 0; i < 3; i++) {
+          final y = 6.0 + i * 6;
+          final dx = 4.0 * _bump(i * .14);
+          canvas.drawLine(Offset(4 + dx, y), Offset(20 + dx * .5, y), line);
+        }
+    }
+  }
+
+  /// Skip-next: a triangle and a bar. On play the triangle shoots off to the
+  /// right and a new one slides in from the left while the bar nudges.
+  void _skip(Canvas canvas, Paint line) {
+    canvas.save();
+    canvas.clipRect(const Rect.fromLTWH(0, 0, 24, 24));
+    var dx = 0.0;
+    if (_running) {
+      dx = t < .5
+          ? 16 * Curves.easeIn.transform(t / .5)
+          : -16 * (1 - Curves.easeOutBack.transform((t - .5) / .5));
+    }
+    canvas.translate(dx, 0);
+    final tri = Path()
+      ..moveTo(5, 5.5)
+      ..lineTo(5, 18.5)
+      ..lineTo(15, 12)
+      ..close();
+    final fill = Paint()..color = color;
+    canvas.drawPath(tri, fill);
+    canvas.drawPath(tri, line);
+    canvas.restore();
+    final nudge = 1.6 * _bump(.35, .5);
+    canvas.drawLine(Offset(19 + nudge, 5.5), Offset(19 + nudge, 18.5), line);
+  }
+
+  /// Two arrows crossing left to right, each traced on from its start.
+  void _shuffle(Canvas canvas, Paint line) {
+    final a = Path()
+      ..moveTo(3, 6.5)
+      ..cubicTo(9, 6.5, 12, 17.5, 19, 17.5);
+    final b = Path()
+      ..moveTo(3, 17.5)
+      ..cubicTo(9, 17.5, 12, 6.5, 19, 6.5);
+    for (final (i, path) in [a, b].indexed) {
+      final p = _running ? Curves.easeInOut.transform(((t - i * .12) / .7).clamp(0.0, 1.0)) : 1.0;
+      for (final m in path.computeMetrics()) {
+        canvas.drawPath(m.extractPath(0, m.length * p), line);
+      }
+      final y = i == 0 ? 17.5 : 6.5;
+      // Arrowhead appears as its line arrives.
+      final head = _running ? ((p - .7) / .3).clamp(0.0, 1.0) : 1.0;
+      if (head > 0) {
+        final h = Paint.from(line)..color = color.withValues(alpha: head);
+        final tip = Offset(19.5, y);
+        canvas.drawLine(tip + const Offset(-3, -3), tip, h);
+        canvas.drawLine(tip + const Offset(-3, 3), tip, h);
+      }
     }
   }
 
@@ -216,5 +283,11 @@ class _LottieGlyphState extends State<LottieGlyph> with SingleTickerProviderStat
 }
 
 /// The cast button's icon: UseAnimations' "cast", waving when hovered.
-Widget castGlyph(BuildContext context, Color color, bool hovered) =>
+Widget castGlyph(BuildContext context, Color color, bool hovered, bool pressed) =>
     LottieGlyph(asset: 'assets/icons/cast.json', color: color, hovered: hovered);
+
+/// Builds a [GlyphKind] for an icon button: it plays on hover, or on press
+/// when [onPress] (transport buttons that fire an action).
+Widget Function(BuildContext, Color, bool, bool) glyphFor(GlyphKind kind, {double size = 22, bool onPress = false}) =>
+    (context, color, hovered, pressed) =>
+        AnimatedGlyph(kind: kind, color: color, size: size, hovered: !onPress && hovered, active: onPress && pressed);

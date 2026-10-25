@@ -17,6 +17,7 @@ import '../../app/providers/ui_providers.dart';
 import '../../app/theme/motion.dart';
 import '../../core/models/track.dart';
 import '../now_playing/now_playing_overlay.dart';
+import '../widgets/animated_glyphs.dart';
 import '../widgets/expressive_buttons.dart';
 import 'mini_player.dart';
 import 'nav_rail.dart';
@@ -177,6 +178,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                             curve: Motion.curve(context, Motion.spring),
                             child: ExpressiveFab(
                               icon: Icons.shuffle_rounded,
+                              glyph: GlyphKind.shuffle,
                               label: shuffle?.label ?? 'Shuffle all',
                               extended: fabExtended,
                               onPressed: () => shuffle?.run(),

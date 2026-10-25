@@ -103,9 +103,10 @@ Build in milestones; stop after each so I can run it.
 2. **Server:** login, OpenSubsonic client, Home + Library with real data and cover caching.
 3. **Playback:** engine, queue, album page, SMTC/media keys, scrobbling.
 4. **Dynamic color + shapes:** scheme from cover with animated recolor, `MorphShape`, card/tile behaviors, wavy progress.
-5. **Now Playing:** overlay + hero transition, lyrics list, lyrics toggle, volume slider, idle mode, simulated visualizer with all styles + picker.
-6. **Motion polish pass** against the demo list above (ripples, tilt, reveals, heart burst, wash, ambient).
-7. **Search, playlists, offline cache, settings, real visualizer.**
+5. **Animated icons:** one-shot animation per icon (sidebar, buttons, transport); Lottie files + code-drawn glyphs; credits in Settings.
+6. **Now Playing:** overlay + hero transition, lyrics list, lyrics toggle, volume slider, idle mode, simulated visualizer with all styles + picker.
+7. **Motion polish pass** against the demo list above (ripples, tilt, reveals, heart burst, wash, ambient).
+8. **Search, playlists, offline cache, settings, real visualizer.**
 After each milestone: `flutter analyze` clean, `flutter test` passing, summarize in ≤ 5 lines. Don't refactor unrelated files. Ask before adding packages not listed. Small, reviewable commits.
 
 ## Commands

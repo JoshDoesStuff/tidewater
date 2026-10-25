@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers/playback_providers.dart';
 import '../../app/providers/ui_providers.dart';
 import '../../app/theme/motion.dart';
+import '../widgets/animated_glyphs.dart';
 import '../widgets/art_tile.dart';
 import '../widgets/effects/ripple.dart';
 import '../widgets/expressive_buttons.dart';
@@ -63,31 +64,39 @@ class _MiniPlayerBody extends ConsumerWidget {
                   ),
                   const SizedBox(width: 14),
                   Flexible(
+                    // Animates its width so a long title giving way to a short one
+                    // slides the controls over instead of snapping them.
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 168),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            track.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: text.bodyLarge?.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
-                          ),
-                          Text(
-                            track.artist,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: text.bodySmall?.copyWith(fontSize: 12.5, color: scheme.onSurfaceVariant),
-                          ),
-                        ],
+                      child: AnimatedSize(
+                        duration: Motion.of(context, Motion.medium),
+                        curve: Motion.curve(context, Motion.emphasized),
+                        alignment: Alignment.centerLeft,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              track.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: text.bodyLarge?.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
+                            ),
+                            Text(
+                              track.artist,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: text.bodySmall?.copyWith(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   ExpressiveIconButton(
                     icon: Icons.skip_previous_rounded,
+                    glyph: glyphFor(GlyphKind.previous, onPress: true),
                     tone: ButtonTone.ghost,
                     size: 40,
                     iconSize: 22,
@@ -99,6 +108,7 @@ class _MiniPlayerBody extends ConsumerWidget {
                   const SizedBox(width: 10),
                   ExpressiveIconButton(
                     icon: Icons.skip_next_rounded,
+                    glyph: glyphFor(GlyphKind.next, onPress: true),
                     tone: ButtonTone.ghost,
                     size: 40,
                     iconSize: 22,

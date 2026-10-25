@@ -706,6 +706,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
             children: [
               ExpressiveIconButton(
                 icon: Icons.shuffle_rounded,
+                glyph: glyphFor(GlyphKind.shuffle, size: 26),
                 size: 56,
                 squareRadius: 18,
                 selected: state.shuffle,
@@ -713,11 +714,11 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
                 onPressed: controller.toggleShuffle,
               ),
               const SizedBox(width: 12),
-              _WideButton(icon: Icons.skip_previous_rounded, label: 'Previous (P)', onTap: controller.previous),
+              _WideButton(icon: Icons.skip_previous_rounded, glyph: GlyphKind.previous, label: 'Previous (P)', onTap: controller.previous),
               const SizedBox(width: 12),
               _BigPlay(playing: state.playing, onTap: controller.toggle),
               const SizedBox(width: 12),
-              _WideButton(icon: Icons.skip_next_rounded, label: 'Next (N)', onTap: controller.next),
+              _WideButton(icon: Icons.skip_next_rounded, glyph: GlyphKind.next, label: 'Next (N)', onTap: controller.next),
               const SizedBox(width: 12),
               ExpressiveIconButton(
                 icon: state.repeat == LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
@@ -913,9 +914,10 @@ class _HeartChipState extends State<_HeartChip> with SingleTickerProviderStateMi
 }
 
 class _WideButton extends StatelessWidget {
-  const _WideButton({required this.icon, required this.label, required this.onTap});
+  const _WideButton({required this.icon, required this.glyph, required this.label, required this.onTap});
 
   final IconData icon;
+  final GlyphKind glyph;
   final String label;
   final VoidCallback onTap;
 
@@ -941,7 +943,9 @@ class _WideButton extends StatelessWidget {
           ),
           child: Ripple(
             color: scheme.onSecondaryContainer,
-            child: Center(child: Icon(icon, size: 26, color: scheme.onSecondaryContainer)),
+            child: Center(
+              child: AnimatedGlyph(kind: glyph, size: 26, color: scheme.onSecondaryContainer, active: s.pressed),
+            ),
           ),
         ),
       ),

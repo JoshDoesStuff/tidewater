@@ -3,6 +3,7 @@ import 'package:lottie/lottie.dart' show LottieComposition;
 
 import '../../app/destinations.dart';
 import '../../app/theme/motion.dart';
+import '../widgets/animated_glyphs.dart';
 import '../widgets/expressive_buttons.dart';
 import '../widgets/pressable.dart';
 import 'rail_icon_motion.dart';
@@ -35,8 +36,9 @@ class NavRail extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: 40),
-          const ExpressiveIconButton(
+          ExpressiveIconButton(
             icon: Icons.menu_rounded,
+            glyph: glyphFor(GlyphKind.menu, size: 24),
             size: 56,
             iconSize: 24,
             squareRadius: 16,

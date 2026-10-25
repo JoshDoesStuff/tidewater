@@ -31,7 +31,7 @@ Most of M4 had already landed with the earlier milestones (scheme from real cove
   with no cover download. Failed covers fall back to a color from the album id and are *not* remembered.
 - Now Playing shows no lyrics button and no lyrics card for a track without lyrics (suggestion from the user).
 
-Left for M6: the visual QA of the tonal-button contrast in light, and reduced-motion review of the stepped recolor
+Left for M7: the visual QA of the tonal-button contrast in light, and reduced-motion review of the stepped recolor
 (it already respects `disableAnimations` by being instant).
 
 ## Milestone 3 wrap-up (done)
@@ -91,14 +91,14 @@ Performance, measured on real data at 180 Hz (frame budget 5.6 ms; use `tool/run
 
 Known gaps / follow-ups:
 
-- The visualizer is still simulated (M7). The Now Playing quality tag shows the file's own format from the server, not
+- The visualizer is still simulated (M8). The Now Playing quality tag shows the file's own format from the server, not
   what the engine decodes (matters once transcoding is used; there is no transcoding setting yet).
 - The position is saved at pause, on queue changes and every 5 s, not on window close (up to 5 s lost on exit).
 - Failed counted plays are retried for as long as the app runs, not across restarts.
 - Hearts only exist for tracks; there is no starring of albums/artists from the UI yet.
-- No ReplayGain, crossfade or audio-device choice (M7). No sleep timer.
-- `Space` can still also activate a focused button (M5 item).
-- Playlists have cards that play but no playlist page (M7).
+- No ReplayGain, crossfade or audio-device choice (M8). No sleep timer.
+- `Space` can still also activate a focused button (M6 item).
+- Playlists have cards that play but no playlist page (M8).
 
 ## Milestone 2 wrap-up (done)
 
@@ -119,7 +119,7 @@ Next up was **M3 (Playback)**, below.
 ## Where we are
 
 The original plan was shell → server → playback → color/shapes → Now Playing → polish. We deliberately built
-**demo parity first** with a simulated player, so milestones 1, 4 and 5 are largely done in look and behavior,
+**demo parity first** with a simulated player, so milestones 1, 4 and 6 are largely done in look and behavior,
 but everything they sit on is fake. The remaining milestones are mostly *replacing the fakes* and adding the
 pages that don't exist yet.
 
@@ -129,9 +129,10 @@ pages that don't exist yet.
 | 2 | Server (login, OpenSubsonic, real library, cover cache) | ✅ (search/artist pages come later) |
 | 3 | Playback (real engine, queue, SMTC, scrobbling, album page) | ✅ (gaps listed in the M3 section) |
 | 4 | Dynamic color + shapes | ✅ |
-| 5 | Now Playing | 🟡 (real audio, lyrics and queue; the visualizer is still simulated) |
-| 6 | Motion polish pass | 🟡 (most of the demo list is in; QA pass outstanding) |
-| 7 | Search, playlists, offline cache, settings, real visualizer | ⬜ (Settings partly ✅) |
+| 5 | Animated icons (sidebar, buttons, transport) | 🟡 (see the M5 section) |
+| 6 | Now Playing | 🟡 (real audio, lyrics and queue; the visualizer is still simulated) |
+| 7 | Motion polish pass | 🟡 (most of the demo list is in; QA pass outstanding) |
+| 8 | Search, playlists, offline cache, settings, real visualizer | ⬜ (Settings partly ✅) |
 
 ## What is simulated or stubbed today
 
@@ -139,12 +140,12 @@ Replace these as the milestones below land. Each is a known, deliberate stand-in
 
 | Stand-in | Where | Replaced in |
 |----------|-------|-------------|
-| `SimulatedVisualizerSource` (time-based, not from audio) | `core/playback/visualizer_source.dart` | M7 |
+| `SimulatedVisualizerSource` (time-based, not from audio) | `core/playback/visualizer_source.dart` | M8 |
 | `SimulatedEngine` is still the engine in tests, previews and the perf tools (the app itself uses libmpv) | `core/playback/simulated_engine.dart` | stays (test double) |
-| No-op controls: menu button, search field, cast button | various | M7 |
-| Library has no Genres tab (Songs, with its own sort and cards/list view, shipped after M4; the genre filter is a popup box with search, Ctrl+click for several) | `library_page.dart` | M7 |
-| Only the Radio rail page is a placeholder (Artists, Liked and Lists are real pages; playlists open a playlist page) | `placeholder_page.dart` | M7 |
-| The quality tag shows the file's own format from the server, not the engine's decoded format | `now_playing_overlay.dart` | M7 (with transcoding) |
+| No-op controls: menu button, search field, cast button | various | M8 |
+| Library has no Genres tab (Songs, with its own sort and cards/list view, shipped after M4; the genre filter is a popup box with search, Ctrl+click for several) | `library_page.dart` | M8 |
+| Only the Radio rail page is a placeholder (Artists, Liked and Lists are real pages; playlists open a playlist page) | `placeholder_page.dart` | M8 |
+| The quality tag shows the file's own format from the server, not the engine's decoded format | `now_playing_overlay.dart` | M8 (with transcoding) |
 
 (Replaced in M3: the simulated player, placeholder lyrics, in-memory hearts, the queue button, the album and artist
 pages.)
@@ -193,18 +194,30 @@ Known gaps / follow-ups:
   not).
 - Pull-to-refresh / automatic refresh of Home after playing: Home rows refresh only when invalidated (Retry) or on
   restart. Invalidate `recent`/`frequent` when scrobbling lands (M3).
-- Library "Songs" and "Genres" tabs, and the Home chips beyond filtering rows, are M7.
+- Library "Songs" and "Genres" tabs, and the Home chips beyond filtering rows, are M8.
 
 ## M3 — Playback (done; see the wrap-up above)
 
 Built: libmpv engine behind `AudioBackend`, queue (play next, add to queue, reorder, remove, shuffle, repeat
 off/all/one), gapless, volume/mute/seek, scrobbling, SMTC and media keys, album and artist pages, lyrics (server +
-lrclib), hearts, restore on launch, queue panel. Not done (moved to M7 or noted above): transcoding/format choice,
+lrclib), hearts, restore on launch, queue panel. Not done (moved to M8 or noted above): transcoding/format choice,
 ReplayGain, crossfade, device choice, saving the position on window close.
 
 ## M4 — Dynamic color + shapes (done; see the wrap-up above)
 
-## M5 — Now Playing (remaining)
+## M5 — Animated icons (in progress)
+
+Every icon that moves does so with its own one-shot animation, rest state = the whole icon, reduced motion = still.
+Artwork is a mix: UseAnimations Lottie files (`assets/icons/`, via the `lottie` package), Lucide Home and the
+UseAnimations heart shape drawn in code, and small stroke glyphs in `ui/widgets/animated_glyphs.dart`.
+Credits live in Settings and `third-party-licenses/`; add an entry for any new artwork.
+
+Done: sidebar (Home, Library, Artists, Liked, Lists, Radio, Settings), cast button, list/cards toggle, sort and filter.
+
+To do: Next and Previous, the Shuffle button animation (redo), the sidebar Menu button, and then a pass over the
+remaining static icons (queue, repeat, lyrics, volume, visualizer picker).
+
+## M6 — Now Playing (remaining)
 
 Built: overlay with hero flight, lyrics list, lyrics toggle, volume slider, idle mode, visualizer styles + picker,
 heart burst, track-change choreography, `V`/`L`/`Esc`/`Space`/`N`/`P`.
@@ -223,7 +236,7 @@ heart burst, track-change choreography, `V`/`L`/`Esc`/`Space`/`N`/`P`.
   (rapid Next presses); likely a race between `open` calls in the engine/queue, so cancel or ignore stale loads
   and make the buffering animation the visible fallback while the latest track loads.
 
-## M6 — Motion polish pass
+## M7 — Motion polish pass
 
 Most of the demo list is in. Remaining and review items:
 
@@ -237,7 +250,7 @@ Most of the demo list is in. Remaining and review items:
   letter motion).
 - Consider fading the Aurora behind pages when paused for a long time (idle GPU use).
 
-## M7 — Search, playlists, offline, settings, real visualizer
+## M8 — Search, playlists, offline, settings, real visualizer
 
 - Search page (`search3`): artists/albums/songs, recent searches, keyboard-first; wire the header search pill.
 - Playlists: list, detail, create/edit, add-to-playlist from context menus, reorder.

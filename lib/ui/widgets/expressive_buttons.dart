@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme/motion.dart';
+import 'animated_glyphs.dart';
 import 'effects/ripple.dart';
 import 'pressable.dart';
 
@@ -24,9 +25,9 @@ class ExpressiveIconButton extends StatelessWidget {
 
   final IconData icon;
 
-  /// Replaces [icon] with custom artwork; told the foreground color and whether
-  /// the pointer is over the button.
-  final Widget Function(BuildContext context, Color color, bool hovered)? glyph;
+  /// Replaces [icon] with custom artwork; told the foreground color, whether
+  /// the pointer is over the button and whether it is pressed.
+  final Widget Function(BuildContext context, Color color, bool hovered, bool pressed)? glyph;
   final VoidCallback? onPressed;
   final bool selected;
   final ButtonTone tone;
@@ -71,7 +72,7 @@ class ExpressiveIconButton extends StatelessWidget {
             ),
             child: Ripple(
               color: fg,
-              child: Center(child: glyph?.call(context, fg, s.hovered) ?? Icon(icon, size: iconSize, color: fg)),
+              child: Center(child: glyph?.call(context, fg, s.hovered, s.pressed) ?? Icon(icon, size: iconSize, color: fg)),
             ),
           ),
         );
@@ -128,11 +129,15 @@ class ExpressiveFab extends StatelessWidget {
     super.key,
     required this.icon,
     required this.label,
+    this.glyph,
     this.extended = true,
     this.onPressed,
   });
 
   final IconData icon;
+
+  /// Animated artwork that replaces [icon] (it plays on hover).
+  final GlyphKind? glyph;
   final String label;
   final bool extended;
   final VoidCallback? onPressed;
@@ -168,10 +173,13 @@ class ExpressiveFab extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _Wiggle(
-                      active: s.hovered,
-                      child: Icon(icon, size: 24, color: scheme.onPrimaryContainer),
-                    ),
+                    if (glyph != null)
+                      AnimatedGlyph(kind: glyph!, size: 24, color: scheme.onPrimaryContainer, hovered: s.hovered)
+                    else
+                      _Wiggle(
+                        active: s.hovered,
+                        child: Icon(icon, size: 24, color: scheme.onPrimaryContainer),
+                      ),
                     if (extended) ...[
                       const SizedBox(width: 12),
                       Flexible(
