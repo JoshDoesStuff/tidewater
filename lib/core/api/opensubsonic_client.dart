@@ -7,6 +7,8 @@ import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 
+import '../lyrics/lyrics.dart';
+import '../lyrics/structured_lyrics.dart';
 import '../models/album.dart';
 import '../models/artist.dart';
 import '../models/json_util.dart';
@@ -279,6 +281,18 @@ class OpenSubsonicClient implements LibraryApi {
     final body = await _call('getRandomSongs', {'size': size});
     final list = body['randomSongs'];
     return [for (final s in asObjects(list is Map ? list['song'] : null)) Track.fromJson(s)];
+  }
+
+  @override
+  Future<Lyrics?> getLyrics(String trackId) async {
+    try {
+      final body = await _call('getLyricsBySongId', {'id': trackId});
+      return parseStructuredLyrics(body['lyricsList']);
+    } on ApiException catch (e) {
+      // "No lyrics", or a server that has never heard of the call.
+      if (e.kind == ApiErrorKind.notFound || e.kind == ApiErrorKind.unsupported || e.kind == ApiErrorKind.notSubsonic) return null;
+      rethrow;
+    }
   }
 
   @override

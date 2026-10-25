@@ -2,8 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_exception.dart';
-import '../../core/lyrics/lyrics.dart';
-import '../../core/lyrics/placeholder_lyrics.dart';
 import '../../core/models/album.dart';
 import '../../core/models/artist.dart';
 import '../../core/models/playlist.dart';
@@ -146,8 +144,6 @@ final currentCoverKeyProvider = Provider<CoverKey?>((ref) {
   return track == null ? null : (albumId: track.albumId, coverArt: track.coverArt);
 });
 
-/// STAND-IN: the same lyrics for every track (real lyrics in M3).
-final lyricsProvider = Provider<Lyrics>((ref) => placeholderLyrics);
 
 /// Ids of the tracks the person has hearted. Seeded from the `starred` flag
 /// of every track list we load, and written to the server (`star`/`unstar`)

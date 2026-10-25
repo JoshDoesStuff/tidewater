@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../lyrics/lyrics.dart';
 import '../models/album.dart';
 import '../models/artist.dart';
 import '../models/playlist.dart';
@@ -76,6 +77,10 @@ abstract class LibraryApi {
 
   /// Random songs from the whole library (Shuffle all).
   Future<List<Track>> getRandomSongs({int size = 30});
+
+  /// Lyrics for a track from the server (OpenSubsonic `songLyrics`), or null
+  /// when it has none or does not support them.
+  Future<Lyrics?> getLyrics(String trackId);
 
   /// Cover art bytes for `getCoverArt`, scaled by the server to [size] px.
   Future<Uint8List> getCoverArt(String id, {int size = 300});

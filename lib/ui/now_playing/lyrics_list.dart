@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/providers/lyrics_providers.dart';
 import '../../app/providers/playback_providers.dart';
 import '../../app/theme/motion.dart';
 import '../../core/lyrics/lyrics.dart';

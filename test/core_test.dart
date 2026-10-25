@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tidewater/core/lyrics/placeholder_lyrics.dart';
+import 'support/placeholder_lyrics.dart';
 import 'package:tidewater/core/lyrics/lrc_parser.dart';
 import 'package:tidewater/core/playback/simulated_engine.dart';
 import 'support/fake_library.dart';

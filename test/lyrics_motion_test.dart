@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tidewater/app/providers/lyrics_providers.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
-import 'package:tidewater/core/lyrics/placeholder_lyrics.dart';
+import 'support/placeholder_lyrics.dart';
 import 'package:tidewater/ui/now_playing/lyrics_list.dart';
 import 'package:tidewater/ui/now_playing/lyrics_motion.dart';
 
@@ -82,7 +83,7 @@ void main() {
   });
 
   testWidgets('the list follows playback position and keeps one stable semantics node', (tester) async {
-    final container = ProviderContainer();
+    final container = ProviderContainer(overrides: [lyricsProvider.overrideWithValue(placeholderLyrics)]);
     addTearDown(container.dispose);
     final semantics = tester.ensureSemantics();
     await tester.pumpWidget(UncontrolledProviderScope(

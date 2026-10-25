@@ -2,11 +2,14 @@ import 'dart:typed_data';
 
 import 'package:tidewater/core/api/api_exception.dart';
 import 'package:tidewater/core/api/library_api.dart';
+import 'package:tidewater/core/lyrics/lyrics.dart';
 import 'package:tidewater/core/models/album.dart';
 import 'package:tidewater/core/models/artist.dart';
 import 'package:tidewater/core/models/playlist.dart';
 import 'package:tidewater/core/models/search_results.dart';
 import 'package:tidewater/core/models/track.dart';
+
+import 'placeholder_lyrics.dart';
 
 /// (id, title, artist, track title, genre, year)
 const _seed = [
@@ -73,6 +76,9 @@ final fakePlaylists = <Playlist>[
 /// gradients (and a scheme seeded from the album id).
 class FakeLibraryApi implements LibraryApi {
   FakeLibraryApi({this.failWith, this.albums});
+
+  /// Track ids the server has no lyrics for (every other track gets the placeholder).
+  final noLyricsFor = <String>{};
 
   /// When set, `star` and `unstar` throw this.
   ApiException? failStarWith;
@@ -162,6 +168,10 @@ class FakeLibraryApi implements LibraryApi {
 
   @override
   Future<List<Track>> getRandomSongs({int size = 30}) async => _ok('getRandomSongs', () => fakeTracks.take(size).toList());
+
+  @override
+  Future<Lyrics?> getLyrics(String trackId) async =>
+      _ok('getLyrics:$trackId', () => noLyricsFor.contains(trackId) ? null : placeholderLyrics);
 
   @override
   Future<Uint8List> getCoverArt(String id, {int size = 300}) async =>

@@ -17,6 +17,9 @@ class Lyrics {
   final List<LyricLine> lines;
   final bool synced;
 
+  /// No lyrics at all (also used while they are loading).
+  static const Lyrics none = Lyrics(lines: [], synced: false);
+
   bool get isEmpty => lines.isEmpty;
 
   /// Index of the line being sung at [position]: the last line whose time is

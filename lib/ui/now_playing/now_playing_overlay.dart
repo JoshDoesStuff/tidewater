@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/providers/lyrics_providers.dart';
 import '../../app/providers/playback_providers.dart';
 import '../../app/providers/settings_providers.dart';
 import '../../app/providers/ui_providers.dart';
@@ -289,6 +290,8 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
     final scheme = Theme.of(context).colorScheme;
     final idle = ref.watch(idleProvider);
     final lyricsOn = ref.watch(lyricsOnProvider);
+    // With nothing to show, idle mode lays out like lyrics-off (cover centered).
+    final lyricsAvailable = ref.watch(lyricsStateProvider.select((v) => v.isLoading || (v.value?.isEmpty == false)));
     final mode = ref.watch(vizModeProvider);
 
     return FadeTransition(
@@ -315,7 +318,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
                   child: BurstLayer(
                     key: _burstKey,
                     color: scheme.primary,
-                    child: _design(context, idle: idle, lyricsOn: lyricsOn),
+                    child: _design(context, idle: idle, lyricsOn: lyricsOn, idleLyrics: lyricsOn && lyricsAvailable),
                   ),
                 ),
               ),
@@ -327,7 +330,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
     );
   }
 
-  Widget _design(BuildContext context, {required bool idle, required bool lyricsOn}) {
+  Widget _design(BuildContext context, {required bool idle, required bool lyricsOn, required bool idleLyrics}) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final reduced = Motion.reduced(context);
@@ -335,7 +338,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
     final track = _shown ?? ref.watch(currentTrackProvider);
     if (track == null) return const SizedBox.shrink();
     final slow = Motion.of(context, Motion.slow);
-    final glideLeft = idle && !lyricsOn ? 420.0 : 100.0;
+    final glideLeft = idle && !idleLyrics ? 420.0 : 100.0;
 
     return Stack(
       clipBehavior: Clip.none,
@@ -406,11 +409,11 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
           height: 440,
           child: IgnorePointer(
             child: AnimatedOpacity(
-              opacity: idle && lyricsOn ? 1 : 0,
+              opacity: idle && idleLyrics ? 1 : 0,
               duration: slow,
               curve: Motion.standard,
               child: AnimatedSlide(
-                offset: idle && lyricsOn ? Offset.zero : const Offset(30 / 580, 0),
+                offset: idle && idleLyrics ? Offset.zero : const Offset(30 / 580, 0),
                 duration: slow,
                 curve: Motion.emphasized,
                 child: const LyricsList(style: LyricsStyle.idle, layoutWidth: 440),
@@ -423,8 +426,8 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
         AnimatedPositioned(
           duration: slow,
           curve: Motion.emphasized,
-          left: lyricsOn ? 100 : 0,
-          width: lyricsOn ? 440 : _designW,
+          left: idleLyrics ? 100 : 0,
+          width: idleLyrics ? 440 : _designW,
           top: 650,
           child: IgnorePointer(
             child: AnimatedOpacity(
@@ -632,7 +635,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               if (track.qualityLabel != null) _Tag(label: track.qualityLabel!),
-              if (lyrics.synced) const _Tag(label: 'Synced lyrics'),
+              if (!lyrics.isEmpty) _Tag(label: lyrics.synced ? 'Synced lyrics' : 'Lyrics'),
               _HeartChip(key: _heartKey, liked: liked, onTap: _toggleLike),
             ],
           ),
@@ -1012,6 +1015,24 @@ class _LyricsCard extends ConsumerWidget {
               top: 46,
               height: 128,
               child: LyricsList(style: LyricsStyle.card),
+            ),
+            // The list is empty while loading and when there are none: say so
+            // only for the latter.
+            Positioned(
+              left: 32,
+              right: 32,
+              top: 46,
+              height: 128,
+              child: IgnorePointer(
+                child: Center(
+                  child: Text(
+                    ref.watch(lyricsStateProvider.select((v) => !v.isLoading && (v.value?.isEmpty ?? true)))
+                        ? 'No lyrics for this track'
+                        : '',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

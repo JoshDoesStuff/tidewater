@@ -1,5 +1,5 @@
-import 'lrc_parser.dart';
-import 'lyrics.dart';
+import 'package:tidewater/core/lyrics/lrc_parser.dart';
+import 'package:tidewater/core/lyrics/lyrics.dart';
 
 const _lrc = '''
 [ar:Placeholder]
@@ -14,6 +14,5 @@ const _lrc = '''
 [02:48.00]till the morning takes it too
 ''';
 
-/// STAND-IN: the same synced lyrics for every track until real lyrics are
-/// fetched (`getLyricsBySongId`, milestone 3).
+/// Synced lyrics the fake server returns for every track.
 final Lyrics placeholderLyrics = parseLrc(_lrc);
