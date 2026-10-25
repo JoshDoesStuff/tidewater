@@ -52,7 +52,7 @@ class _VolumeSliderState extends ConsumerState<VolumeSlider> with SingleTickerPr
             onTap: () => ref.read(playbackProvider.notifier).toggleMute(),
             semanticLabel: v == 0 ? 'Unmute' : 'Mute',
             builder: (context, s) => SizedBox.square(
-              dimension: 36,
+              dimension: 44,
               child: Center(
                 child: AnimatedBuilder(
                   animation: _bump,
@@ -60,7 +60,7 @@ class _VolumeSliderState extends ConsumerState<VolumeSlider> with SingleTickerPr
                     scale: (s.hovered ? 1.12 : 1) * (1 + .3 * (_bump.value < .4 ? _bump.value / .4 : 1 - (_bump.value - .4) / .6)),
                     child: child,
                   ),
-                  child: VolumeGlyph(level: level.index, color: scheme.primary),
+                  child: VolumeGlyph(level: level.index, color: scheme.primary, size: 30),
                 ),
               ),
             ),

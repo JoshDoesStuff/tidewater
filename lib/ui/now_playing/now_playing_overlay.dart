@@ -1103,18 +1103,17 @@ class _LyricsSlot extends StatelessWidget {
       builder: (context, f, _) {
         if (f <= 0) return const SizedBox.shrink();
         final e = f.clamp(0.0, 1.0);
-        return ClipRect(
-          child: Align(
-            alignment: Alignment.centerLeft,
-            widthFactor: e,
-            child: Opacity(
-              opacity: e,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 12),
-                child: Transform.scale(
-                  scale: .6 + .4 * e,
-                  child: IgnorePointer(ignoring: !visible, child: _LyricsButton(selected: selected, onTap: onTap)),
-                ),
+        // No clip: the button fades and scales as the space opens, never cut off.
+        return Align(
+          alignment: Alignment.centerLeft,
+          widthFactor: e,
+          child: Opacity(
+            opacity: e,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: Transform.scale(
+                scale: .6 + .4 * e,
+                child: IgnorePointer(ignoring: !visible, child: _LyricsButton(selected: selected, onTap: onTap)),
               ),
             ),
           ),
