@@ -6,6 +6,7 @@ import '../../../app/providers/session_providers.dart';
 import '../../../app/providers/ui_providers.dart';
 import '../../../app/theme/motion.dart';
 import '../../../core/api/server_config.dart';
+import '../../widgets/animated_glyphs.dart';
 import '../../widgets/expressive_buttons.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/shapes/morph_path.dart';
@@ -21,7 +22,11 @@ class AppHeader extends StatelessWidget {
       children: [
         Expanded(child: SearchPill()),
         SizedBox(width: 12),
-        ExpressiveIconButton(icon: Icons.cast_rounded, tooltip: 'Cast'),
+        ExpressiveIconButton(
+          icon: Icons.cast_rounded,
+          tooltip: 'Cast',
+          glyph: castGlyph,
+        ),
         SizedBox(width: 12),
         _Avatar(),
       ],

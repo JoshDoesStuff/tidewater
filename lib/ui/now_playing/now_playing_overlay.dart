@@ -18,6 +18,7 @@ import '../widgets/art_tile.dart';
 import '../widgets/effects/letter_reveal.dart';
 import '../widgets/effects/particle_burst.dart';
 import '../widgets/effects/ripple.dart';
+import '../widgets/animated_glyphs.dart';
 import '../widgets/expressive_buttons.dart';
 import '../widgets/link_text.dart';
 import '../widgets/pressable.dart';
@@ -588,7 +589,13 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
           onPressed: () => ref.read(queueOpenProvider.notifier).toggle(),
         ),
         const SizedBox(width: 16),
-        const ExpressiveIconButton(icon: Icons.cast_rounded, size: 56, squareRadius: 18, tooltip: 'Cast'),
+        const ExpressiveIconButton(
+          icon: Icons.cast_rounded,
+          size: 56,
+          squareRadius: 18,
+          tooltip: 'Cast',
+          glyph: castGlyph,
+        ),
       ],
     );
   }

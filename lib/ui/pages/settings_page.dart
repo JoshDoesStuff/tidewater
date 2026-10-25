@@ -99,7 +99,9 @@ class SettingsPage extends ConsumerWidget {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 32),
+                  Divider(height: 1, thickness: 1, color: scheme.outlineVariant),
+                  const SizedBox(height: 32),
                   const _Credits(),
                 ],
               ),
@@ -117,7 +119,7 @@ class _Credits extends StatelessWidget {
 
   static const _entries = [
     (
-      'Library, Artists, Lists, Radio and Settings icons',
+      'Library, Cast, Artists, Lists, Radio and Settings icons',
       'UseAnimations (https://useanimations.com), MIT License',
     ),
     (

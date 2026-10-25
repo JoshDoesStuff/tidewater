@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HardwareKeyboard, LogicalKeyboardKey;
 
 import '../../../app/theme/motion.dart';
+import '../../widgets/animated_glyphs.dart';
 import '../../widgets/pressable.dart';
 
 /// The Library's genre filter: a pill that opens a popup box with a search
@@ -67,7 +68,7 @@ class GenrePill extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.filter_list_rounded, size: 20, color: fg),
+              AnimatedGlyph(kind: GlyphKind.filter, size: 20, color: fg, hovered: s.hovered),
               const SizedBox(width: 10),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 140),

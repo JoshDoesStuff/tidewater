@@ -12,6 +12,7 @@ import '../../core/models/track.dart';
 import '../widgets/async_states.dart';
 import '../widgets/effects/letter_reveal.dart';
 import '../widgets/effects/stagger_in.dart';
+import '../widgets/animated_glyphs.dart';
 import '../widgets/expressive_buttons.dart';
 import '../widgets/pressable.dart';
 import 'page_frame.dart';
@@ -209,7 +210,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                           ),
                           if (tab == LibraryTab.albums) ...[
                             _MenuPill<LibrarySort>(
-                              icon: Icons.sort_rounded,
+                              glyph: GlyphKind.sort,
                               label: sort.label,
                               semanticLabel: 'Sort: ${sort.label}',
                               value: sort,
@@ -232,7 +233,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                           ],
                           if (tab == LibraryTab.songs) ...[
                             _MenuPill<SongSort>(
-                              icon: Icons.sort_rounded,
+                              glyph: GlyphKind.sort,
                               label: songSort.label,
                               semanticLabel: 'Sort songs: ${songSort.label}',
                               value: songSort,
@@ -560,7 +561,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
 /// Pill that opens a menu of choices (sort order, genre).
 class _MenuPill<T> extends StatefulWidget {
   const _MenuPill({
-    required this.icon,
+    required this.glyph,
     required this.label,
     required this.semanticLabel,
     required this.value,
@@ -569,7 +570,7 @@ class _MenuPill<T> extends StatefulWidget {
     this.highlighted = false,
   });
 
-  final IconData icon;
+  final GlyphKind glyph;
   final String label;
   final String semanticLabel;
   final T value;
@@ -666,7 +667,7 @@ class _MenuPillState<T> extends State<_MenuPill<T>> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(widget.icon, size: 20, color: fg),
+                    AnimatedGlyph(kind: widget.glyph, size: 20, color: fg, hovered: _hovered),
                     const SizedBox(width: 10),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 140),

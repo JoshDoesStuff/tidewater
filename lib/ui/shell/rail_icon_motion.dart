@@ -1,7 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
 import '../../app/destinations.dart';
+import '../widgets/animated_glyphs.dart';
 import 'code_icons.dart';
 import 'home_icon.dart';
 
@@ -17,12 +20,10 @@ abstract final class RailIcons {
     Destination.settings: 'assets/icons/settings.json',
   };
 
-  static final _loading = <String, Future<LottieComposition>>{};
-
   /// The Lottie composition for [d], loaded once; null for Home.
   static Future<LottieComposition>? load(Destination d) {
     final path = _assets[d];
-    return path == null ? null : _loading.putIfAbsent(path, () => AssetLottie(path).load());
+    return path == null ? null : IconComposition.load(path);
   }
 }
 
@@ -36,8 +37,11 @@ Widget railIconMotion(Destination d, double t, Color color, {LottieComposition? 
   final box = size * 1.3;
   // A tint over the whole drawing: the files have unnamed shapes, so Lottie's
   // own per-layer color overrides can't address them.
-  return ColorFiltered(
-    colorFilter: ColorFilter.mode(color, BlendMode.srcATop),
-    child: RawLottie(composition: composition, progress: t, width: box, height: box, fit: BoxFit.contain),
-  );
+  Widget art = RawLottie(composition: composition, progress: t, width: box, height: box, fit: BoxFit.contain);
+  // The gear's file only nudges it, so it turns a clear half revolution here
+  // (its teeth repeat every 45 degrees, so it lands looking unchanged).
+  if (d == Destination.settings) {
+    art = Transform.rotate(angle: math.pi * Curves.easeInOutCubic.transform((t / .8).clamp(0.0, 1.0)), child: art);
+  }
+  return ColorFiltered(colorFilter: ColorFilter.mode(color, BlendMode.srcATop), child: art);
 }

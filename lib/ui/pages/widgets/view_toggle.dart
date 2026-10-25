@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/motion.dart';
+import '../../widgets/animated_glyphs.dart';
 import '../../widgets/pressable.dart';
 
 /// List / cards switch: the selected side squares off and takes the fill.
@@ -15,14 +16,14 @@ class ViewToggle extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _side(context, Icons.view_list_rounded, 'Show as list', !cards, () => onChanged(false)),
+        _side(context, GlyphKind.list, 'Show as list', !cards, () => onChanged(false)),
         const SizedBox(width: 4),
-        _side(context, Icons.grid_view_rounded, 'Show as cards', cards, () => onChanged(true)),
+        _side(context, GlyphKind.cards, 'Show as cards', cards, () => onChanged(true)),
       ],
     );
   }
 
-  Widget _side(BuildContext context, IconData icon, String label, bool selected, VoidCallback onTap) {
+  Widget _side(BuildContext context, GlyphKind kind, String label, bool selected, VoidCallback onTap) {
     final scheme = Theme.of(context).colorScheme;
     return Pressable(
       onTap: onTap,
@@ -39,7 +40,14 @@ class ViewToggle extends StatelessWidget {
                 : (s.hovered ? scheme.surfaceContainerHighest : scheme.surfaceContainerHigh),
             borderRadius: BorderRadius.circular(selected || s.pressed ? 16 : 24),
           ),
-          child: Icon(icon, size: 22, color: selected ? scheme.onSecondaryContainer : scheme.onSurface),
+          child: Center(
+            child: AnimatedGlyph(
+              kind: kind,
+              color: selected ? scheme.onSecondaryContainer : scheme.onSurface,
+              hovered: s.hovered,
+              active: selected,
+            ),
+          ),
         ),
       ),
     );

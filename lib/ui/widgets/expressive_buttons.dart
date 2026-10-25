@@ -19,9 +19,14 @@ class ExpressiveIconButton extends StatelessWidget {
     this.iconSize = 24,
     this.squareRadius = 16,
     this.tooltip,
+    this.glyph,
   });
 
   final IconData icon;
+
+  /// Replaces [icon] with custom artwork; told the foreground color and whether
+  /// the pointer is over the button.
+  final Widget Function(BuildContext context, Color color, bool hovered)? glyph;
   final VoidCallback? onPressed;
   final bool selected;
   final ButtonTone tone;
@@ -64,7 +69,10 @@ class ExpressiveIconButton extends StatelessWidget {
               color: bg,
               borderRadius: BorderRadius.circular(square ? squareRadius : size / 2),
             ),
-            child: Ripple(color: fg, child: Center(child: Icon(icon, size: iconSize, color: fg))),
+            child: Ripple(
+              color: fg,
+              child: Center(child: glyph?.call(context, fg, s.hovered) ?? Icon(icon, size: iconSize, color: fg)),
+            ),
           ),
         );
       },
