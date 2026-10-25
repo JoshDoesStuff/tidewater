@@ -36,7 +36,7 @@ const _pass = String.fromEnvironment('TW_PASS', defaultValue: 'demo');
 /// Comma-separated scenario names to run (empty: all): home, library, scroll,
 /// album, play, np, queue, lyrics, skips, idle.
 const _only = String.fromEnvironment('TW_ONLY');
-bool _want(String name) => _only.isEmpty || _only.split(',').contains(name);
+bool _want(String name) => _only.isEmpty || _only.split(RegExp(r'[, ]+')).contains(name);
 
 class _Sample {
   _Sample(this.build, this.raster, this.total);
@@ -132,9 +132,10 @@ Future<void> _scenario(ProviderContainer c, OpenSubsonicClient api) async {
   }
 
   if (_want('scroll')) {
-    _phase = 'library scrolling';
+    _phase = 'library scroll down (new tiles)';
     await _scroll(const Offset(700, 500), ticks: 80);
     await _wait(1);
+    _phase = 'library scroll back up (images cached)';
     await _scroll(const Offset(700, 500), ticks: 40, dy: -120);
     await _wait(1);
   }

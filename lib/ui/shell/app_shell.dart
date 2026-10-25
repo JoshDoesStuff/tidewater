@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/destinations.dart';
 import '../../app/providers/playback_providers.dart';
+import '../../app/providers/cover_prefetch.dart';
 import '../../app/providers/scrobble_providers.dart';
 import '../../app/providers/session_persistence.dart';
 import '../../app/providers/system_media_providers.dart';
@@ -89,6 +90,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     ref.watch(scrobbleServiceProvider); // keeps plays reported for as long as the shell lives
+    ref.watch(coverPrefetchProvider); // decodes upcoming covers ahead of time
     ref.watch(sessionPersistenceProvider); // saves and restores the queue
     ref.watch(systemMediaServiceProvider); // Windows media overlay and media keys
     final scheme = Theme.of(context).colorScheme;

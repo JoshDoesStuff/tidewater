@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -47,7 +48,11 @@ class CoverImage extends ImageProvider<CoverImage> {
 
 /// A cover filling its box. While the image loads (or if the album has none)
 /// it shows a gradient picked from [seedKey], then fades the art in over it.
-class CoverArt extends ConsumerWidget {
+///
+/// Once the image is fully in, the gradient is dropped from the tree: painted
+/// underneath every loaded cover it cost ~10 ms of raster time per frame on a
+/// grid of 25 tiles (measured on real data), for nothing anyone can see.
+class CoverArt extends ConsumerStatefulWidget {
   const CoverArt({super.key, required this.coverArt, required this.seedKey, this.resolution = 300, this.child});
 
   /// Cover-art id from the server, or null.
@@ -61,33 +66,71 @@ class CoverArt extends ConsumerWidget {
   final Widget? child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final id = coverArt;
+  ConsumerState<CoverArt> createState() => _CoverArtState();
+}
+
+class _CoverArtState extends ConsumerState<CoverArt> {
+  /// The image is completely opaque over the whole box.
+  bool _covered = false;
+  Timer? _timer;
+
+  @override
+  void didUpdateWidget(CoverArt old) {
+    super.didUpdateWidget(old);
+    if (old.coverArt != widget.coverArt) {
+      // A different cover: until it arrives the old image (or nothing) shows.
+      _timer?.cancel();
+      _timer = null;
+      _covered = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _coverAfter(Duration fade) {
+    if (_covered || _timer != null) return;
+    _timer = Timer(fade + const Duration(milliseconds: 60), () {
+      _timer = null;
+      if (mounted) setState(() => _covered = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final id = widget.coverArt;
     return Stack(
       fit: StackFit.expand,
       children: [
-        CustomPaint(painter: _PlaceholderPainter(seedKey)),
+        if (!_covered) CustomPaint(painter: _PlaceholderPainter(widget.seedKey)),
         if (id != null)
           Image(
-            image: CoverImage(ref.watch(coverCacheProvider), id, resolution),
+            image: CoverImage(ref.watch(coverCacheProvider), id, widget.resolution),
             fit: BoxFit.cover,
             gaplessPlayback: true,
             excludeFromSemantics: true,
             errorBuilder: (_, _, _) => const SizedBox.shrink(),
-            frameBuilder: (context, image, frame, sync) => AnimatedOpacity(
-              opacity: frame == null ? 0 : 1,
-              duration: sync ? Duration.zero : Motion.of(context, Motion.medium),
-              child: image,
-            ),
+            frameBuilder: (context, image, frame, sync) {
+              final fade = sync ? Duration.zero : Motion.of(context, Motion.medium);
+              if (frame != null) _coverAfter(fade);
+              return AnimatedOpacity(opacity: frame == null ? 0 : 1, duration: fade, child: image);
+            },
           ),
-        child ?? const SizedBox.expand(),
+        widget.child ?? const SizedBox.expand(),
       ],
     );
   }
 }
 
 /// The placeholder gradient's two colors for [key]. Also used in tests.
-(Color, Color) placeholderColors(String key) {
+final _placeholderCache = <String, (Color, Color)>{};
+
+(Color, Color) placeholderColors(String key) => _placeholderCache.putIfAbsent(key, () => _computePlaceholderColors(key));
+
+(Color, Color) _computePlaceholderColors(String key) {
   final hue = Hct.fromInt(CoverSeed.fromKey(key).argb).hue;
   return (Color(Hct.from(hue, 52, 62).toInt()), Color(Hct.from((hue + 48) % 360, 48, 30).toInt()));
 }
