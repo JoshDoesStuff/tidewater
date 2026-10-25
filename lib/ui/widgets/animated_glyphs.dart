@@ -37,8 +37,8 @@ mixin _PlayOnEdge<T extends StatefulWidget> on State<T>, SingleTickerProviderSta
 enum GlyphKind { list, cards, sort, filter }
 
 /// A small 24 x 24 stroke icon drawn in code, with its own one-shot motion:
-/// list rows retract and return, card tiles pop in a wave, sort bars swap
-/// lengths, and the filter funnel drops a few specks through.
+/// list rows retract and return, card tiles pop in a wave, sort bars retract
+/// lengths pulling in, and the filter bars pinch toward the middle.
 class AnimatedGlyph extends StatefulWidget {
   const AnimatedGlyph({
     super.key,
@@ -130,36 +130,22 @@ class _GlyphPainter extends CustomPainter {
           canvas.restore();
         }
       case GlyphKind.sort:
-        // Three bars, long to short; mid-animation they flip, then flip back.
+        // Three bars, long to short, left-aligned; each pulls in toward its
+        // start and springs back, top to bottom.
         const lengths = [18.0, 12.0, 6.0];
-        final flip = _running ? Curves.easeInOut.transform(math.sin(math.pi * t)) : 0.0;
         for (var i = 0; i < 3; i++) {
-          final len = lengths[i] + (lengths[2 - i] - lengths[i]) * flip;
+          final len = lengths[i] * (1 - .6 * _bump(i * .14));
           final y = 6.0 + i * 6;
           canvas.drawLine(Offset(3, y), Offset(3 + len, y), line);
         }
       case GlyphKind.filter:
-        final funnel = Path()
-          ..moveTo(3, 4)
-          ..lineTo(21, 4)
-          ..lineTo(14, 12.5)
-          ..lineTo(14, 19)
-          ..lineTo(10, 21)
-          ..lineTo(10, 12.5)
-          ..close();
-        canvas.drawPath(funnel, line);
-        if (_running) {
-          // Specks fall through the funnel's neck one after another.
-          for (var i = 0; i < 3; i++) {
-            final p = ((t - i * .14) / .5).clamp(0.0, 1.0);
-            if (p <= 0 || p >= 1) continue;
-            final fade = math.sin(math.pi * p);
-            canvas.drawCircle(
-              Offset(12 + (i - 1) * 1.6 * (1 - p), 6 + 17 * p),
-              1.1,
-              Paint()..color = color.withValues(alpha: fade),
-            );
-          }
+        // The classic three centered bars; they pinch toward the middle and
+        // spring back, bottom to top, like something being filtered down.
+        const lengths = [18.0, 12.0, 6.0];
+        for (var i = 0; i < 3; i++) {
+          final len = lengths[i] * (1 - .75 * _bump((2 - i) * .14));
+          final y = 6.0 + i * 6;
+          canvas.drawLine(Offset(12 - len / 2, y), Offset(12 + len / 2, y), line);
         }
     }
   }
