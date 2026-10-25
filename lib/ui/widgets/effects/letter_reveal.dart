@@ -2,39 +2,64 @@ import 'package:flutter/material.dart';
 
 import '../../../app/theme/motion.dart';
 
-/// One glyph row. `pop` is 1 when the letter is fully in place and 0 when it
-/// is fully "out" (dropped .65em, tilted 10°); it may overshoot while a
-/// spring settles. `opacity` is separate so exits can fade across their
-/// whole length.
+/// One animated glyph row.
+///
+/// Built to stay cheap and steady while it moves:
+///  * no `Opacity` layers: the fade is the glyph color's alpha;
+///  * one `RepaintBoundary` for the row;
+///  * hidden from semantics while it animates, with one stable label for the
+///    whole string (per-letter nodes made every frame rebuild the
+///    accessibility tree);
+///  * letters at rest are plain `Text`, with no transform, and the last
+///    sub-pixel tail of a spring is snapped away;
+///  * vertical motion is rounded to whole device pixels so glyphs don't shimmer.
+///
+/// `pop` is 1 when a letter is in place and 0 when fully "out" (dropped .65em,
+/// tilted 10°); it may overshoot while a spring settles. `opacity` is
+/// separate so exits can fade across their whole length.
 Widget _letterRow(
-  List<String> chars,
-  TextStyle? style,
-  double em,
-  ({double pop, double opacity}) Function(int i) state,
-) {
-  return Row(
-    mainAxisSize: MainAxisSize.min,
-    textBaseline: TextBaseline.alphabetic,
-    children: [
-      for (var i = 0; i < chars.length; i++)
-        () {
-          final (:pop, :opacity) = state(i);
-          final p = pop;
-          return Opacity(
-            opacity: opacity.clamp(0.0, 1.0),
-            child: Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.translationValues(0, .65 * em * (1 - p), 0)..rotateZ(.1745 * (1 - p)),
-              child: Text(chars[i], style: style, softWrap: false),
-            ),
-          );
-        }(),
-    ],
+  BuildContext context, {
+  required String text,
+  required List<String> chars,
+  required TextStyle? style,
+  required ({double pop, double opacity}) Function(int i) state,
+}) {
+  final base = style ?? DefaultTextStyle.of(context).style;
+  final color = base.color ?? Theme.of(context).colorScheme.onSurface;
+  final em = base.fontSize ?? 14;
+  final dpr = MediaQuery.devicePixelRatioOf(context);
+  return Semantics(
+    label: text,
+    child: ExcludeSemantics(
+      child: RepaintBoundary(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            for (var i = 0; i < chars.length; i++)
+              () {
+                final (:pop, :opacity) = state(i);
+                final alpha = opacity.clamp(0.0, 1.0);
+                final glyph = Text(
+                  chars[i],
+                  softWrap: false,
+                  style: base.copyWith(color: alpha >= .999 ? color : color.withValues(alpha: alpha * color.a)),
+                );
+                // At rest: exactly the plain text, no transform at all.
+                if ((1 - pop).abs() < .004 && alpha >= .999) return glyph;
+                final dy = (.65 * em * (1 - pop) * dpr).round() / dpr;
+                return Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.translationValues(0, dy, 0)..rotateZ(.1745 * (1 - pop)),
+                  child: glyph,
+                );
+              }(),
+          ],
+        ),
+      ),
+    ),
   );
 }
-
-double _emOf(BuildContext context, TextStyle? style) =>
-    style?.fontSize ?? DefaultTextStyle.of(context).style.fontSize ?? 14;
 
 /// Letter-by-letter pop-in: each glyph rises .65em, untilts 10° and fades in
 /// on the spring curve, staggered by [stagger]. Plays every time the widget
@@ -97,26 +122,34 @@ class _LetterRevealState extends State<LetterReveal> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     if (_reduced) return Text(widget.text, style: widget.style, maxLines: 1, softWrap: false);
-    final em = _emOf(context, widget.style);
     final chars = widget.text.characters.toList();
     return AnimatedBuilder(
       animation: _c,
       builder: (context, _) {
+        // Stays a letter row at rest (never swapped for a plain Text): the two
+        // space glyphs slightly differently (kerning) and the title would
+        // shift a pixel or two when the animation ends.
         final elapsed = _c.value * _total.inMicroseconds / 1000;
-        return _letterRow(chars, widget.style, em, (i) {
-          final start = (widget.delay + widget.stagger * i).inMicroseconds / 1000;
-          final t = ((elapsed - start) / (_per.inMicroseconds / 1000)).clamp(0.0, 1.0);
-          final s = Motion.spring.transform(t);
-          return (pop: s, opacity: s);
-        });
+        return _letterRow(
+          context,
+          text: widget.text,
+          chars: chars,
+          style: widget.style,
+          state: (i) {
+            final start = (widget.delay + widget.stagger * i).inMicroseconds / 1000;
+            final t = ((elapsed - start) / (_per.inMicroseconds / 1000)).clamp(0.0, 1.0);
+            final s = Motion.spring.transform(t);
+            return (pop: s, opacity: s);
+          },
+        );
       },
     );
   }
 }
 
-/// Text that changes with the same letter animation in both directions: the
-/// old text pops out (the pop-in played in reverse, left to right) and then
-/// the new text pops in, so a track change flows instead of jumping.
+/// Text that changes with a letter animation in both directions: the old text
+/// drops away and fades (left to right) and then the new text pops in, so a
+/// track change flows instead of jumping.
 class LetterSwap extends StatefulWidget {
   const LetterSwap({
     super.key,
@@ -209,8 +242,8 @@ class _LetterSwapState extends State<LetterSwap> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    if (_reduced) return Text(_shown, style: widget.style, maxLines: 1, softWrap: false);
-    final em = _emOf(context, widget.style);
+    final plain = Text(_shown, style: widget.style, maxLines: 1, softWrap: false);
+    if (_reduced) return plain;
     final chars = _shown.characters.toList();
     return AnimatedBuilder(
       animation: _c,
@@ -220,17 +253,24 @@ class _LetterSwapState extends State<LetterSwap> with SingleTickerProviderStateM
         final elapsed = _c.value * total.inMicroseconds / 1000;
         final stagger = exiting ? _outStagger : _inStagger;
         final per = (exiting ? _outPer : _inPer).inMicroseconds / 1000;
-        return _letterRow(chars, widget.style, em, (i) {
-          final start = (stagger * i).inMicroseconds / 1000;
-          final t = ((elapsed - start) / per).clamp(0.0, 1.0);
-          if (!exiting) {
-            final s = Motion.spring.transform(t);
-            return (pop: s, opacity: s);
-          }
-          // Exit plays the pop-in motion backwards (same path, 1 → 0) while
-          // fading steadily over the whole exit.
-          return (pop: Motion.spring.transform(1 - t), opacity: 1 - Curves.easeIn.transform(t));
-        });
+        return _letterRow(
+          context,
+          text: _shown,
+          chars: chars,
+          style: widget.style,
+          state: (i) {
+            final start = (stagger * i).inMicroseconds / 1000;
+            final t = ((elapsed - start) / per).clamp(0.0, 1.0);
+            if (!exiting) {
+              final s = Motion.spring.transform(t);
+              return (pop: s, opacity: s);
+            }
+            // Exit: a smooth accelerating drop and fade. (The spring played
+            // backwards overshoots upward first, which read as a twitch.)
+            final e = Curves.easeInCubic.transform(t);
+            return (pop: 1 - e, opacity: 1 - Curves.easeIn.transform(t));
+          },
+        );
       },
     );
   }

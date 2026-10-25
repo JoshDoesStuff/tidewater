@@ -25,9 +25,13 @@ class AmbientLayer extends ConsumerStatefulWidget {
   ConsumerState<AmbientLayer> createState() => _AmbientLayerState();
 }
 
-class _AmbientLayerState extends ConsumerState<AmbientLayer> with SingleTickerProviderStateMixin {
+class _AmbientLayerState extends ConsumerState<AmbientLayer>
+    with SingleTickerProviderStateMixin {
   // Very slow drift: one full cycle every 60 s.
-  late final AnimationController _drift = AnimationController(vsync: this, duration: const Duration(seconds: 60));
+  late final AnimationController _drift = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 60),
+  );
   bool _auroraMounted = false;
 
   @override
@@ -54,14 +58,24 @@ class _AmbientLayerState extends ConsumerState<AmbientLayer> with SingleTickerPr
     return LayoutBuilder(
       builder: (context, box) {
         final k = math.max(.6, box.maxWidth / 1280);
-        Widget shape(double left, double top, double size, int lobes, double spin, double phase, {bool right = false}) {
+        Widget shape(
+          double left,
+          double top,
+          double size,
+          int lobes,
+          double spin,
+          double phase, {
+          bool right = false,
+        }) {
           final s = size * k;
           return AnimatedBuilder(
             animation: _drift,
             builder: (context, child) {
               final t = _drift.value * 2 * math.pi + phase;
               return Positioned(
-                left: right ? null : left * k + (reduced ? 0 : math.sin(t) * 22),
+                left: right
+                    ? null
+                    : left * k + (reduced ? 0 : math.sin(t) * 22),
                 right: right ? -left * k : null,
                 top: top * k + (reduced ? 0 : math.cos(t) * 16),
                 child: child!,
@@ -81,30 +95,39 @@ class _AmbientLayerState extends ConsumerState<AmbientLayer> with SingleTickerPr
           );
         }
 
-        return IgnorePointer(
-          child: Stack(
-            clipBehavior: Clip.hardEdge,
-            children: [
-              shape(-140, 440, 520, 7, .12, 0),
-              shape(100, -140, 380, 5, -.15, 2, right: true),
-              shape(780, 560, 300, 9, .18, 4),
-              if (_auroraMounted)
+        return ExcludeSemantics(
+          child: IgnorePointer(
+            child: Stack(
+              clipBehavior: Clip.hardEdge,
+              children: [
+                shape(-140, 440, 520, 7, .12, 0),
+                shape(100, -140, 380, 5, -.15, 2, right: true),
+                shape(780, 560, 300, 9, .18, 4),
+                if (_auroraMounted)
+                  Positioned.fill(
+                    child: AnimatedOpacity(
+                      opacity: show ? 1 : 0,
+                      duration: Motion.slow,
+                      onEnd: () {
+                        if (!show && mounted) {
+                          setState(() => _auroraMounted = false);
+                        }
+                      },
+                      child: const Visualizer(
+                        mode: VizMode.aurora,
+                        intensity: .6,
+                      ),
+                    ),
+                  ),
                 Positioned.fill(
-                  child: AnimatedOpacity(
-                    opacity: show ? 1 : 0,
-                    duration: Motion.slow,
-                    onEnd: () {
-                      if (!show && mounted) setState(() => _auroraMounted = false);
-                    },
-                    child: const Visualizer(mode: VizMode.aurora, intensity: .6),
+                  child: RepaintBoundary(
+                    child: CustomPaint(
+                      painter: _SpotPainter(widget.pointer, scheme.primary),
+                    ),
                   ),
                 ),
-              Positioned.fill(
-                child: RepaintBoundary(
-                  child: CustomPaint(painter: _SpotPainter(widget.pointer, scheme.primary)),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -144,8 +167,12 @@ class WashLayer extends ConsumerStatefulWidget {
   ConsumerState<WashLayer> createState() => _WashLayerState();
 }
 
-class _WashLayerState extends ConsumerState<WashLayer> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1300));
+class _WashLayerState extends ConsumerState<WashLayer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1300),
+  );
   Offset _origin = Offset.zero;
   Color _color = Colors.transparent;
 
@@ -160,29 +187,43 @@ class _WashLayerState extends ConsumerState<WashLayer> with SingleTickerProvider
     final box = context.findRenderObject() as RenderBox?;
     final global = ref.read(pointerOriginProvider).value;
     final size = box?.size ?? const Size(1280, 800);
-    _origin = (global != null && box != null) ? box.globalToLocal(global) : size.center(Offset.zero);
+    _origin = (global != null && box != null)
+        ? box.globalToLocal(global)
+        : size.center(Offset.zero);
     final album = ref.read(currentAlbumProvider);
     final dark = ref.read(darkThemeProvider);
-    _color = AlbumScheme.of(album, dark ? Brightness.dark : Brightness.light).primary;
+    _color = AlbumScheme.of(
+      album,
+      dark ? Brightness.dark : Brightness.light,
+    ).primary;
     _c.forward(from: 0);
   }
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(playbackProvider.select((s) => (s.index, s.started)), (prev, next) {
+    ref.listen(playbackProvider.select((s) => (s.index, s.started)), (
+      prev,
+      next,
+    ) {
       if (prev != null && prev != next && next.$2) _trigger();
     });
-    return IgnorePointer(
-      child: AnimatedBuilder(
-        animation: _c,
-        builder: (context, _) {
-          if (!_c.isAnimating) return const SizedBox.expand();
-          final t = Motion.emphasized.transform(_c.value);
-          return CustomPaint(
-            size: Size.infinite,
-            painter: _WashPainter(_origin, _color.withValues(alpha: .5 * (1 - t)), 900 * t),
-          );
-        },
+    return ExcludeSemantics(
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (context, _) {
+            if (!_c.isAnimating) return const SizedBox.expand();
+            final t = Motion.emphasized.transform(_c.value);
+            return CustomPaint(
+              size: Size.infinite,
+              painter: _WashPainter(
+                _origin,
+                _color.withValues(alpha: .5 * (1 - t)),
+                900 * t,
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -209,5 +250,6 @@ class _WashPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_WashPainter old) => old.origin != origin || old.color != color || old.radius != radius;
+  bool shouldRepaint(_WashPainter old) =>
+      old.origin != origin || old.color != color || old.radius != radius;
 }

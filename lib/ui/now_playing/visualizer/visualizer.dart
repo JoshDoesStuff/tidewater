@@ -15,7 +15,12 @@ import '../../../core/playback/visualizer_source.dart';
 /// hidden or minimized; the owner simply doesn't build it when Now Playing
 /// is closed.
 class Visualizer extends ConsumerStatefulWidget {
-  const Visualizer({super.key, required this.mode, this.intensity = 1, this.ringRect});
+  const Visualizer({
+    super.key,
+    required this.mode,
+    this.intensity = 1,
+    this.ringRect,
+  });
 
   final VizMode mode;
 
@@ -34,7 +39,8 @@ class _VizModel {
   double high = 0;
 }
 
-class _VisualizerState extends ConsumerState<Visualizer> with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+class _VisualizerState extends ConsumerState<Visualizer>
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   final _model = _VizModel();
   final _frame = ValueNotifier<int>(0);
   late final Ticker _ticker = createTicker(_onTick);
@@ -50,7 +56,9 @@ class _VisualizerState extends ConsumerState<Visualizer> with WidgetsBindingObse
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final visible = state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
+    final visible =
+        state == AppLifecycleState.resumed ||
+        state == AppLifecycleState.inactive;
     if (visible == _visible) return;
     _visible = visible;
     if (visible) {
@@ -81,20 +89,22 @@ class _VisualizerState extends ConsumerState<Visualizer> with WidgetsBindingObse
   Widget build(BuildContext context) {
     if (widget.mode == VizMode.off) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
-    return IgnorePointer(
-      child: RepaintBoundary(
-        child: CustomPaint(
-          size: Size.infinite,
-          painter: _VizPainter(
-            repaint: _frame,
-            source: ref.read(visualizerSourceProvider),
-            model: _model,
-            mode: widget.mode,
-            intensity: widget.intensity,
-            ringRect: widget.ringRect,
-            primary: scheme.primary,
-            container: scheme.primaryContainer,
-            tertiary: scheme.tertiaryContainer,
+    return ExcludeSemantics(
+      child: IgnorePointer(
+        child: RepaintBoundary(
+          child: CustomPaint(
+            size: Size.infinite,
+            painter: _VizPainter(
+              repaint: _frame,
+              source: ref.read(visualizerSourceProvider),
+              model: _model,
+              mode: widget.mode,
+              intensity: widget.intensity,
+              ringRect: widget.ringRect,
+              primary: scheme.primary,
+              container: scheme.primaryContainer,
+              tertiary: scheme.tertiaryContainer,
+            ),
           ),
         ),
       ),
@@ -166,23 +176,38 @@ class _VizPainter extends CustomPainter {
           canvas.drawRect(
             Offset.zero & size,
             Paint()
-              ..shader = RadialGradient(
-                colors: [c.withValues(alpha: ((.3 + bS * .3) * I).clamp(0, 1)), c.withValues(alpha: 0)],
-              ).createShader(Rect.fromCircle(center: Offset(x, y), radius: radius)),
+              ..shader =
+                  RadialGradient(
+                    colors: [
+                      c.withValues(alpha: ((.3 + bS * .3) * I).clamp(0, 1)),
+                      c.withValues(alpha: 0),
+                    ],
+                  ).createShader(
+                    Rect.fromCircle(center: Offset(x, y), radius: radius),
+                  ),
           );
         }
         for (var r = 0; r < 3; r++) {
           final p = Path()..moveTo(0, h);
           for (var x = 0.0; x <= w; x += 16) {
-            final y = h * (.86 - r * .06) -
-                math.sin(x * .006 / sx + tt * (1 + r * .4) + r) * (14 + mid * 56) * sx -
+            final y =
+                h * (.86 - r * .06) -
+                math.sin(x * .006 / sx + tt * (1 + r * .4) + r) *
+                    (14 + mid * 56) *
+                    sx -
                 lvl[(x / w * (nb - 1)).floor()] * 64 * sx * (1 - r * .25);
             p.lineTo(x, y);
           }
           p
             ..lineTo(w, h)
             ..close();
-          canvas.drawPath(p, Paint()..color = primary.withValues(alpha: (.07 * I * (1 + hi * 1.5)).clamp(0, 1)));
+          canvas.drawPath(
+            p,
+            Paint()
+              ..color = primary.withValues(
+                alpha: (.07 * I * (1 + hi * 1.5)).clamp(0, 1),
+              ),
+          );
         }
       case VizMode.shapes:
         for (final (i, (fx, fy, radius, lobes, amp)) in _shapes.indexed) {
@@ -202,7 +227,10 @@ class _VizPainter extends CustomPainter {
           p.close();
           canvas.drawPath(
             p,
-            Paint()..color = (i.isOdd ? primary : tertiary).withValues(alpha: ((.05 + l * .12) * I).clamp(0, 1)),
+            Paint()
+              ..color = (i.isOdd ? primary : tertiary).withValues(
+                alpha: ((.05 + l * .12) * I).clamp(0, 1),
+              ),
           );
         }
       case VizMode.bars:

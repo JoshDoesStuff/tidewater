@@ -84,21 +84,19 @@ void main() {
 
   testWidgets('page titles bounce in again on every tab change', (tester) async {
     await _pumpApp(tester);
-    double firstLetterOpacity() {
-      final o = tester.widget<Opacity>(find.ancestor(of: find.text('G'), matching: find.byType(Opacity)).first);
-      return o.opacity;
-    }
+    // The reveal fades with the glyph color's alpha (no Opacity layers).
+    double alphaOf(String letter) => tester.widget<Text>(find.text(letter).first).style!.color!.a;
 
-    expect(firstLetterOpacity(), 1); // settled after the first load
+    expect(alphaOf('G'), 1); // settled after the first load
     await tester.tap(find.text('Library'));
     await _advance(tester, const Duration(seconds: 2));
     await tester.tap(find.text('Home'));
     await _advance(tester, const Duration(milliseconds: 600));
     // Mid-reveal: the last letters have not arrived yet.
-    final last = tester.widget<Opacity>(find.ancestor(of: find.text('g'), matching: find.byType(Opacity)).first);
-    expect(last.opacity, lessThan(1));
+    expect(alphaOf('g'), lessThan(1));
     await _advance(tester, const Duration(seconds: 3));
-    expect(firstLetterOpacity(), 1);
+    expect(alphaOf('G'), 1);
+    expect(alphaOf('g'), 1);
     await _dispose(tester);
   });
 
@@ -118,16 +116,32 @@ void main() {
     // Still showing the old letters, now on their way out.
     expect(find.text('a'), findsOneWidget);
     expect(find.text('x'), findsNothing);
-    final leaving = tester.widget<Opacity>(find.ancestor(of: find.text('a'), matching: find.byType(Opacity)).first);
-    expect(leaving.opacity, lessThan(1));
+    final leaving = tester.widget<Text>(find.text('a'));
+    expect(leaving.style!.color!.a, lessThan(1));
 
     await _advance(tester, const Duration(milliseconds: 350));
     // Swapped: new letters entering, old ones gone.
     expect(find.text('a'), findsNothing);
     expect(find.text('x'), findsOneWidget);
     await _advance(tester, const Duration(seconds: 2));
-    final settled = tester.widget<Opacity>(find.ancestor(of: find.text('x'), matching: find.byType(Opacity)).first);
-    expect(settled.opacity, 1);
+    final settled = tester.widget<Text>(find.text('x'));
+    expect(settled.style!.color!.a, 1);
+    // At rest the letters carry no transform at all (no shimmer, no layers).
+    expect(find.ancestor(of: find.text('x'), matching: find.byType(Transform)), findsNothing);
+    expect(find.ancestor(of: find.text('x'), matching: find.byType(Opacity)), findsNothing);
+  });
+
+  testWidgets('animated letters are hidden from semantics behind one stable label', (tester) async {
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(const MaterialApp(
+      home: Center(child: LetterReveal(text: 'Library', style: TextStyle(fontSize: 30))),
+    ));
+    await _advance(tester, const Duration(milliseconds: 300)); // mid-animation
+    expect(find.bySemanticsLabel('Library'), findsOneWidget);
+    expect(find.bySemanticsLabel('L'), findsNothing);
+    await _advance(tester, const Duration(seconds: 2));
+    expect(find.bySemanticsLabel('Library'), findsOneWidget);
+    handle.dispose();
   });
 
   testWidgets('narrow window collapses rail labels and FAB', (tester) async {
