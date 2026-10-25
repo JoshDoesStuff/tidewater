@@ -9,6 +9,7 @@ import '../../core/models/playlist.dart';
 import '../../core/models/track.dart';
 import 'playback_providers.dart';
 import 'session_providers.dart';
+import 'settings_providers.dart' show sharedPreferencesProvider;
 
 /// Albums for a Home row (recently added, most played, recently played).
 /// Refreshing keeps the old data on screen until the new list arrives.
@@ -79,6 +80,26 @@ class PickNotifier<T> extends Notifier<T> {
   void set(T value) => state = value;
 }
 
+/// A [PickNotifier] over an enum whose choice is remembered between launches.
+class SavedPickNotifier<T extends Enum> extends PickNotifier<T> {
+  SavedPickNotifier(this._key, this._values, super.initial);
+
+  final String _key;
+  final List<T> _values;
+
+  @override
+  T build() {
+    final name = ref.read(sharedPreferencesProvider).getString(_key);
+    return _values.firstWhere((v) => v.name == name, orElse: () => super.build());
+  }
+
+  @override
+  void set(T value) {
+    super.set(value);
+    ref.read(sharedPreferencesProvider).setString(_key, value.name);
+  }
+}
+
 enum LibraryTab {
   albums('Albums'),
   songs('Songs'),
@@ -89,10 +110,14 @@ enum LibraryTab {
 }
 
 final libraryTabProvider =
-    NotifierProvider<PickNotifier<LibraryTab>, LibraryTab>(() => PickNotifier(LibraryTab.albums));
+    NotifierProvider<PickNotifier<LibraryTab>, LibraryTab>(
+      () => SavedPickNotifier('library_tab', LibraryTab.values, LibraryTab.albums),
+    );
 
 final librarySortProvider =
-    NotifierProvider<PickNotifier<LibrarySort>, LibrarySort>(() => PickNotifier(LibrarySort.recentlyAdded));
+    NotifierProvider<PickNotifier<LibrarySort>, LibrarySort>(
+      () => SavedPickNotifier('library_sort', LibrarySort.values, LibrarySort.recentlyAdded),
+    );
 
 /// Genres the album grid is filtered to; empty shows everything.
 final libraryGenreProvider = NotifierProvider<PickNotifier<Set<String>>, Set<String>>(() => PickNotifier<Set<String>>(const {}));
@@ -127,7 +152,9 @@ enum SongSort {
       });
 }
 
-final librarySongSortProvider = NotifierProvider<PickNotifier<SongSort>, SongSort>(() => PickNotifier(SongSort.title));
+final librarySongSortProvider = NotifierProvider<PickNotifier<SongSort>, SongSort>(
+      () => SavedPickNotifier('library_song_sort', SongSort.values, SongSort.title),
+    );
 
 /// Songs loaded so far, and whether that is all of them.
 class LibrarySongs {

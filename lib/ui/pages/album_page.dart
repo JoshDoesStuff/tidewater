@@ -18,6 +18,7 @@ import '../widgets/effects/letter_reveal.dart';
 import '../widgets/effects/ripple.dart';
 import '../widgets/expressive_buttons.dart';
 import '../widgets/link_text.dart';
+import '../widgets/heart_button.dart';
 import '../widgets/pressable.dart';
 import '../widgets/shapes/morph_path.dart';
 import 'page_frame.dart';
@@ -347,32 +348,11 @@ class _HeartButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return AnimatedOpacity(
-      opacity: visible ? 1 : 0,
-      duration: Motion.of(context, Motion.fast),
-      child: Pressable(
-        onTap: onTap,
-        semanticLabel: liked ? 'Unlike' : 'Like',
-        builder: (context, s) => SizedBox.square(
-          dimension: 40,
-          child: Center(
-            child: AnimatedScale(
-              scale: s.pressed ? .8 : (liked ? 1.0 : (s.hovered ? 1.15 : 1.0)),
-              duration: Motion.of(context, Motion.medium),
-              curve: Motion.curve(context, Motion.spring),
-              child: Icon(
-                liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                size: 22,
-                color: liked ? scheme.primary : scheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AnimatedOpacity(
+        opacity: visible ? 1 : 0,
+        duration: Motion.of(context, Motion.fast),
+        child: HeartButton(liked: liked, onTap: onTap),
+      );
 }
 
 class _RowMenu extends ConsumerWidget {

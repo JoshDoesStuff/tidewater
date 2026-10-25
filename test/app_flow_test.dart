@@ -16,6 +16,8 @@ import 'package:tidewater/ui/pages/widgets/album_card.dart' show MediaCard, Play
 import 'package:tidewater/ui/pages/widgets/song_row.dart';
 import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/ui/widgets/expressive_buttons.dart';
+import 'package:tidewater/ui/widgets/heart_button.dart';
+import 'package:tidewater/ui/widgets/effects/particle_burst.dart';
 
 import 'support/fake_library.dart';
 import 'support/pump.dart';
@@ -466,6 +468,37 @@ void main() {
       for (final l in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')) {
         expect(find.bySemanticsLabel('Jump to $l'), findsOneWidget, reason: l);
       }
+      await disposeApp(tester);
+    });
+  });
+
+  group('remembered choices', () {
+    testWidgets('the album sort, song sort and tab are saved to preferences', (tester) async {
+      final container = await pumpApp(tester);
+      container.read(librarySortProvider.notifier).set(LibrarySort.year);
+      container.read(librarySongSortProvider.notifier).set(SongSort.album);
+      container.read(libraryTabProvider.notifier).set(LibraryTab.songs);
+      final prefs = container.read(sharedPreferencesProvider);
+      expect(prefs.getString('library_sort'), 'year');
+      expect(prefs.getString('library_song_sort'), 'album');
+      expect(prefs.getString('library_tab'), 'songs');
+      await disposeApp(tester);
+    });
+
+    testWidgets('liking a song in the Songs tab hearts it with a pop', (tester) async {
+      final container = await pumpApp(tester);
+      await tester.tap(find.text('Library').first);
+      await advance(tester, const Duration(seconds: 2));
+      await tester.tap(find.widgetWithText(ExpressiveChip, 'Songs'));
+      await advance(tester, const Duration(seconds: 2));
+      final heart = find.byType(HeartButton).first;
+      final pop = tester.state<State>(find.descendant(of: heart, matching: find.byType(BurstLayer))).context;
+      expect(pop, isNotNull);
+      await tester.tap(heart, warnIfMissed: false);
+      await advance(tester, const Duration(milliseconds: 150));
+      expect(container.read(likedProvider), isNotEmpty);
+      expect(find.descendant(of: heart, matching: find.byIcon(Icons.favorite_rounded)), findsOneWidget);
+      await advance(tester, const Duration(seconds: 2));
       await disposeApp(tester);
     });
   });

@@ -66,4 +66,15 @@ void main() {
     expect(placeholderColors('x'), placeholderColors('x'));
     expect(placeholderColors('x'), isNot(placeholderColors('y')));
   });
+
+  test('many artists without covers still look varied', () {
+    final pairs = {for (var i = 0; i < 60; i++) placeholderColors('artist-$i')};
+    expect(pairs.length, 60);
+  });
+
+  test('initials are the first letters of the first two words', () {
+    expect(initialsOf('Blacklolita vs Juggernaut.'), 'BV');
+    expect(initialsOf('bleecher'), 'B');
+    expect(initialsOf('  '), '');
+  });
 }

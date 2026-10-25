@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -130,7 +132,12 @@ class _HomePageState extends ConsumerState<HomePage> {
       );
     } else {
       final heroes = _distinct([...?recent.value, ...newest.requireValue]).take(3).toList();
-      body = _Carousel(heroes: heroes, resume: ref.watch(currentTrackProvider) != null);
+      final playedIds = {for (final a in recent.value ?? const <Album>[]) a.id};
+      body = _Carousel(
+        heroes: heroes,
+        tags: [for (final a in heroes) playedIds.contains(a.id) ? 'Recently played' : 'New'],
+        resume: ref.watch(currentTrackProvider) != null,
+      );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,9 +241,10 @@ class _CarouselSkeleton extends StatelessWidget {
 /// Hero cards that spring wider on hover (the rest shrink) plus the Quick
 /// picks card. Weights animate on the spring curve.
 class _Carousel extends StatefulWidget {
-  const _Carousel({required this.heroes, required this.resume});
+  const _Carousel({required this.heroes, required this.tags, required this.resume});
 
   final List<Album> heroes;
+  final List<String> tags;
   final bool resume;
 
   @override
@@ -283,6 +291,7 @@ class _CarouselState extends State<_Carousel> {
                         index: i,
                         child: _HeroCard(
                           album: widget.heroes[i],
+                          tag: widget.tags[i],
                           hovered: _hover == i,
                           weight: w[i],
                         ),
@@ -312,9 +321,12 @@ class _WeightsTween extends Tween<List<double>> {
 }
 
 class _HeroCard extends ConsumerWidget {
-  const _HeroCard({required this.album, required this.hovered, required this.weight});
+  const _HeroCard({required this.album, required this.tag, required this.hovered, required this.weight});
 
   final Album album;
+
+  /// Why it is here: "Recently played" or "New".
+  final String tag;
   final bool hovered;
 
   /// The card's current (animated) share of the carousel: 1 at rest, 2.2 when
@@ -355,6 +367,59 @@ class _HeroCard extends ConsumerWidget {
                     colors: [scheme.scrim.withValues(alpha: 0), scheme.scrim.withValues(alpha: .62)],
                   ),
                 ),
+              ),
+              // A wash of the accent from the bottom corner ties the card to the theme.
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment.bottomLeft,
+                    radius: 1.1,
+                    colors: [scheme.primary.withValues(alpha: .28), scheme.primary.withValues(alpha: 0)],
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 20,
+                right: 20,
+                top: 18,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Opacity(
+                  opacity: _labelOpacity,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: scheme.scrim.withValues(alpha: .38),
+                      borderRadius: BorderRadius.circular(hovered ? 10 : 14),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            tag == 'New' ? Icons.auto_awesome_rounded : Icons.history_rounded,
+                            size: 14,
+                            color: AppTheme.onArt,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            tag.toUpperCase(),
+                            maxLines: 1,
+                            softWrap: false,
+                            style: text.labelSmall?.copyWith(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                              color: AppTheme.onArt,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                   ),
               ),
               Positioned(
                 left: 26,
@@ -450,14 +515,36 @@ class _ContinueListening extends ConsumerWidget {
           duration: d,
           curve: Motion.standard,
           clipBehavior: Clip.antiAlias,
-          padding: const EdgeInsets.fromLTRB(22, 16, 22, 16),
           decoration: BoxDecoration(
             color: Color.lerp(scheme.surfaceContainerLow, scheme.primaryContainer, s.hovered ? .45 : 0),
             borderRadius: BorderRadius.circular(s.hovered ? 40 : 32),
           ),
-          child: Ripple(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // The cover, blurred and faded, as a backdrop; a scrim from the
+              // left keeps the text readable.
+              RepaintBoundary(
+                child: Opacity(
+                  opacity: s.hovered ? .5 : .34,
+                  child: ImageFiltered(
+                    imageFilter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22, tileMode: TileMode.clamp),
+                    child: CoverArt(coverArt: track.coverArt, seedKey: track.albumId, resolution: 150),
+                  ),
+                ),
+              ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [scheme.surfaceContainerLow.withValues(alpha: .9), scheme.surfaceContainerLow.withValues(alpha: .2)],
+                  ),
+                ),
+              ),
+          Ripple(
             color: scheme.onSurface,
-            child: Column(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 16, 22, 16),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -540,6 +627,9 @@ class _ContinueListening extends ConsumerWidget {
                 ),
               ],
             ),
+            ),
+          ),
+            ],
           ),
         ),
       ),

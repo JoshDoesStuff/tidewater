@@ -11,6 +11,7 @@ import '../../widgets/effects/eq_bars.dart';
 import '../../widgets/effects/ripple.dart';
 import '../../widgets/link_text.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/heart_button.dart';
 
 /// One song in the Library's Songs list: cover, title, artist and album,
 /// heart and length. Tap plays from here; the playing song is highlighted.
@@ -106,20 +107,7 @@ class SongRow extends ConsumerWidget {
               AnimatedOpacity(
                 opacity: liked || s.hovered || current ? 1 : 0,
                 duration: Motion.of(context, Motion.fast),
-                child: Pressable(
-                  onTap: () => ref.read(likedProvider.notifier).toggle(track),
-                  semanticLabel: liked ? 'Unlike' : 'Like',
-                  builder: (context, h) => SizedBox.square(
-                    dimension: 40,
-                    child: Center(
-                      child: Icon(
-                        liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                        size: 22,
-                        color: liked ? scheme.primary : scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ),
+                child: HeartButton(liked: liked, onTap: () => ref.read(likedProvider.notifier).toggle(track)),
               ),
               SizedBox(
                 width: 52,

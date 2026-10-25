@@ -53,7 +53,17 @@ class CoverImage extends ImageProvider<CoverImage> {
 /// underneath every loaded cover it cost ~10 ms of raster time per frame on a
 /// grid of 25 tiles (measured on real data), for nothing anyone can see.
 class CoverArt extends ConsumerStatefulWidget {
-  const CoverArt({super.key, required this.coverArt, required this.seedKey, this.resolution = 300, this.child});
+  const CoverArt({
+    super.key,
+    required this.coverArt,
+    required this.seedKey,
+    this.resolution = 300,
+    this.label,
+    this.child,
+  });
+
+  /// Name shown as initials on the placeholder (artists have no cover to look at).
+  final String? label;
 
   /// Cover-art id from the server, or null.
   final String? coverArt;
@@ -109,7 +119,7 @@ class _CoverArtState extends ConsumerState<CoverArt> with SingleTickerProviderSt
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (!_covered) CustomPaint(painter: _PlaceholderPainter(widget.seedKey)),
+        if (!_covered) CustomPaint(painter: _PlaceholderPainter(widget.seedKey, widget.label)),
         if (id != null)
           Image(
             image: CoverImage(ref.watch(coverCacheProvider), id, widget.resolution),
@@ -142,33 +152,113 @@ final _placeholderCache = <String, (Color, Color)>{};
 
 (Color, Color) placeholderColors(String key) => _placeholderCache.putIfAbsent(key, () => _computePlaceholderColors(key));
 
-(Color, Color) _computePlaceholderColors(String key) {
-  final hue = Hct.fromInt(CoverSeed.fromKey(key).argb).hue;
-  return (Color(Hct.from(hue, 52, 62).toInt()), Color(Hct.from((hue + 48) % 360, 48, 30).toInt()));
+/// Stable across launches (String.hashCode is not promised to be).
+int _hash(String key) {
+  var h = 0x811c9dc5;
+  for (final c in key.codeUnits) {
+    h = ((h ^ c) * 0x01000193) & 0x7fffffff;
+  }
+  return h;
 }
 
-/// Diagonal gradient with the demo's highlight disc.
+const _hueShifts = [48.0, -52.0, 150.0, 24.0, -120.0, 90.0];
+
+(Color, Color) _computePlaceholderColors(String key) {
+  final h = _hash(key);
+  final hue = Hct.fromInt(CoverSeed.fromKey(key).argb).hue;
+  final shift = _hueShifts[(h >> 3) % _hueShifts.length];
+  final chroma = 40.0 + (h >> 7) % 22;
+  final tone = 56.0 + (h >> 11) % 14;
+  return (
+    Color(Hct.from(hue, chroma + 6, tone).toInt()),
+    Color(Hct.from((hue + shift + 360) % 360, chroma, 24.0 + (h >> 15) % 14).toInt()),
+  );
+}
+
+const _gradientEnds = [
+  (Alignment.topLeft, Alignment.bottomRight),
+  (Alignment.topRight, Alignment.bottomLeft),
+  (Alignment.topCenter, Alignment.bottomCenter),
+  (Alignment.centerLeft, Alignment.centerRight),
+];
+
+/// Up to two capital letters from [label] ("Blacklolita vs Juggernaut." -> "BV").
+String initialsOf(String label) {
+  final words = label.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+  if (words.isEmpty) return '';
+  String first(String w) => String.fromCharCode(w.runes.first).toUpperCase();
+  return words.length == 1 ? first(words[0]) : first(words[0]) + first(words[1]);
+}
+
+/// Gradient with one of several cheap decorations (picked from the key, so
+/// neighbors differ), and the [label]'s initials when there is one.
 class _PlaceholderPainter extends CustomPainter {
-  _PlaceholderPainter(this.key);
+  _PlaceholderPainter(this.key, this.label);
 
   final String key;
+  final String? label;
 
   @override
   void paint(Canvas canvas, Size size) {
     final (a, b) = placeholderColors(key);
+    final h = _hash(key);
     final rect = Offset.zero & size;
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [a, b]).createShader(rect),
-    );
-    final d = size.height * .44;
-    final c = Offset(size.width * (1 - .12) - d / 2, size.height * .14 + d / 2);
-    final ring = (14 * size.width / 156).clamp(4.0, 14.0);
-    canvas.drawCircle(c, d / 2 + ring, Paint()..color = AppTheme.onArt.withValues(alpha: .11));
-    canvas.drawCircle(c, d / 2, Paint()..color = AppTheme.onArt.withValues(alpha: .2));
+    final (begin, end) = _gradientEnds[h % _gradientEnds.length];
+    canvas.drawRect(rect, Paint()..shader = LinearGradient(begin: begin, end: end, colors: [a, b]).createShader(rect));
+    final soft = Paint()..color = AppTheme.onArt.withValues(alpha: .11);
+    final mid = Paint()..color = AppTheme.onArt.withValues(alpha: .2);
+    final w = size.width;
+    final hgt = size.height;
+    switch ((h >> 5) % 5) {
+      case 0: // highlight disc, top right (the demo's)
+        final d = hgt * .44;
+        final c = Offset(w * .88 - d / 2, hgt * .14 + d / 2);
+        final ring = (14 * w / 156).clamp(4.0, 14.0);
+        canvas.drawCircle(c, d / 2 + ring, soft);
+        canvas.drawCircle(c, d / 2, mid);
+      case 1: // two overlapping discs, bottom left
+        canvas.drawCircle(Offset(w * .28, hgt * .78), hgt * .36, soft);
+        canvas.drawCircle(Offset(w * .46, hgt * .9), hgt * .26, mid);
+      case 2: // diagonal bands
+        final band = Paint()
+          ..color = AppTheme.onArt.withValues(alpha: .1)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = w * .09;
+        final path = Path();
+        for (var i = -1; i < 4; i++) {
+          final x = w * (.15 + i * .28);
+          path
+            ..moveTo(x, hgt)
+            ..lineTo(x + w * .5, 0);
+        }
+        canvas.drawPath(path, band);
+      case 3: // concentric rings, centered
+        final c = Offset(w / 2, hgt / 2);
+        canvas.drawCircle(c, hgt * .46, soft);
+        canvas.drawCircle(c, hgt * .32, soft);
+        canvas.drawCircle(c, hgt * .18, mid);
+      default: // half moon rising from the bottom
+        canvas.drawCircle(Offset(w * .5, hgt * 1.02), hgt * .52, soft);
+        canvas.drawCircle(Offset(w * .5, hgt * 1.02), hgt * .34, mid);
+    }
+    final text = label == null ? '' : initialsOf(label!);
+    if (text.isNotEmpty && w >= 40) {
+      final painter = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(
+            fontSize: w * .3,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1,
+            color: AppTheme.onArt.withValues(alpha: .88),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      painter.paint(canvas, Offset((w - painter.width) / 2, (hgt - painter.height) / 2));
+    }
   }
 
   @override
-  bool shouldRepaint(_PlaceholderPainter old) => old.key != key;
+  bool shouldRepaint(_PlaceholderPainter old) => old.key != key || old.label != label;
 }

@@ -216,6 +216,7 @@ class _MediaCardState extends State<MediaCard> {
                       seedKey: widget.seedKey,
                       params: widget.shape.params,
                       exponent: widget.round ? 2 : 4.2,
+                      label: widget.round ? widget.title : null,
                       morph: morphed ? 1 : 0,
                       spin: (active || _hovered) && !reduced ? .72 : 0,
                       child: Ripple(color: scheme.onPrimary, child: const SizedBox.expand()),

@@ -142,8 +142,8 @@ Replace these as the milestones below land. Each is a known, deliberate stand-in
 | `SimulatedVisualizerSource` (time-based, not from audio) | `core/playback/visualizer_source.dart` | M7 |
 | `SimulatedEngine` is still the engine in tests, previews and the perf tools (the app itself uses libmpv) | `core/playback/simulated_engine.dart` | stays (test double) |
 | No-op controls: menu button, search field, cast button | various | M7 |
-| Home chips Albums/Artists/Playlists only switch which rows show; Library has no Genres tab (Songs, with its own sort, shipped after M4; the genre filter is a popup box with search) | `home_page.dart`, `library_page.dart` | M7 |
-| Playlist cards play on tap but there is no playlist page; the Artists, Lists and Radio rail pages are placeholders | `playback_providers.dart`, `placeholder_page.dart` | M7 |
+| Library has no Genres tab (Songs, with its own sort and cards/list view, shipped after M4; the genre filter is a popup box with search, Ctrl+click for several) | `library_page.dart` | M7 |
+| Only the Radio rail page is a placeholder (Artists, Liked and Lists are real pages; playlists open a playlist page) | `placeholder_page.dart` | M7 |
 | The quality tag shows the file's own format from the server, not the engine's decoded format | `now_playing_overlay.dart` | M7 (with transcoding) |
 
 (Replaced in M3: the simulated player, placeholder lyrics, in-memory hearts, the queue button, the album and artist
@@ -233,8 +233,10 @@ Most of the demo list is in. Remaining and review items:
 
 - Search page (`search3`): artists/albums/songs, recent searches, keyboard-first; wire the header search pill.
 - Playlists: list, detail, create/edit, add-to-playlist from context menus, reorder.
-- Artists, Lists, Radio pages (currently placeholders) and Library tabs (Artists, Songs, Playlists, Genres).
+- Radio page (placeholder). Library Genres tab.
 - Offline cache: download albums/playlists, cache management (size, clear), offline mode.
+- Cache the list data on disk (songs, albums, artists, playlists, liked songs; Home rows) so the Library and the Songs
+  tab open instantly and refresh in the background. Today only covers, extracted colors and the saved queue persist.
 - Settings expansion: server/account, cache, scrobbling toggle, ReplayGain, audio output device, crossfade/gapless,
   visualizer frame cap, startup page. (Done: reduce motion, dark/light, visualizer style, track change speed.)
 - **Real visualizer**: replace `SimulatedVisualizerSource` with FFT data (options: decode a parallel stream with
