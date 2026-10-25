@@ -15,6 +15,7 @@ import 'mini_player.dart';
 import 'nav_rail.dart';
 import 'shell_effects.dart';
 import 'title_bar.dart';
+import 'toast_layer.dart';
 
 /// Window shell: rail on the left, routed content, custom title bar on top,
 /// floating mini player (bottom center) and Shuffle FAB (bottom right), with
@@ -127,6 +128,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                 ),
                 const Positioned.fill(child: WashLayer()),
                 const Positioned.fill(child: NowPlayingOverlay()),
+                const Positioned.fill(child: ToastLayer()),
                 const Positioned(left: 0, right: 0, top: 0, child: TitleBar()),
               ],
             ),

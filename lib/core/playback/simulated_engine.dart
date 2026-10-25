@@ -134,6 +134,14 @@ class SimulatedEngine implements PlaybackEngine {
   }
 
   @override
+  Future<void> stop() async {
+    _stopClock();
+    _base = Duration.zero;
+    _emit(const PlaybackState().copyWith(volume: _state.volume, shuffle: _state.shuffle, repeat: _state.repeat));
+    _positions.add(Duration.zero);
+  }
+
+  @override
   Future<void> seek(Duration to) async {
     final d = _state.track?.duration ?? Duration.zero;
     _base = to < Duration.zero ? Duration.zero : (to > d ? d : to);

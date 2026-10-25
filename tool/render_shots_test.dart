@@ -14,11 +14,14 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tidewater/app/app.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
 import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/app/providers/ui_providers.dart';
+import 'package:tidewater/core/api/api_exception.dart';
+
+import '../test/support/fake_library.dart';
+import '../test/support/test_app.dart';
 
 Future<void> _loadFonts() async {
   final sdk = Platform.environment['FLUTTER_ROOT'] ?? File(Platform.resolvedExecutable).parent.parent.parent.parent.path;
@@ -44,13 +47,12 @@ Future<void> _advance(WidgetTester t, Duration total) async {
 }
 
 void main() {
+  loginShots();
   testWidgets('render shots', (tester) async {
     debugPrint('step: fonts');
     await tester.runAsync(_loadFonts);
     debugPrint('step: fonts done');
-    // ignore: invalid_use_of_visible_for_testing_member
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
+    final overrides = await testOverrides();
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -58,7 +60,8 @@ void main() {
     await tester.pumpWidget(RepaintBoundary(
       key: boundaryKey,
       child: ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        retry: (_, _) => null,
+        overrides: overrides,
         child: const TidewaterApp(),
       ),
     ));
@@ -98,7 +101,7 @@ void main() {
     await mouse.moveTo(const Offset(700, 300));
 
     // Play an album: recolor, EQ badge, spinning mini cover.
-    await container.read(playbackProvider.notifier).playIndex(6);
+    await container.read(playbackProvider.notifier).playAlbum(fakeAlbums[6]);
     await _advance(tester, const Duration(seconds: 3));
     await shot('04-home-playing');
 
@@ -135,6 +138,42 @@ void main() {
     container.read(nowPlayingOpenProvider.notifier).set(false);
     await container.read(playbackProvider.notifier).toggle();
     await _advance(tester, const Duration(seconds: 1));
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 1));
+  });
+}
+
+void loginShots() {
+  testWidgets('render login shots', (tester) async {
+    await tester.runAsync(_loadFonts);
+    final overrides = await testOverrides(signedIn: false, api: FakeLibraryApi(failWith: const ApiException(ApiErrorKind.badCredentials, 'Wrong username or password.')));
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final boundaryKey = GlobalKey();
+    await tester.pumpWidget(RepaintBoundary(
+      key: boundaryKey,
+      child: ProviderScope(retry: (_, _) => null, overrides: overrides, child: const TidewaterApp()),
+    ));
+    Directory('build/shots').createSync(recursive: true);
+
+    Future<void> shot(String name) async {
+      await tester.runAsync(() async {
+        final boundary = boundaryKey.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+        final image = await boundary.toImage();
+        final data = await image.toByteData(format: ui.ImageByteFormat.png);
+        File('build/shots/$name.png').writeAsBytesSync(data!.buffer.asUint8List());
+      });
+    }
+
+    await _advance(tester, const Duration(seconds: 2));
+    await shot('00-login');
+    await tester.enterText(find.byType(TextField).at(0), 'music.example.com');
+    await tester.enterText(find.byType(TextField).at(1), 'josh');
+    await tester.enterText(find.byType(TextField).at(2), 'wrong');
+    await tester.tap(find.text('Connect'));
+    await _advance(tester, const Duration(seconds: 2));
+    await shot('00b-login-error');
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 1));
   });

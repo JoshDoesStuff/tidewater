@@ -6,6 +6,7 @@ import 'package:tidewater/app/providers/cover_providers.dart';
 import 'package:tidewater/app/providers/session_providers.dart';
 import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/core/api/api_exception.dart';
+import 'package:tidewater/core/api/connect.dart';
 import 'package:tidewater/core/api/cover_cache.dart';
 import 'package:tidewater/core/api/library_api.dart';
 import 'package:tidewater/core/api/server_config.dart';
@@ -25,6 +26,7 @@ Future<List<Override>> testOverrides({
   bool signedIn = true,
   SessionStore? store,
   Map<String, Object> prefs = const {},
+  ClientFactory? factory,
 }) async {
   SharedPreferences.setMockInitialValues(prefs);
   final sharedPrefs = await SharedPreferences.getInstance();
@@ -33,7 +35,7 @@ Future<List<Override>> testOverrides({
     sharedPreferencesProvider.overrideWithValue(sharedPrefs),
     sessionStoreProvider.overrideWithValue(store ?? MemorySessionStore(signedIn ? testServer : null)),
     initialSessionProvider.overrideWithValue(signedIn ? testServer : null),
-    clientFactoryProvider.overrideWithValue((_) => fake),
+    clientFactoryProvider.overrideWithValue(factory ?? (_) => fake),
     coverCacheProvider.overrideWithValue(NoCovers()),
   ];
 }

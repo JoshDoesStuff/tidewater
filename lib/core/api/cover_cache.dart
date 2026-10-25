@@ -63,7 +63,10 @@ class CoverCache implements CoverStore {
         }
         return bytes;
       } finally {
-        unawaited(Future<void>.microtask(() => _inFlight.remove(key)));
+        // (A block body: returning the removed future would re-raise its error.)
+        scheduleMicrotask(() {
+          _inFlight.remove(key);
+        });
       }
     });
   }

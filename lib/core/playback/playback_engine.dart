@@ -63,6 +63,9 @@ abstract class PlaybackEngine {
   Future<void> playIndex(int index);
   Future<void> play();
   Future<void> pause();
+
+  /// Stops and empties the queue (signing out).
+  Future<void> stop();
   Future<void> seek(Duration position);
   Future<void> next();
   Future<void> previous();

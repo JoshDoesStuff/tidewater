@@ -12,12 +12,13 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tidewater/app/app.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
-import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/app/providers/ui_providers.dart';
 import 'package:window_manager/window_manager.dart';
+
+import '../test/support/fake_library.dart';
+import '../test/support/test_app.dart';
 
 class _Sample {
   _Sample(this.build, this.raster, this.total);
@@ -65,8 +66,8 @@ Future<void> main() async {
   await windowManager.waitUntilReadyToShow(options, () async {
     await windowManager.show();
   });
-  final prefs = await SharedPreferences.getInstance();
-  final container = ProviderContainer(overrides: [sharedPreferencesProvider.overrideWithValue(prefs)]);
+  final overrides = await testOverrides();
+  final container = ProviderContainer(retry: (_, _) => null, overrides: overrides);
 
   SchedulerBinding.instance.addTimingsCallback((List<ui.FrameTiming> timings) {
     for (final t in timings) {
@@ -95,7 +96,7 @@ Future<void> _scenario(ProviderContainer c) async {
   await _wait(2.2);
 
   _phase = 'play album (recolor + wash)';
-  await player.playIndex(6);
+  await player.playAlbum(fakeAlbums[6]);
   await _wait(2.5);
 
   _phase = 'open Now Playing';

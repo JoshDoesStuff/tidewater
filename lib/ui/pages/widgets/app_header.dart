@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/providers/playback_providers.dart';
+import '../../../app/providers/session_providers.dart';
+import '../../../app/providers/ui_providers.dart';
 import '../../../app/theme/motion.dart';
+import '../../../core/api/server_config.dart';
 import '../../widgets/expressive_buttons.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/shapes/morph_path.dart';
@@ -96,15 +101,77 @@ class _SearchPillState extends State<SearchPill> {
   }
 }
 
-class _Avatar extends StatelessWidget {
+class _Avatar extends ConsumerWidget {
   const _Avatar();
 
-  @override
-  Widget build(BuildContext context) {
+  Future<void> _openMenu(BuildContext context, WidgetRef ref, ServerConfig? server) async {
     final scheme = Theme.of(context).colorScheme;
+    final box = context.findRenderObject()! as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final topLeft = box.localToGlobal(Offset(0, box.size.height + 6), ancestor: overlay);
+    final position = RelativeRect.fromRect(
+      Rect.fromLTWH(topLeft.dx, topLeft.dy, box.size.width, 0),
+      Offset.zero & overlay.size,
+    );
+    final text = Theme.of(context).textTheme;
+    final choice = await showMenu<String>(
+      context: context,
+      position: position,
+      color: scheme.surfaceContainerHigh,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      items: [
+        PopupMenuItem<String>(
+          enabled: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                server?.username.isNotEmpty == true ? server!.username : 'Signed in',
+                style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: scheme.onSurface),
+              ),
+              if (server != null)
+                Text(server.baseUrl.host, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          value: 'signout',
+          child: Row(
+            children: [
+              Icon(Icons.logout_rounded, size: 20, color: scheme.onSurface),
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  'Sign out or switch server',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: scheme.onSurface),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+    if (choice == 'signout') {
+      ref.read(nowPlayingOpenProvider.notifier).set(false);
+      await ref.read(playbackProvider.notifier).stop();
+      await ref.read(sessionProvider.notifier).signOut();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final server = ref.watch(sessionProvider);
+    final name = server?.username ?? '';
+    final initial = name.isEmpty ? null : name.characters.first.toUpperCase();
     return Pressable(
-      onTap: () {},
-      semanticLabel: 'Account',
+      onTap: () => _openMenu(context, ref, server),
+      semanticLabel: name.isEmpty ? 'Account' : 'Account: $name',
       // A circle at rest that springs into the scalloped "cookie" on hover
       // and spins slowly, like the album tiles.
       builder: (context, s) => SizedBox.square(
@@ -118,14 +185,16 @@ class _Avatar extends StatelessWidget {
           child: ColoredBox(
             color: scheme.tertiaryContainer,
             child: Center(
-              child: Text(
-                'J',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onTertiaryContainer,
+              child: initial == null
+                  ? Icon(Icons.person_rounded, size: 24, color: scheme.onTertiaryContainer)
+                  : Text(
+                      initial,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: scheme.onTertiaryContainer,
+                          ),
                     ),
-              ),
             ),
           ),
         ),

@@ -73,6 +73,9 @@ class PlaybackController extends Notifier<PlaybackState> {
   Future<void> toggle() => state.playing ? _engine.pause() : _engine.play();
 
   Future<void> next() => _engine.next();
+
+  /// Stops and forgets the queue (signing out).
+  Future<void> stop() => _engine.stop();
   Future<void> previous() => _engine.previous();
 
   Future<void> seekFraction(double f) {
