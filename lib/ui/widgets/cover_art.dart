@@ -69,7 +69,10 @@ class CoverArt extends ConsumerStatefulWidget {
   ConsumerState<CoverArt> createState() => _CoverArtState();
 }
 
-class _CoverArtState extends ConsumerState<CoverArt> {
+class _CoverArtState extends ConsumerState<CoverArt> with SingleTickerProviderStateMixin {
+  /// 0 -> 1 as the image fades in. Drawn as the image's own alpha: wrapping it
+  /// in an opacity layer made every tile that was fading in an offscreen pass.
+  late final AnimationController _fade = AnimationController(vsync: this);
   /// The image is completely opaque over the whole box.
   bool _covered = false;
   Timer? _timer;
@@ -88,6 +91,7 @@ class _CoverArtState extends ConsumerState<CoverArt> {
   @override
   void dispose() {
     _timer?.cancel();
+    _fade.dispose();
     super.dispose();
   }
 
@@ -113,10 +117,18 @@ class _CoverArtState extends ConsumerState<CoverArt> {
             gaplessPlayback: true,
             excludeFromSemantics: true,
             errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            opacity: _fade,
             frameBuilder: (context, image, frame, sync) {
               final fade = sync ? Duration.zero : Motion.of(context, Motion.medium);
-              if (frame != null) _coverAfter(fade);
-              return AnimatedOpacity(opacity: frame == null ? 0 : 1, duration: fade, child: image);
+              if (frame != null) {
+                if (fade == Duration.zero) {
+                  _fade.value = 1;
+                } else if (_fade.value == 0 && !_fade.isAnimating) {
+                  _fade.animateTo(1, duration: fade, curve: Curves.linear);
+                }
+                _coverAfter(fade);
+              }
+              return image;
             },
           ),
         widget.child ?? const SizedBox.expand(),
