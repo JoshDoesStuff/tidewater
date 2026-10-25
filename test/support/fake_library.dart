@@ -54,6 +54,7 @@ final fakeTracks = <Track>[
         duration: const Duration(seconds: 200),
         trackNumber: n + 1,
         suffix: 'flac',
+        starred: a.id == 'a2',
         samplingRate: 96000,
         bitDepth: 24,
       ),
@@ -72,6 +73,9 @@ final fakePlaylists = <Playlist>[
 /// gradients (and a scheme seeded from the album id).
 class FakeLibraryApi implements LibraryApi {
   FakeLibraryApi({this.failWith, this.albums});
+
+  /// When set, `star` and `unstar` throw this.
+  ApiException? failStarWith;
 
   /// When set, `scrobble` throws this (the rest keeps working).
   ApiException? failScrobbleWith;
@@ -167,10 +171,18 @@ class FakeLibraryApi implements LibraryApi {
   Uri streamUri(String trackId) => Uri.parse('http://test.local/rest/stream?id=$trackId');
 
   @override
-  Future<void> star({String? trackId, String? albumId, String? artistId}) async {}
+  Future<void> star({String? trackId, String? albumId, String? artistId}) async {
+    calls.add('star:${trackId ?? albumId ?? artistId}');
+    final e = failStarWith;
+    if (e != null) throw e;
+  }
 
   @override
-  Future<void> unstar({String? trackId, String? albumId, String? artistId}) async {}
+  Future<void> unstar({String? trackId, String? albumId, String? artistId}) async {
+    calls.add('unstar:${trackId ?? albumId ?? artistId}');
+    final e = failStarWith;
+    if (e != null) throw e;
+  }
 
   @override
   Future<void> scrobble(String trackId, {bool submission = false, DateTime? time}) async {

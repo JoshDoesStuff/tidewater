@@ -42,6 +42,27 @@ class Track {
         starred: j['starred'] != null,
       );
 
+  /// Back to the shape the server sends, so [Track.fromJson] reads it again
+  /// (used to save and restore the queue). Durations keep whole seconds.
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'artist': artist,
+        if (artistId != null) 'artistId': artistId,
+        'albumId': albumId,
+        'album': albumTitle,
+        if (coverArt != null) 'coverArt': coverArt,
+        'duration': duration.inSeconds,
+        if (trackNumber != null) 'track': trackNumber,
+        if (discNumber != null) 'discNumber': discNumber,
+        if (year != null) 'year': year,
+        if (suffix != null) 'suffix': suffix,
+        if (bitRate != null) 'bitRate': bitRate,
+        if (samplingRate != null) 'samplingRate': samplingRate,
+        if (bitDepth != null) 'bitDepth': bitDepth,
+        if (starred) 'starred': true,
+      };
+
   final String id;
   final String title;
   final String artist;

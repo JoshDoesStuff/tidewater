@@ -9,6 +9,7 @@ import '../../core/models/artist.dart';
 import '../../core/models/playlist.dart';
 import '../../core/models/track.dart';
 import '../../core/playback/playback_engine.dart';
+import '../../core/playback/saved_session.dart';
 import '../../core/playback/simulated_engine.dart';
 import '../../core/playback/visualizer_source.dart';
 import 'cover_providers.dart';
@@ -42,6 +43,7 @@ class PlaybackController extends Notifier<PlaybackState> {
         ref.read(toastProvider.notifier).show('Nothing to play there.');
         return;
       }
+      ref.read(likedProvider.notifier).seed(queue);
       await _engine.playQueue(queue, index: index, shuffle: shuffle);
     } on ApiException catch (e) {
       ref.read(toastProvider.notifier).show(
@@ -73,6 +75,19 @@ class PlaybackController extends Notifier<PlaybackState> {
         final details = await Future.wait([for (final a in albums) api.getAlbum(a.id)]);
         return [for (final d in details) ...d.tracks];
       });
+
+  /// Puts a saved session back, paused.
+  Future<void> restore(SavedSession s) {
+    ref.read(likedProvider.notifier).seed(s.tracks, addOnly: true);
+    return _engine.restore(
+      s.tracks,
+      index: s.index,
+      position: s.position,
+      shuffled: s.shuffled,
+      repeat: s.repeat,
+      volume: s.volume,
+    );
+  }
 
   Future<void> shuffleAll() => _load(() => ref.read(apiProvider).getRandomSongs(size: 50));
 
@@ -134,12 +149,44 @@ final currentCoverKeyProvider = Provider<CoverKey?>((ref) {
 /// STAND-IN: the same lyrics for every track (real lyrics in M3).
 final lyricsProvider = Provider<Lyrics>((ref) => placeholderLyrics);
 
+/// Ids of the tracks the person has hearted. Seeded from the `starred` flag
+/// of every track list we load, and written to the server (`star`/`unstar`)
+/// as it changes.
 class LikedNotifier extends Notifier<Set<String>> {
   @override
   Set<String> build() => const {};
 
-  void toggle(String trackId) =>
-      state = state.contains(trackId) ? ({...state}..remove(trackId)) : {...state, trackId};
+  /// Adopts what the server says about [tracks]. With [addOnly] (a restored,
+  /// possibly stale queue) nothing is un-hearted.
+  void seed(Iterable<Track> tracks, {bool addOnly = false}) {
+    final next = {...state};
+    for (final t in tracks) {
+      if (t.starred) {
+        next.add(t.id);
+      } else if (!addOnly) {
+        next.remove(t.id);
+      }
+    }
+    if (next.length != state.length || !next.containsAll(state)) state = next;
+  }
+
+  /// Hearts or un-hearts right away and tells the server; if that fails the
+  /// heart goes back and a message says so.
+  Future<void> toggle(Track track) async {
+    final was = state.contains(track.id);
+    state = was ? ({...state}..remove(track.id)) : {...state, track.id};
+    try {
+      final api = ref.read(apiProvider);
+      if (was) {
+        await api.unstar(trackId: track.id);
+      } else {
+        await api.star(trackId: track.id);
+      }
+    } catch (_) {
+      state = was ? {...state, track.id} : ({...state}..remove(track.id));
+      ref.read(toastProvider.notifier).show('Couldn\'t update your hearts. Check your connection.', error: true);
+    }
+  }
 }
 
 final likedProvider = NotifierProvider<LikedNotifier, Set<String>>(LikedNotifier.new);

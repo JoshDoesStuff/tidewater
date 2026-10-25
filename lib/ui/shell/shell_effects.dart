@@ -207,7 +207,9 @@ class _WashLayerState extends ConsumerState<WashLayer>
   @override
   Widget build(BuildContext context) {
     ref.listen(currentTrackIdProvider, (prev, next) {
-      if (next != null && prev != next) _trigger();
+      // No wash for a session restored at launch (paused, nothing before it).
+      final restored = prev == null && !ref.read(playbackProvider).playing;
+      if (next != null && prev != next && !restored) _trigger();
     });
     return ExcludeSemantics(
       child: IgnorePointer(

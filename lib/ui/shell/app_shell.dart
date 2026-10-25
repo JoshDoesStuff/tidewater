@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/destinations.dart';
 import '../../app/providers/playback_providers.dart';
 import '../../app/providers/scrobble_providers.dart';
+import '../../app/providers/session_persistence.dart';
 import '../../app/providers/settings_providers.dart';
 import '../../app/providers/ui_providers.dart';
 import '../now_playing/now_playing_overlay.dart';
@@ -83,6 +84,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     ref.watch(scrobbleServiceProvider); // keeps plays reported for as long as the shell lives
+    ref.watch(sessionPersistenceProvider); // saves and restores the queue
     final scheme = Theme.of(context).colorScheme;
     return LayoutBuilder(
       builder: (context, box) {

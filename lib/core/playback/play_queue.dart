@@ -49,12 +49,17 @@ class PlayQueue {
   }
 
   /// Replaces everything and starts at [index] of [tracks] (the order given).
-  void replace(List<Track> tracks, {int index = 0, bool shuffle = false}) {
+  void replace(List<Track> tracks, {int index = 0, bool shuffle = false, bool alreadyShuffled = false}) {
     _original = [...tracks];
     _order = [...tracks];
     _index = tracks.isEmpty ? 0 : index.clamp(0, tracks.length - 1);
     _shuffled = false;
-    if (shuffle) setShuffle(true);
+    if (alreadyShuffled) {
+      // A restored queue is already in its shuffled order; keep it.
+      _shuffled = true;
+    } else if (shuffle) {
+      setShuffle(true);
+    }
   }
 
   void clear() {

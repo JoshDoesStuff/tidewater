@@ -203,10 +203,10 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
   }
 
   void _toggleLike() {
-    final id = _shown?.id;
-    if (id == null) return;
-    final wasLiked = ref.read(likedProvider).contains(id);
-    ref.read(likedProvider.notifier).toggle(id);
+    final shown = _shown;
+    if (shown == null) return;
+    final wasLiked = ref.read(likedProvider).contains(shown.id);
+    ref.read(likedProvider.notifier).toggle(shown);
     if (!wasLiked) {
       final heart = _heartKey.currentContext?.findRenderObject() as RenderBox?;
       final layer = _burstKey.currentContext?.findRenderObject() as RenderBox?;

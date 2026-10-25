@@ -18,9 +18,10 @@ Future<ProviderContainer> pumpApp(
   bool signedIn = true,
   SessionStore? store,
   ClientFactory? factory,
+  Map<String, Object> prefs = const {},
   Duration settle = const Duration(seconds: 2),
 }) async {
-  final overrides = await testOverrides(api: api, signedIn: signedIn, store: store, factory: factory);
+  final overrides = await testOverrides(api: api, signedIn: signedIn, store: store, factory: factory, prefs: prefs);
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);

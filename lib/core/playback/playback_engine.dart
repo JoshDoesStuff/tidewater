@@ -73,7 +73,14 @@ abstract class PlaybackEngine {
   Future<void> playQueue(List<Track> queue, {int index = 0, bool shuffle = false});
 
   /// Loads a queue without playing it (restoring the last session).
-  Future<void> restore(List<Track> queue, {int index = 0, Duration position = Duration.zero});
+  Future<void> restore(
+    List<Track> queue, {
+    int index = 0,
+    Duration position = Duration.zero,
+    bool shuffled = false,
+    LoopMode repeat = LoopMode.off,
+    double? volume,
+  });
 
   /// Jumps to a track already in the queue.
   Future<void> playIndex(int index);

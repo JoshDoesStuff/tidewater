@@ -207,9 +207,22 @@ class QueueEngine implements PlaybackEngine {
       });
 
   @override
-  Future<void> restore(List<Track> queue, {int index = 0, Duration position = Duration.zero}) => _run(() async {
+  Future<void> restore(
+    List<Track> queue, {
+    int index = 0,
+    Duration position = Duration.zero,
+    bool shuffled = false,
+    LoopMode repeat = LoopMode.off,
+    double? volume,
+  }) =>
+      _run(() async {
         if (queue.isEmpty) return;
-        _queue.replace(queue, index: index);
+        _queue.replace(queue, index: index, alreadyShuffled: shuffled);
+        _repeat = repeat;
+        if (volume != null) {
+          _volume = volume.clamp(0.0, 1.0);
+          _volumeSent = false; // sent to the backend when playback first opens
+        }
         _opened = false;
         _playing = false;
         _intent = false;
