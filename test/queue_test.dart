@@ -17,6 +17,7 @@ Track _t(String id, {int ms = 60}) => Track(
 List<String> _ids(Iterable<Track> t) => [for (final x in t) x.id];
 
 void main() {
+  gaplessStateTests();
   group('PlayQueue', () {
     final abc = [_t('a'), _t('b'), _t('c')];
 
@@ -327,3 +328,44 @@ void main() {
 }
 
 SimulatedBackend _backendOf(SimulatedEngine e) => e.backendForTest as SimulatedBackend;
+
+void gaplessStateTests() {
+  group('play state', () {
+    late SimulatedEngine e;
+
+    setUp(() => e = SimulatedEngine(tick: const Duration(milliseconds: 5)));
+    tearDown(() => e.dispose());
+
+    test('a brief "not playing" from the backend (loading the next track) is not shown', () async {
+      await e.playQueue([_t('a', ms: 9000), _t('b', ms: 9000)]);
+      final seen = <bool>[];
+      e.states.listen((s) => seen.add(s.playing));
+      final backend = e.backendForTest as SimulatedBackend;
+      backend.emitPlaying(false);
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      backend.emitPlaying(true);
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      expect(e.state.playing, isTrue);
+      expect(seen.contains(false), isFalse, reason: 'the play button must not flicker');
+    });
+
+    test('a "not playing" that lasts is believed', () async {
+      await e.playQueue([_t('a', ms: 9000)]);
+      (e.backendForTest as SimulatedBackend).emitPlaying(false);
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      expect(e.state.playing, isFalse);
+      (e.backendForTest as SimulatedBackend).emitPlaying(true);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(e.state.playing, isTrue);
+    });
+
+    test('pausing is immediate', () async {
+      await e.playQueue([_t('a', ms: 9000)]);
+      await e.pause();
+      expect(e.state.playing, isFalse);
+      (e.backendForTest as SimulatedBackend).emitPlaying(true);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(e.state.playing, isTrue, reason: 'the backend resumed on its own (media key): follow it');
+    });
+  });
+}

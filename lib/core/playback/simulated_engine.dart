@@ -39,6 +39,10 @@ class SimulatedBackend implements AudioBackend {
   @override
   Stream<String> get errors => _errors.stream;
 
+  /// For tests: report a play/pause change the engine did not ask for (libmpv
+  /// does this for a moment at every track change).
+  void emitPlaying(bool playing) => _playing.add(playing);
+
   /// For tests: pretend the current track failed to play.
   void emitError(String message) {
     // A track that fails to load goes nowhere: the clock stops.

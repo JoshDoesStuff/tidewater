@@ -10,10 +10,6 @@ typedef CoverFetch = Future<Uint8List> Function(String coverArt, int size);
 /// in-memory stand-in (file IO never completes under fake async).
 abstract class CoverStore {
   Future<Uint8List> get(String id, {int size = 300});
-
-  /// Path of the cached file for a cover (downloading it first if needed), or
-  /// null when there is no file to point at (used for the media overlay).
-  Future<String?> localPath(String id, {int size = 300});
 }
 
 /// Cover art on disk, keyed by `coverArt` id and pixel size (the same cover at
@@ -73,16 +69,6 @@ class CoverCache implements CoverStore {
         });
       }
     });
-  }
-
-  @override
-  Future<String?> localPath(String id, {int size = 300}) async {
-    try {
-      await get(id, size: size);
-      return _file(await directory, id, bucket(size)).path;
-    } catch (_) {
-      return null;
-    }
   }
 
   /// Deletes the oldest files until the folder is under [maxBytes].

@@ -97,11 +97,35 @@ class QueueEngine implements PlaybackEngine {
 
   // --- backend events ---------------------------------------------------------
 
+  Timer? _stallTimer;
+
   void _onBackendPlaying(bool playing) {
-    if (!_opened || playing == _playing) return;
-    _playing = playing;
-    if (playing) _started = true;
-    _emit();
+    if (!_opened) return;
+    if (playing) {
+      _stallTimer?.cancel();
+      if (_playing) return;
+      _playing = true;
+      _started = true;
+      _emit();
+      return;
+    }
+    if (!_playing) return;
+    if (!_intent) {
+      _playing = false;
+      _emit();
+      return;
+    }
+    // The person wants playback, so a "not playing" from the backend is
+    // usually the gap while the next track loads (libmpv reports it on every
+    // track change). Only believe it if it lasts; otherwise the play button
+    // would flicker to "paused" and back at every track.
+    _stallTimer?.cancel();
+    _stallTimer = Timer(const Duration(milliseconds: 700), () {
+      if (_intent && _opened && _playing) {
+        _playing = false;
+        _emit();
+      }
+    });
   }
 
   void _onBackendPosition(Duration p) {
@@ -376,6 +400,7 @@ class QueueEngine implements PlaybackEngine {
 
   @override
   Future<void> dispose() async {
+    _stallTimer?.cancel();
     for (final s in _subs) {
       await s.cancel();
     }

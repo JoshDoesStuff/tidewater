@@ -21,9 +21,6 @@ class _Covers implements CoverStore {
     if (!has) throw StateError('no cover');
     return Uint8List.fromList(_png);
   }
-
-  @override
-  Future<String?> localPath(String id, {int size = 300}) async => null;
 }
 
 Finder get placeholder => find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_PlaceholderPainter');

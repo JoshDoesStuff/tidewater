@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../playback/system_media.dart';
-import 'cover_providers.dart';
+import 'session_providers.dart';
 import 'playback_providers.dart';
 
 /// The operating system's media controls. `main()` swaps in the real Windows
@@ -54,23 +54,17 @@ final systemMediaServiceProvider = Provider<void>((ref) {
       unawaited(media.clear());
       return;
     }
-    unawaited(media.setTrack(title: track.title, artist: track.artist, album: track.albumTitle));
+    // Windows loads the cover itself and only understands web addresses (a
+    // file:// one is silently ignored), so hand it the server's cover URL.
+    final art = track.coverArt;
+    unawaited(media.setTrack(
+      title: track.title,
+      artist: track.artist,
+      album: track.albumTitle,
+      thumbnailUri: art == null ? null : ref.read(apiProvider).coverArtUri(art, size: 300).toString(),
+    ));
     unawaited(media.setPlaying(ref.read(playbackProvider).playing));
     sendTimeline();
-    // The cover arrives a moment later (it may need downloading).
-    final art = track.coverArt;
-    if (art != null) {
-      unawaited(() async {
-        final path = await ref.read(coverCacheProvider).localPath(art);
-        if (path == null || ref.read(currentTrackProvider)?.id != track.id) return;
-        await media.setTrack(
-          title: track.title,
-          artist: track.artist,
-          album: track.albumTitle,
-          thumbnailUri: Uri.file(path).toString(),
-        );
-      }());
-    }
   }, fireImmediately: true);
 
   ref.listen(playbackProvider.select((s) => s.playing), (_, playing) {

@@ -80,6 +80,9 @@ class OpenSubsonicClient implements LibraryApi {
   }
 
   @override
+  Uri coverArtUri(String id, {int size = 300}) => _uri('getCoverArt', {'id': id, 'size': size});
+
+  @override
   Uri streamUri(String trackId) => _uri('stream', {'id': trackId});
 
   // --- Transport -----------------------------------------------------------

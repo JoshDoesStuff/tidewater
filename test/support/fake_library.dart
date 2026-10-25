@@ -181,6 +181,9 @@ class FakeLibraryApi implements LibraryApi {
   Uri streamUri(String trackId) => Uri.parse('http://test.local/rest/stream?id=$trackId');
 
   @override
+  Uri coverArtUri(String id, {int size = 300}) => Uri.parse('http://test.local/rest/getCoverArt?id=$id&size=$size');
+
+  @override
   Future<void> star({String? trackId, String? albumId, String? artistId}) async {
     calls.add('star:${trackId ?? albumId ?? artistId}');
     final e = failStarWith;

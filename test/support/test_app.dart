@@ -64,7 +64,4 @@ class NoCovers implements CoverStore {
   @override
   Future<Uint8List> get(String id, {int size = 300}) =>
       Future.error(const ApiException(ApiErrorKind.notFound, 'no cover in tests'));
-
-  @override
-  Future<String?> localPath(String id, {int size = 300}) async => null;
 }

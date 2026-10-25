@@ -85,6 +85,10 @@ abstract class LibraryApi {
   /// Cover art bytes for `getCoverArt`, scaled by the server to [size] px.
   Future<Uint8List> getCoverArt(String id, {int size = 300});
 
+  /// URL of a cover (carries auth in the query), for things outside the app that
+  /// load images themselves, such as the Windows media overlay.
+  Uri coverArtUri(String id, {int size = 300});
+
   /// URL the playback engine streams from (carries auth in the query).
   Uri streamUri(String trackId);
 

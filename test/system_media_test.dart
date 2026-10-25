@@ -14,6 +14,7 @@ void main() {
     await c.read(playbackProvider.notifier).playAlbum(fakeAlbums[0]);
     await advance(tester, const Duration(seconds: 1));
     expect(media.log, contains('track:Lantern Season|Mira Vale|Glass Orchard'));
+    expect(media.lastThumbnail, 'http://test.local/rest/getCoverArt?id=cv-a0&size=300', reason: 'the overlay loads the cover from the server itself');
     expect(media.log, contains('playing'));
     expect(media.log, contains('timeline:0/200'));
     await c.read(playbackProvider.notifier).toggle();
