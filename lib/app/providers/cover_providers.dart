@@ -22,7 +22,9 @@ final coverRootProvider = Provider<Future<Directory> Function()>((ref) => () asy
 /// The cover cache for the signed-in server (its own sub-folder).
 final coverCacheProvider = Provider<CoverStore>((ref) {
   final config = ref.watch(sessionProvider);
-  if (config == null) throw StateError('Not signed in');
+  // Covers still on screen while signing out ask for images once more; they
+  // just fail quietly until the login page replaces them.
+  if (config == null) return const _NoCovers();
   final api = ref.watch(apiProvider);
   final root = ref.watch(coverRootProvider);
   final folder = CoverCache.serverFolder(config.baseUrl);
@@ -34,6 +36,13 @@ final coverCacheProvider = Provider<CoverStore>((ref) {
   unawaited(cache.trim(500 * 1024 * 1024).catchError((Object _) {}));
   return cache;
 });
+
+class _NoCovers implements CoverStore {
+  const _NoCovers();
+
+  @override
+  Future<Uint8List> get(String id, {int size = 300}) async => throw StateError('Not signed in');
+}
 
 /// Identifies one album's cover for scheme generation.
 typedef CoverKey = ({String albumId, String? coverArt});
