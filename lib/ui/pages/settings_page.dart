@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/providers/playlist_actions.dart';
 import '../../app/providers/refresh_library.dart';
 import '../../app/providers/queue_sync_status.dart';
 import '../../app/providers/settings_providers.dart';
@@ -100,6 +101,26 @@ class SettingsPage extends ConsumerWidget {
                     subtitle: 'Some icons erase and draw themselves again when clicked. On keeps a faint copy of the icon underneath so it never fully disappears.',
                     value: ref.watch(iconGhostProvider),
                     onChanged: ref.read(iconGhostProvider.notifier).set,
+                  ),
+                  const SizedBox(height: 22),
+                  Text('Playlists', style: text.titleLarge),
+                  const SizedBox(height: 4),
+                  Text(
+                    'When you add a song that is already in the playlist:',
+                    style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: [
+                      for (final b in DuplicateBehavior.values)
+                        _ModeChip(
+                          label: b.label,
+                          selected: b == ref.watch(duplicateBehaviorProvider),
+                          onTap: () => ref.read(duplicateBehaviorProvider.notifier).set(b),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 22),
                   Text('Library', style: text.titleLarge),
