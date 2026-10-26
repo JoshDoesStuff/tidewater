@@ -146,6 +146,13 @@ bool Win32Window::Create(const std::wstring& title,
 
   UpdateTheme(window);
 
+  // Rounded corners like a normal Windows 11 window (the frame is custom, so
+  // ask for them explicitly; Windows 10 ignores this). 33 is
+  // DWMWA_WINDOW_CORNER_PREFERENCE and 2 is DWMWCP_ROUND.
+  const DWORD corner_preference = 2;
+  DwmSetWindowAttribute(window, 33, &corner_preference,
+                        sizeof(corner_preference));
+
   return OnCreate();
 }
 

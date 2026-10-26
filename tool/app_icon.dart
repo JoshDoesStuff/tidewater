@@ -240,7 +240,7 @@ String _recordSvg() {
 ''';
 }
 
-void _paintRecord(ui.Canvas canvas) {
+void _paintRecord(ui.Canvas canvas, {required bool boat}) {
   const center = ui.Offset(_rx, _ry);
   void rings(int outer, List<int> grooves) {
     canvas.drawCircle(center, _outer, _stroke(outer, 30));
@@ -260,7 +260,7 @@ void _paintRecord(ui.Canvas canvas) {
   );
   canvas.drawPath(_path(_scallop(_rx, _ry, _labelR, 6, .085), close: true), _fill(_recLabel));
   canvas.drawCircle(center, 18, _fill(_recHole));
-  _paintBoat(canvas); // before the water, so the water covers the hull's bottom
+  if (boat) _paintBoat(canvas); // before the water, so the water covers the hull's bottom
   canvas.drawPath(_path(_waterShape(), close: true), _fill(_recWater));
   canvas.drawPath(_path(_tide(drop: 96, amp: 22, phase: _tidePhase + 1.6)), _stroke(_recWaterLine, 12));
   canvas.drawPath(_path(_tide()), _stroke(_recSurface, 20));
@@ -274,7 +274,9 @@ String iconSvg(IconDesign design) => switch (design) {
     };
 
 /// Draws [design] scaled to [size] pixels square, clipped to the rounded tile.
-void paintIcon(ui.Canvas canvas, double size, IconDesign design) {
+/// [boat] draws the record design's little sailboat; at taskbar sizes it is
+/// only a smudge, so the Windows icon leaves it off its small frames.
+void paintIcon(ui.Canvas canvas, double size, IconDesign design, {bool boat = true}) {
   canvas.save();
   canvas.scale(size / iconSize);
   canvas.clipRRect(
@@ -284,7 +286,7 @@ void paintIcon(ui.Canvas canvas, double size, IconDesign design) {
     case IconDesign.cookie:
       _paintCookie(canvas);
     case IconDesign.record:
-      _paintRecord(canvas);
+      _paintRecord(canvas, boat: boat);
   }
   canvas.restore();
 }

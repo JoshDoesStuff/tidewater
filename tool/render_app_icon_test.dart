@@ -16,9 +16,13 @@ import 'app_icon.dart';
 /// The design the Windows build uses.
 const windowsDesign = IconDesign.record;
 
+/// Frames this size and up keep the boat; the small ones (the taskbar and the
+/// title bar use 16 to 48 px) go without, where it only reads as a smudge.
+const boatFromSize = 64;
+
 Future<Uint8List> _png(int size, IconDesign design) async {
   final recorder = ui.PictureRecorder();
-  paintIcon(ui.Canvas(recorder), size.toDouble(), design);
+  paintIcon(ui.Canvas(recorder), size.toDouble(), design, boat: size >= boatFromSize);
   final image = await recorder.endRecording().toImage(size, size);
   final data = await image.toByteData(format: ui.ImageByteFormat.png);
   image.dispose();

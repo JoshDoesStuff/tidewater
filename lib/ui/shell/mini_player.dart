@@ -61,6 +61,9 @@ class _MiniPlayerBody extends ConsumerWidget {
                       coverArt: track.coverArt,
                       seedKey: track.albumId,
                       size: 52,
+                      // A circle at rest: the pill's end has radius 36 and the cover sits 10 in,
+                      // so a 26 radius (half of 52) is what lines up with it.
+                      exponent: 2,
                       params: ShapeKind.forKey(track.albumId).params.copyWith(amp: .07),
                       morph: playing ? 1 : 0,
                       spin: playing && !reduced ? .6 : 0,
