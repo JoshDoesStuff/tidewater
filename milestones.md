@@ -11,14 +11,14 @@ Window chrome, theme + motion tokens, rail, header, mini player, FAB, Home and L
 past the original "static" scope to demo parity with a simulated player (recolor, morph shapes, card behaviors,
 Now Playing with lyrics/volume/idle/visualizers, Settings). Quality at wrap-up: `flutter analyze` clean, 44 tests
 passing, `flutter build windows --release` succeeds, zero console errors on launch, no frame over 33 ms in the
-profile scenarios (`tool/perf_main.dart`). Working notes for future sessions: `docs/dev-notes.md`.
+profile scenarios (`tool/perf/perf_main.dart`). Working notes for future sessions: `docs/dev-notes.md`.
 
 ## Milestone 4 wrap-up (done)
 
 Most of M4 had already landed with the earlier milestones (scheme from real cover pixels, animated recolor,
 `MorphShape`, card behaviors, wavy progress); what was left is done:
 
-- **Light theme reviewed** (`flutter test tool/render_shots_test.dart --dart-define=TW_LIGHT=true` renders every main
+- **Light theme reviewed** (`flutter test tool/probes/render_shots_test.dart --dart-define=TW_LIGHT=true` renders every main
   screen to `build/shots-light`): Home, Library, Now Playing (cover halo, lyrics card, volume, visualizer mountains),
   idle mode and login all read well; the contrast test already checks 4.5:1 for accent and body text in both
   brightnesses, including gray and black-and-white art. No fixes were needed. Known soft spot: tonal buttons (previous/next,
@@ -46,12 +46,12 @@ passing, release build bundles `libmpv-2.dll` and `smtc_windows.dll` and starts.
 
 Verified with the real thing, not just fakes (all against the user's own server):
 
-- `tool/engine_probe_main.dart` (audible, quiet): play, pause, seek, **gapless hand-over** at the end of a track,
+- `tool/probes/engine_probe_main.dart` (audible, quiet): play, pause, seek, **gapless hand-over** at the end of a track,
   next/previous, play next, shuffle, repeat-one, a missing track being reported and skipped, position reported 16
   times a second with at most an 89 ms gap.
-- `tool/e2e_main.dart` + `tool/e2e_check.ps1`: Windows shows the playing track with its cover, and its media-key
+- `tool/probes/e2e_main.dart` + `tool/probes/e2e_check.ps1`: Windows shows the playing track with its cover, and its media-key
   Pause/Play/Next/Previous drive the real engine.
-- `tool/perf_real_main.dart` (profile, 180 Hz laptop panel, real covers/lyrics/engine): see "Performance" below.
+- `tool/perf/perf_real_main.dart` (profile, 180 Hz laptop panel, real covers/lyrics/engine): see "Performance" below.
 
 Decisions and discoveries that were not in the plan:
 
@@ -75,7 +75,7 @@ Decisions and discoveries that were not in the plan:
   album and length, so it is opt-out and visible).
 - New keys: `M` mute (anywhere), `Q` queue (in Now Playing). Clicking the speaker also mutes.
 
-Performance, measured on real data at 180 Hz (frame budget 5.6 ms; use `tool/run_perf_real.ps1`):
+Performance, measured on real data at 180 Hz (frame budget 5.6 ms; use `tool/perf/run_perf_real.ps1`):
 
 - Opening Now Playing, the queue panel and skipping tracks used to hitch 105-114 ms (first-time decode of the
   full-size cover). Covers for the playing and next two tracks are now decoded ahead of time
@@ -107,10 +107,10 @@ storage), a dio client written from scratch (`core/api/`), cover art with a disk
 cover pixels, and a Home and Library built from server data with loading, error and empty states. Playback is
 **still simulated** (clock only), but it now plays real tracks from real queues.
 
-Checked against a live server: Navidrome 0.64.2 (the public demo) via `tool/server_check.dart` (auth, artists,
+Checked against a live server: Navidrome 0.64.2 (the public demo) via `tool/probes/server_check.dart` (auth, artists,
 playlists, paging, album detail with quality info, covers at 300/800, search, random songs) and 40 real covers via
-`tool/real_covers_test.dart` (0 contrast failures in dark and light; black/white/gray art gets a neutral scheme).
-`flutter_secure_storage` round-trips on this machine (`tool/session_probe_main.dart`). Quality at wrap-up:
+`tool/probes/real_covers_test.dart` (0 contrast failures in dark and light; black/white/gray art gets a neutral scheme).
+`flutter_secure_storage` round-trips on this machine (`tool/probes/session_probe_main.dart`). Quality at wrap-up:
 `flutter analyze` clean, 112 tests passing, Windows build and launch clean. **Also checked against the user's own server (Navidrome 0.64.2, 518 albums, 313 artists):** all albums load in two pages in about 0.6 s,
 119 covers gave 0 contrast failures. Still untested: a library with many thousands of albums.
 
@@ -298,8 +298,8 @@ reviewable commits, ask before adding packages not listed in `CLAUDE.md`.
 
 **Performance:** measure in `--profile`, never debug (debug is several times slower and makes animations look
 janky). The real displays are a **180 Hz laptop panel and a 144 Hz external monitor**, so the frame budget is
-5.5-7 ms, not 16.7. Measure with real data: `tool/run_perf_real.ps1` (real server, covers, engine, lyrics; it reads
-the display's refresh rate and prints budgets for it) found problems the fake-data `tool/perf_main.dart` hid (first-time
+5.5-7 ms, not 16.7. Measure with real data: `tool/perf/run_perf_real.ps1` (real server, covers, engine, lyrics; it reads
+the display's refresh rate and prints budgets for it) found problems the fake-data `tool/perf/perf_main.dart` hid (first-time
 cover decodes, a gradient under every cover). Baseline at 180 Hz after M3: Now Playing steady build 0.6 / raster 2.7 /
 total 4.2 ms median (p99 6.3), idle mode 4.6 (p99 8), lyric changes 4.6 (p99 8.8), skips and queue never above 10 ms.
 Budget: no frames > 33 ms in any scenario, and steady states under the display's frame time.
@@ -318,12 +318,12 @@ Budget: no frames > 33 ms in any scenario, and steady states under the display's
 
 **Testing & tooling:**
 - `test/` — unit + widget tests (keep adding with each feature).
-- `tool/render_shots_test.dart` — offscreen screenshots of the main screens to `build/shots/` (works with the
-  desktop locked): `flutter test tool/render_shots_test.dart`.
-- `tool/perf_main.dart` — per-phase frame build/raster times through the heavy scenarios:
-  `flutter run -d windows --profile -t tool/perf_main.dart`.
-- `tool/letter_probe_main.dart` — pixel-level measurement of how smoothly the engine renders animated letters
-  (jitter in px, plus a landing/start "pop" metric): `flutter run -d windows --profile -t tool/letter_probe_main.dart`.
+- `tool/probes/render_shots_test.dart` — offscreen screenshots of the main screens to `build/shots/` (works with the
+  desktop locked): `flutter test tool/probes/render_shots_test.dart`.
+- `tool/perf/perf_main.dart` — per-phase frame build/raster times through the heavy scenarios:
+  `flutter run -d windows --profile -t tool/perf/perf_main.dart`.
+- `tool/probes/letter_probe_main.dart` — pixel-level measurement of how smoothly the engine renders animated letters
+  (jitter in px, plus a landing/start "pop" metric): `flutter run -d windows --profile -t tool/probes/letter_probe_main.dart`.
   Lessons learned, all measured in the real engine (Impeller/GL):
   - Don't round animated transforms to whole pixels: ~10× *more* jitter.
   - Use `PreciseCubic` (`app/theme/precise_cubic.dart`) for easings, not Flutter's `Cubic`: its 0.001 bisection

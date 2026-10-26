@@ -23,9 +23,9 @@ The desktop is often locked, so screen capture of the real app returns the lock 
 | Need | Command |
 |------|---------|
 | Static check | `flutter analyze` (must be clean) and `flutter test` (must pass) |
-| What screens look like | `flutter test tool/render_shots_test.dart` then read `build/shots/*.png` |
-| Frame times per scenario | `flutter run -d windows --profile -t tool/perf_main.dart` |
-| Letter/text smoothness in px | `flutter run -d windows --profile -t tool/letter_probe_main.dart` |
+| What screens look like | `flutter test tool/probes/render_shots_test.dart` then read `build/shots/*.png` |
+| Frame times per scenario | `flutter run -d windows --profile -t tool/perf/perf_main.dart` |
+| Letter/text smoothness in px | `flutter run -d windows --profile -t tool/probes/letter_probe_main.dart` |
 | Console errors | run the app and count lines (AXTree errors were 837 per launch before the fix; now 0) |
 
 - Measure in `--profile`. Debug builds are several times slower and make animations look janky; profile baseline is
@@ -104,10 +104,10 @@ The desktop is often locked, so screen capture of the real app returns the lock 
   like "the scheme never changes"). Tests override `coverCacheProvider` with `NoCovers`; the cache itself has plain
   `test()`s with a temp folder.
 - **Real network**: `flutter test` blocks HTTP (everything answers 400). For a real-server test set
-  `HttpOverrides.global = null` (see `tool/real_covers_test.dart`).
-- **Server tools** (all read-only): `dart run tool/server_check.dart <url> <user> <pass>` (or `--api-key`),
-  `flutter test tool/real_covers_test.dart` (env `TIDEWATER_URL/USER/PASS/ALBUMS`; defaults to the public demo,
-  `demo`/`demo`), `flutter run -d windows -t tool/session_probe_main.dart` (secure storage round trip).
+  `HttpOverrides.global = null` (see `tool/probes/real_covers_test.dart`).
+- **Server tools** (all read-only): `dart run tool/probes/server_check.dart <url> <user> <pass>` (or `--api-key`),
+  `flutter test tool/probes/real_covers_test.dart` (env `TIDEWATER_URL/USER/PASS/ALBUMS`; defaults to the public demo,
+  `demo`/`demo`), `flutter run -d windows -t tool/probes/session_probe_main.dart` (secure storage round trip).
 - **Dart trap that bit once**: `Future.microtask(() => map.remove(key))` *returns the removed future*, so a failed
   download re-raised its error as unhandled. Use a block body (`scheduleMicrotask(() { map.remove(key); })`).
 - **Windows shell**: this machine has no Python; `flutter test --name=word` (a name with spaces breaks
@@ -131,17 +131,17 @@ The desktop is often locked, so screen capture of the real app returns the lock 
   `testOverrides` gives the simulated engine a 1 hour tick, because its clock is a real `Stopwatch` that fake time does
   not advance: set positions in tests with `container.read(positionProvider).value = ...`.
 - **Things that need the real thing**, each with a tool that prints `PROBE ok/FAIL`:
-  `tool/engine_probe_main.dart` (audio; audible but quiet), `tool/smtc_probe_main.dart` + `tool/smtc_check.ps1`
+  `tool/probes/engine_probe_main.dart` (audio; audible but quiet), `tool/probes/smtc_probe_main.dart` + `tool/probes/smtc_check.ps1`
   (reads the Windows media session back through the WinRT API in PowerShell and presses its buttons),
-  `tool/e2e_main.dart` + `tool/e2e_check.ps1` (the whole app), `tool/session_probe_main.dart` (secure storage),
-  `tool/server_check.dart` (the API). Run app-style tools with `Start-Process flutter.bat ... -RedirectStandardOutput`
+  `tool/probes/e2e_main.dart` + `tool/probes/e2e_check.ps1` (the whole app), `tool/probes/session_probe_main.dart` (secure storage),
+  `tool/probes/server_check.dart` (the API). Run app-style tools with `Start-Process flutter.bat ... -RedirectStandardOutput`
   and `WaitForExit`; `flutter run` needs `--no-pub` and the cargo PATH.
 - **libmpv/media_kit quirks** are listed in the M3 wrap-up in `milestones.md`; the ones that bite: its `completed` fires
   per file, its `playing` blinks at every track change, positions can be negative, and it skips a failing file itself.
   Never trust one event to mean one thing; check what is actually happening (is audio advancing?).
 - **Windows media overlay**: cover must be an `https://` URL; `file://` is silently ignored. The overlay counts time by
   itself while playing, so only send the timeline on a seek or track change.
-- **Perf measuring rules**: use `tool/run_perf_real.ps1 -Only "scroll,np" -Url ... -User ... -Pass ...` and compare to the
+- **Perf measuring rules**: use `tool/perf/run_perf_real.ps1 -Only "scroll,np" -Url ... -User ... -Pass ...` and compare to the
   `startup` phase of the same run (the GPU is shared; other apps make everything 1.5-3x slower). Bisect by
   *removing things*, one at a time, and measuring: guessing (shadows? clip path? transform? RepaintBoundary?) was wrong
   five times in a row; the culprit was a gradient painted under every image. Raster-bound phases are about what is
@@ -151,7 +151,7 @@ The desktop is often locked, so screen capture of the real app returns the lock 
   apostrophes can fail in the Bash tool (use the Write tool); `flutter test --name=word` (no spaces).
 - **Never use Material's `Slider` here**: with it on screen Windows' accessibility tree failed on every update
   ("Failed to update ui::AXTree ... will not be in the tree", hundreds of lines, even after leaving the page). Found by
-  running the real app (`tool/e2e_main.dart --dart-define=TW_GO=/settings,/home,...` navigates and the console is
+  running the real app (`tool/probes/e2e_main.dart --dart-define=TW_GO=/settings,/home,...` navigates and the console is
   counted) and removing page parts one per run. Settings uses a plain custom slider plus one explicit semantics node,
   like the volume slider. Widget tests cannot see this class of bug; check a new control type in the real app.
 
@@ -172,8 +172,8 @@ The desktop is often locked, so screen capture of the real app returns the lock 
 
 ## App icon
 
-`tool/app_icon.dart` defines the icon designs once (SVG text and Canvas drawing share the geometry; both designs
+`tool/branding/app_icon.dart` defines the icon designs once (SVG text and Canvas drawing share the geometry; both designs
 are flat, no gradients). Regenerate `assets/branding/tidewater_<design>.svg` / `.png` (cookie, record) and
 `windows/runner/resources/app_icon.ico` (from `windowsDesign` in the render test) with
-`flutter test tool/render_app_icon_test.dart`, then rebuild the Windows app (Windows caches icons; a new .ico may
+`flutter test tool/branding/render_app_icon_test.dart`, then rebuild the Windows app (Windows caches icons; a new .ico may
 need the exe renamed or the icon cache cleared before the taskbar updates).

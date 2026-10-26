@@ -2,7 +2,7 @@
 // libmpv engine making sound (quietly), real lyrics, the Windows media
 // overlay. Run in --profile; it prints per-phase build/raster times and exits.
 //
-//   flutter run -d windows --profile -t tool/perf_real_main.dart ^
+//   flutter run -d windows --profile -t tool/perf/perf_real_main.dart ^
 //     --dart-define=TW_URL=https://your.server --dart-define=TW_USER=u --dart-define=TW_PASS=p
 //
 // The refresh rate is read from the display; budgets are for that rate.

@@ -1,6 +1,6 @@
 // Measures how smoothly the real rendering engine moves animated letters.
 //
-//   flutter run -d windows --profile -t tool/letter_probe_main.dart
+//   flutter run -d windows --profile -t tool/probes/letter_probe_main.dart
 //
 // Each letter gets a distinct color so its pixels can be told apart even while
 // letters overlap or fade. For every frame of a deterministic animation the

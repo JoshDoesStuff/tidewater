@@ -3,7 +3,7 @@
 // pause/resume, skipping, shuffle, repeat, a track that fails. It is AUDIBLE
 // (volume is kept low) and takes about a minute.
 //
-//   flutter run -d windows -t tool/engine_probe_main.dart ^
+//   flutter run -d windows -t tool/probes/engine_probe_main.dart ^
 //     --dart-define=TW_URL=https://your.server --dart-define=TW_USER=u --dart-define=TW_PASS=p
 //
 // Prints `PROBE ok/FAIL ...` lines and exits with the result.

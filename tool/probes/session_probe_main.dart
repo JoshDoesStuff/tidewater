@@ -1,7 +1,7 @@
 ﻿// Round-trips a session through the real PrefsSessionStore (shared_preferences
 // + Windows secure storage) and prints the result, then exits.
 //
-//   flutter run -d windows -t tool/session_probe_main.dart
+//   flutter run -d windows -t tool/probes/session_probe_main.dart
 import 'dart:io';
 
 import 'package:flutter/material.dart';

@@ -1,8 +1,8 @@
 // The whole app for real: your server, libmpv audio (quiet), the Windows media
-// overlay. Starts an album and then waits so tool/e2e_check.ps1 can read the
+// overlay. Starts an album and then waits so tool/probes/e2e_check.ps1 can read the
 // overlay back and press its buttons from outside the app. Prints `E2E ...`.
 //
-//   flutter run -d windows -t tool/e2e_main.dart ^
+//   flutter run -d windows -t tool/probes/e2e_main.dart ^
 //     --dart-define=TW_URL=https://your.server --dart-define=TW_USER=u --dart-define=TW_PASS=p
 import 'dart:async';
 import 'dart:io';

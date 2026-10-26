@@ -1,6 +1,6 @@
 // Writes the app icon files. Not part of the normal suite:
 //
-//   flutter test tool/render_app_icon_test.dart
+//   flutter test tool/branding/render_app_icon_test.dart
 //
 // assets/branding/tidewater_<design>.svg and .png (1024 px) for each design, and
 // the Windows icon (windows/runner/resources/app_icon.ico, PNG frames from 16 to
@@ -64,7 +64,7 @@ Uint8List _ico(Map<int, Uint8List> frames) {
 /// Google Sans Flex (variable, OFL; see third-party-licenses/google-sans-flex-OFL.txt)
 /// for the banner's name: the Material 3 Expressive typeface, with a roundness axis.
 Future<void> _loadGoogleSansFlex() async {
-  final bytes = await File('tool/fonts/GoogleSansFlex.ttf').readAsBytes();
+  final bytes = await File('tool/branding/fonts/GoogleSansFlex.ttf').readAsBytes();
   final flex = FontLoader('GoogleSansFlex')..addFont(Future.value(ByteData.sublistView(bytes)));
   await flex.load();
 }

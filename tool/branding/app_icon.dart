@@ -2,11 +2,9 @@
 // (assets/branding/*.svg) and with a Canvas (the PNGs and the Windows .ico).
 // Regenerate everything with:
 //
-//   flutter test tool/render_app_icon_test.dart
+//   flutter test tool/branding/render_app_icon_test.dart
 //
-// Two flat (no gradients) designs, both in blues:
-//   cookie: a scalloped sky-blue "cookie" (the album tile shape) on a blue tile,
-//           with the wavy progress bar running through it.
+// The flat (no gradients) icon, in blues:
 //   record: a line-art vinyl record sinking into a rising tide, with the app's
 //           coral cookie as its label.
 import 'dart:math' as math;
@@ -14,7 +12,7 @@ import 'dart:ui' as ui;
 
 const iconSize = 1024.0;
 
-enum IconDesign { cookie, record }
+enum IconDesign { record }
 
 // --- shared helpers ----------------------------------------------------------
 
@@ -55,54 +53,6 @@ ui.Paint _stroke(int color, double width) => ui.Paint()
   ..color = ui.Color(color);
 
 ui.Paint _fill(int color) => ui.Paint()..color = ui.Color(color);
-
-// --- cookie design -----------------------------------------------------------
-
-const _cookieBg = 0xFF1F5FC4;
-const _cookieFill = 0xFF8FCFFF;
-const _cookieInk = 0xFF0B2A57;
-const _cookieTrack = 0xFF5C9BE0; // the ink at about a third, mixed into the cookie
-
-const _cc = 512.0;
-const _cookieRadius = 372.0;
-const _waveFrom = 228.0;
-const _waveTo = 572.0;
-const _waveAmp = 52.0;
-const _waveLength = 150.0;
-const _lineW = 44.0;
-const _handleX = 640.0;
-const _handleW = 34.0;
-const _handleH = 168.0;
-const _trackFrom = 692.0;
-const _trackTo = 800.0;
-
-List<(double, double)> _cookieWave() => [
-      for (var x = _waveFrom; x <= _waveTo + .001; x += 4)
-        (x, _cc + _waveAmp * math.sin(2 * math.pi * (x - _waveFrom) / _waveLength)),
-    ];
-
-String _cookieSvg() => '''<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <rect width="1024" height="1024" rx="232" fill="${_hex(_cookieBg)}"/>
-  <path d="${_poly(_scallop(_cc, _cc, _cookieRadius, 9, .055), close: true)}" fill="${_hex(_cookieFill)}"/>
-  <path d="${_poly(_cookieWave())}" fill="none" stroke="${_hex(_cookieInk)}" stroke-width="$_lineW" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="${_handleX - _handleW / 2}" y="${_cc - _handleH / 2}" width="$_handleW" height="$_handleH" rx="${_handleW / 2}" fill="${_hex(_cookieInk)}"/>
-  <line x1="$_trackFrom" y1="$_cc" x2="$_trackTo" y2="$_cc" stroke="${_hex(_cookieTrack)}" stroke-width="$_lineW" stroke-linecap="round"/>
-</svg>
-''';
-
-void _paintCookie(ui.Canvas canvas) {
-  canvas.drawRect(const ui.Rect.fromLTWH(0, 0, iconSize, iconSize), _fill(_cookieBg));
-  canvas.drawPath(_path(_scallop(_cc, _cc, _cookieRadius, 9, .055), close: true), _fill(_cookieFill));
-  canvas.drawPath(_path(_cookieWave()), _stroke(_cookieInk, _lineW));
-  canvas.drawRRect(
-    ui.RRect.fromRectAndRadius(
-      const ui.Rect.fromLTWH(_handleX - _handleW / 2, _cc - _handleH / 2, _handleW, _handleH),
-      const ui.Radius.circular(_handleW / 2),
-    ),
-    _fill(_cookieInk),
-  );
-  canvas.drawLine(const ui.Offset(_trackFrom, _cc), const ui.Offset(_trackTo, _cc), _stroke(_cookieTrack, _lineW));
-}
 
 // --- record design -----------------------------------------------------------
 
@@ -290,7 +240,6 @@ void _paintRecord(ui.Canvas canvas, {required bool boat, required bool simple}) 
 // --- public ------------------------------------------------------------------
 
 String iconSvg(IconDesign design) => switch (design) {
-      IconDesign.cookie => _cookieSvg(),
       IconDesign.record => _recordSvg(),
     };
 
@@ -305,8 +254,6 @@ void paintIcon(ui.Canvas canvas, double size, IconDesign design, {bool boat = tr
     ui.RRect.fromRectAndRadius(const ui.Rect.fromLTWH(0, 0, iconSize, iconSize), const ui.Radius.circular(232)),
   );
   switch (design) {
-    case IconDesign.cookie:
-      _paintCookie(canvas);
     case IconDesign.record:
       _paintRecord(canvas, boat: boat, simple: simple);
   }

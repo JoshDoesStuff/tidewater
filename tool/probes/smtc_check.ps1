@@ -1,6 +1,6 @@
 # Reads the Windows media sessions through the system API and, for the one
 # Tidewater published, prints its title/artist/status/timeline and presses
-# Pause, Play and Next on it. Run while tool/smtc_probe_main.dart is running.
+# Pause, Play and Next on it. Run while tool/probes/smtc_probe_main.dart is running.
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
 $asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
     $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1'

@@ -1,7 +1,7 @@
 // Talks to a real server with the app's own client and prints what it finds.
 // Usage:
-//   dart run tool/server_check.dart <url> <user> <password>
-//   dart run tool/server_check.dart <url> --api-key <key>
+//   dart run tool/probes/server_check.dart <url> <user> <password>
+//   dart run tool/probes/server_check.dart <url> --api-key <key>
 //
 // Pages through the whole album list (the way the Library does), times each
 // step, and fetches one cover. Safe against a live server: read-only.

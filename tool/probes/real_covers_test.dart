@@ -2,7 +2,7 @@
 // that every resulting scheme keeps text readable (WCAG >= 4.5). Not part of
 // the normal suite (it needs the network):
 //
-//   flutter test tool/real_covers_test.dart
+//   flutter test tool/probes/real_covers_test.dart
 //
 // Defaults to the public Navidrome demo; point it at your own server with
 // TIDEWATER_URL, TIDEWATER_USER and TIDEWATER_PASS (and TIDEWATER_ALBUMS to

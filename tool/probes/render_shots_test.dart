@@ -1,7 +1,7 @@
 // Offscreen renders of the app for visual review (the real window can't be
 // captured when the desktop is locked). Not part of the normal suite:
 //
-//   flutter test tool/render_shots_test.dart
+//   flutter test tool/probes/render_shots_test.dart
 //
 // Writes PNGs to build/shots (or build/shots-light). Uses Flutter's bundled Roboto + Material
 // Icons so text and icons look like the real app.
@@ -20,8 +20,8 @@ import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/app/providers/ui_providers.dart';
 import 'package:tidewater/core/api/api_exception.dart';
 
-import '../test/support/fake_library.dart';
-import '../test/support/test_app.dart';
+import '../../test/support/fake_library.dart';
+import '../../test/support/test_app.dart';
 
 Future<void> _loadFonts() async {
   final sdk = Platform.environment['FLUTTER_ROOT'] ?? File(Platform.resolvedExecutable).parent.parent.parent.parent.path;

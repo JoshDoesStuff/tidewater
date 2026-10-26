@@ -1,7 +1,7 @@
 // Frame-timing probe. Runs the real app through the heavy scenarios and prints
 // per-phase build/raster times, then exits.
 //
-//   flutter run -d windows --profile -t tool/perf_main.dart
+//   flutter run -d windows --profile -t tool/perf/perf_main.dart
 //
 // Always measure in --profile: debug builds are several times slower and say
 // nothing about smoothness.
@@ -17,8 +17,8 @@ import 'package:tidewater/app/providers/playback_providers.dart';
 import 'package:tidewater/app/providers/ui_providers.dart';
 import 'package:window_manager/window_manager.dart';
 
-import '../test/support/fake_library.dart';
-import '../test/support/test_app.dart';
+import '../../test/support/fake_library.dart';
+import '../../test/support/test_app.dart';
 
 class _Sample {
   _Sample(this.build, this.raster, this.total);

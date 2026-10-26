@@ -1,5 +1,5 @@
 # Reads Tidewater's Windows media session and drives it from outside, like a
-# keyboard's media keys would. Run while tool/e2e_main.dart is playing.
+# keyboard's media keys would. Run while tool/probes/e2e_main.dart is playing.
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
 $asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
     $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1'

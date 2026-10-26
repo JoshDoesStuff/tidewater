@@ -1,9 +1,9 @@
 // Publishes a fake "now playing" to the Windows media overlay and prints every
 // button press it receives, for about 75 seconds. Pair it with
-// tool/smtc_check.ps1, which reads the session back through the Windows API
+// tool/probes/smtc_check.ps1, which reads the session back through the Windows API
 // and presses its buttons.
 //
-//   flutter run -d windows -t tool/smtc_probe_main.dart [--dart-define=THUMB=file|https]
+//   flutter run -d windows -t tool/probes/smtc_probe_main.dart [--dart-define=THUMB=file|https]
 //
 // THUMB=file writes a small PNG to the temp folder and gives its file:// address
 // as the cover; THUMB=https uses TW_URL's cover art URL (needs TW_URL/USER/PASS).

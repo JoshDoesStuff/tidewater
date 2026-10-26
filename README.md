@@ -48,9 +48,9 @@ flutter build windows --release
 | [CLAUDE.md](CLAUDE.md) | The design and behavior guide the app is built from |
 | [milestones.md](milestones.md) | What is done, what is simulated, what each milestone covers |
 | [docs/dev-notes.md](docs/dev-notes.md) | How to verify changes and lessons learned (animation rules, things not to redo) |
-| [docs/handoff.md](docs/handoff.md) | The original handoff note |
 | [docs/tidewater-m3e-demo.html](docs/tidewater-m3e-demo.html) | Interactive reference for the design |
 | [docs/mockups/](docs/mockups) | Static layouts, plus rough mobile mockups and a prototype |
+| [docs/archive/](docs/archive) | Old WinUI mockups and notes from an idea that was dropped |
 
 ## Credits
 
@@ -59,7 +59,7 @@ licenses in [third-party-licenses/](third-party-licenses):
 
 - UseAnimations (MIT): Library, Cast, Artists, Lists, Radio, Settings and Volume icons
 - Lucide and Lucide Animated (ISC and MIT): the Home icon
-- Google Sans Flex (SIL Open Font License): the name on the banner (the font file is kept in `tool/fonts` to regenerate it)
+- Google Sans Flex (SIL Open Font License): the name on the banner (the font file is kept in `tool/branding/fonts` to regenerate it)
 
 ## License
 
