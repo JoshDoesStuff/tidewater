@@ -53,10 +53,10 @@ Future<void> showTrackMenu(
   switch (choice) {
     case 'next':
       await player.addNext(tracks);
-      ref.read(toastProvider.notifier).show(tracks.length == 1 ? 'Playing next.' : 'Playing  songs next.');
+      ref.read(toastProvider.notifier).show(tracks.length == 1 ? 'Playing next.' : 'Playing ${tracks.length} songs next.');
     case 'queue':
       await player.addLast(tracks);
-      ref.read(toastProvider.notifier).show(tracks.length == 1 ? 'Added to the queue.' : 'Added  songs to the queue.');
+      ref.read(toastProvider.notifier).show(tracks.length == 1 ? 'Added to the queue.' : 'Added ${tracks.length} songs to the queue.');
     case 'playlist':
       await addToPlaylistFlow(context, ref, tracks);
     case 'album':

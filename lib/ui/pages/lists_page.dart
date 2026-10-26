@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/providers/library_providers.dart';
 import '../../core/models/playlist.dart';
 import '../widgets/async_states.dart';
+import '../widgets/expressive_buttons.dart';
+import '../widgets/playlist_flow.dart';
 import '../widgets/effects/letter_reveal.dart';
 import '../widgets/effects/stagger_in.dart';
 import 'page_frame.dart';
@@ -35,20 +38,35 @@ class ListsPage extends ConsumerWidget {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(24, 36, 40, 22),
             sliver: SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  LetterReveal(
-                    text: 'Playlists',
-                    style: text.displaySmall,
-                    delay: const Duration(milliseconds: 100),
-                  ),
-                  Text(
-                    subtitle,
-                    style: text.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: scheme.onSurfaceVariant,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        LetterReveal(
+                          text: 'Playlists',
+                          style: text.displaySmall,
+                          delay: const Duration(milliseconds: 100),
+                        ),
+                        Text(
+                          subtitle,
+                          style: text.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
+                  ExpressivePillButton(
+                    label: 'New playlist',
+                    icon: Icons.add_rounded,
+                    onPressed: () async {
+                      final made = await createPlaylistFlow(context, ref);
+                      if (made != null && made.id.isNotEmpty && context.mounted) context.push('/playlist/${made.id}');
+                    },
                   ),
                 ],
               ),

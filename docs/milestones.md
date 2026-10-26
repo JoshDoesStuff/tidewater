@@ -284,6 +284,11 @@ two loops that ignored it, the visualizer and the equalizer bars; both now hold 
   it was taken out because it did not look right; the index is kept for later. The searching indicator is the
   buffering squiggle from the progress bar.
 - Playlists: list, detail, create/edit, add-to-playlist from context menus, reorder.
+  **Done:** create (private by default), add songs from the right-click song menu, the "More" buttons and the queue (with
+  an "already in this playlist" question and a "don't ask again" you can change in Settings), rename, public/private
+  toggle, delete (with a confirm), remove a song, drag to reorder, "Save the queue as a playlist". Smart playlists and
+  other people's playlists are read-only, with a note. The shared song menu (Play next, Add to queue, Add to playlist,
+  Go to album/artist) is the start of the context-menu item below.
 - Radio page (placeholder). Library Genres tab.
 - Offline cache: download albums/playlists, cache management (size, clear), offline mode.
 - **Done in M8:** the playback position and queue live on the server too (`savePlayQueue` / `getPlayQueue`, every 30 s

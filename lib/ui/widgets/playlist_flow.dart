@@ -328,3 +328,65 @@ class _DuplicateDialogState extends State<_DuplicateDialog> {
     );
   }
 }
+
+/// Asks for a name and makes an empty, private playlist; returns it (null when
+/// cancelled or refused).
+Future<Playlist?> createPlaylistFlow(BuildContext context, WidgetRef ref) async {
+  final name = await showDialog<String>(context: context, builder: (_) => const _NewPlaylistDialog());
+  if (name == null || name.trim().isEmpty) return null;
+  return ref.read(playlistActionsProvider).create(name, const []);
+}
+
+class _NewPlaylistDialog extends StatefulWidget {
+  const _NewPlaylistDialog();
+
+  @override
+  State<_NewPlaylistDialog> createState() => _NewPlaylistDialogState();
+}
+
+class _NewPlaylistDialogState extends State<_NewPlaylistDialog> {
+  final _name = TextEditingController();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  void _create() => Navigator.of(context).pop(_name.text);
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return AlertDialog(
+      backgroundColor: scheme.surfaceContainerHigh,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      title: const Text('New playlist'),
+      content: SizedBox(
+        width: 360,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _name,
+              autofocus: true,
+              onSubmitted: (_) => _create(),
+              decoration: const InputDecoration(labelText: 'Playlist name', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'New playlists start private. You can make one public on its page.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        FilledButton(onPressed: _create, child: const Text('Create')),
+      ],
+    );
+  }
+}

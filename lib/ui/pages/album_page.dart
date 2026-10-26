@@ -22,6 +22,7 @@ import '../widgets/expressive_buttons.dart';
 import '../widgets/link_text.dart';
 import '../widgets/heart_button.dart';
 import '../widgets/pressable.dart';
+import '../widgets/track_menu.dart';
 import '../widgets/shapes/morph_path.dart';
 import 'page_frame.dart';
 
@@ -187,6 +188,16 @@ class _AlbumBody extends ConsumerWidget {
               filled: false,
               onPressed: () => player.playTracks(tracks, shuffle: true, index: tracks.isEmpty ? 0 : _random.nextInt(tracks.length)),
             ),
+            Builder(
+              builder: (buttonContext) => IconButton.filledTonal(
+                tooltip: 'More',
+                onPressed: () {
+                  final box = buttonContext.findRenderObject()! as RenderBox;
+                  showTrackMenu(buttonContext, ref, at: box.localToGlobal(Offset(0, box.size.height)), tracks: tracks);
+                },
+                icon: const Icon(Icons.more_horiz_rounded),
+              ),
+            ),
           ],
         ),
       ],
@@ -207,12 +218,18 @@ class _AlbumBody extends ConsumerWidget {
         ));
       }
       lastDisc = disc;
-      rows.add(_TrackRow(
-        track: t,
-        albumArtist: album.artist,
-        number: t.trackNumber ?? i + 1,
-        onPlay: () => player.playTracks(tracks, index: i),
-      ));
+      rows.add(
+        GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onSecondaryTapUp: (d) => showTrackMenu(context, ref, at: d.globalPosition, tracks: [t]),
+          child: _TrackRow(
+            track: t,
+            albumArtist: album.artist,
+            number: t.trackNumber ?? i + 1,
+            onPlay: () => player.playTracks(tracks, index: i),
+          ),
+        ),
+      );
     }
 
     return LayoutBuilder(
@@ -359,33 +376,15 @@ class _RowMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    final player = ref.read(playbackProvider.notifier);
-    return PopupMenuButton<String>(
-      tooltip: 'More',
-      icon: Icon(Icons.more_vert_rounded, size: 22, color: scheme.onSurfaceVariant),
-      color: scheme.surfaceContainerHigh,
-      surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      // Without a clip the hover highlight of the first and last item pokes out
-      // past the rounded corners.
-      clipBehavior: Clip.antiAlias,
-      elevation: 2,
-      shadowColor: Colors.black38,
-      onSelected: (v) {
-        switch (v) {
-          case 'next':
-            player.addNext([track]);
-          case 'queue':
-            player.addLast([track]);
-          case 'artist':
-            context.push('/artist/${track.artistId}');
-        }
-      },
-      itemBuilder: (context) => [
-        const PopupMenuItem(value: 'next', child: Text('Play next')),
-        const PopupMenuItem(value: 'queue', child: Text('Add to queue')),
-        if (track.artistId != null) const PopupMenuItem(value: 'artist', child: Text('Go to artist')),
-      ],
+    return Builder(
+      builder: (buttonContext) => IconButton(
+        tooltip: 'More',
+        icon: Icon(Icons.more_vert_rounded, size: 22, color: scheme.onSurfaceVariant),
+        onPressed: () {
+          final box = buttonContext.findRenderObject()! as RenderBox;
+          showTrackMenu(buttonContext, ref, at: box.localToGlobal(Offset(0, box.size.height)), tracks: [track]);
+        },
+      ),
     );
   }
 }
