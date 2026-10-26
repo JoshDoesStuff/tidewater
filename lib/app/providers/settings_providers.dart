@@ -27,7 +27,7 @@ class ReduceMotionNotifier extends Notifier<bool> {
 final reduceMotionProvider = NotifierProvider<ReduceMotionNotifier, bool>(ReduceMotionNotifier.new);
 
 /// Speed of the Now Playing title swap (old title pops out, new one pops in).
-/// A multiplier: 1 is the default pace, 2 is twice as fast.
+/// A multiplier on the automatic pace ([titlePace]): 1 is the default, 2 is twice as fast.
 class LetterSpeedNotifier extends Notifier<double> {
   static const key = 'letter_speed';
   static const min = .5;
@@ -43,6 +43,11 @@ class LetterSpeedNotifier extends Notifier<double> {
 }
 
 final letterSpeedProvider = NotifierProvider<LetterSpeedNotifier, double>(LetterSpeedNotifier.new);
+
+/// The automatic pace of the title swap: 1.3x for short titles, 1.7x for long ones
+/// (20 characters or fewer, 45 or more), in between for the rest. The Settings
+/// speed multiplies it.
+double titlePace(String title) => 1.3 + .4 * ((title.runes.length - 20) / 25).clamp(0.0, 1.0);
 
 /// Dark is the default; light is supported.
 class DarkThemeNotifier extends Notifier<bool> {

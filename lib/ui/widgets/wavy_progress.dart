@@ -71,6 +71,7 @@ class WavyScrubber extends ConsumerStatefulWidget {
     this.wavelength = 18,
     this.strokeWidth = 4,
     this.padding = 2,
+    this.flow = 1,
   });
 
   final double amplitude;
@@ -80,6 +81,9 @@ class WavyScrubber extends ConsumerStatefulWidget {
   final double wavelength;
   final double strokeWidth;
   final double padding;
+
+  /// How fast the ripples travel (1 is the demo's pace).
+  final double flow;
 
   @override
   ConsumerState<WavyScrubber> createState() => _WavyScrubberState();
@@ -228,7 +232,7 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
     source.update(playing: _playing);
     final k = 1 - math.pow(1 - .1, dt * 60).toDouble();
     _model.amplitude += (_target(source) - _model.amplitude) * k;
-    if (_playing) _model.phase += 8.1 * dt;
+    if (_playing) _model.phase += 8.1 * widget.flow * dt;
     // The sweep starts from the left edge each time the bar is empty and waiting,
     // not partway along because it ran during the retract.
     final sweeping = (_buffering || _model.sweepAlpha > 0) && _frac() < _sweepBelow;

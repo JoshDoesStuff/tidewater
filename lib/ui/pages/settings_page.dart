@@ -229,7 +229,7 @@ class _SpeedRow extends ConsumerWidget {
             ],
           ),
           Text(
-            'How fast the old title pops out and the new one pops in on Now Playing.',
+            'How fast the old title pops out and the new one pops in on Now Playing. 1× is automatic: quicker for long titles.',
             style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
           ),
           // The stock Material Slider

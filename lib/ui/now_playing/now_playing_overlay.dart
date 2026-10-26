@@ -200,7 +200,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
     // The whole track-change choreography follows the title-swap speed
     // setting. Progress maths in _slideSwap/_cover is relative, so only the
     // controller length and the swap moment scale.
-    final speed = ref.read(letterSpeedProvider);
+    final speed = ref.read(letterSpeedProvider) * titlePace(track.title);
     _trackFx.duration = Duration(milliseconds: (600 / speed).round());
     _trackFx.forward(from: 0);
     _swapTimer?.cancel();
@@ -686,7 +686,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
             // pops out as soon as the track changes, then the new one pops in.
             child: LetterSwap(
               text: ref.watch(currentTrackProvider)?.title ?? track.title,
-              speed: ref.watch(letterSpeedProvider),
+              speed: ref.watch(letterSpeedProvider) * titlePace(ref.watch(currentTrackProvider)?.title ?? track.title),
               style: text.displayMedium?.copyWith(
                 fontSize: 58,
                 fontWeight: FontWeight.w700,
@@ -723,7 +723,8 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
         const SizedBox(
           width: 580,
           height: 40,
-          child: WavyScrubber(amplitude: 4, breathe: 7, wavelength: 28, strokeWidth: 6),
+          // Calmer than the idle bar: slower ripples, a gentler swell with the bass.
+          child: WavyScrubber(amplitude: 4, breathe: 4.5, wavelength: 32, strokeWidth: 6, flow: .6),
         ),
         const SizedBox(height: 2),
         SizedBox(
