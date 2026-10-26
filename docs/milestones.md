@@ -11,7 +11,7 @@ Window chrome, theme + motion tokens, rail, header, mini player, FAB, Home and L
 past the original "static" scope to demo parity with a simulated player (recolor, morph shapes, card behaviors,
 Now Playing with lyrics/volume/idle/visualizers, Settings). Quality at wrap-up: `flutter analyze` clean, 44 tests
 passing, `flutter build windows --release` succeeds, zero console errors on launch, no frame over 33 ms in the
-profile scenarios (`tool/perf/perf_main.dart`). Working notes for future sessions: `docs/dev-notes.md`.
+profile scenarios (`tool/perf/perf_main.dart`). Working notes for future sessions: `dev-notes.md` (this folder).
 
 ## Milestone 4 wrap-up (done)
 

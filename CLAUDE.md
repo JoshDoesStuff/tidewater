@@ -121,4 +121,4 @@ flutter build windows --release
 Requires Flutter SDK, Visual Studio 2022 with the "Desktop development with C++" workload.
 
 ## Before you start
-Read milestones.md (status, what is simulated, what each milestone must cover) and docs/dev-notes.md (how to verify, animation rules learned the hard way, things not to redo).
+Read docs/milestones.md (status, what is simulated, what each milestone must cover) and docs/dev-notes.md (how to verify, animation rules learned the hard way, things not to redo).

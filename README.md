@@ -46,7 +46,7 @@ flutter build windows --release
 | File | What's in it |
 |---|---|
 | [CLAUDE.md](CLAUDE.md) | The design and behavior guide the app is built from |
-| [milestones.md](milestones.md) | What is done, what is simulated, what each milestone covers |
+| [docs/milestones.md](docs/milestones.md) | What is done, what is simulated, what each milestone covers |
 | [docs/dev-notes.md](docs/dev-notes.md) | How to verify changes and lessons learned (animation rules, things not to redo) |
 | [docs/tidewater-m3e-demo.html](docs/tidewater-m3e-demo.html) | Interactive reference for the design |
 | [docs/mockups/](docs/mockups) | Static layouts, plus rough mobile mockups and a prototype |

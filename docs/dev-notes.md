@@ -1,6 +1,6 @@
 # Dev notes (for future Claude sessions)
 
-Hard-won lessons from building milestone 1 + demo parity. Read this and `milestones.md` before touching UI or
+Hard-won lessons from building milestone 1 + demo parity. Read this and `milestones.md` (same folder) before touching UI or
 animation. `CLAUDE.md` is still the source of truth for design; this file is *how to work here* and *what not to redo*.
 
 ## How the user works with me
@@ -88,7 +88,7 @@ The desktop is often locked, so screen capture of the real app returns the lock 
 - Don't reintroduce `Opacity`/per-letter `Text` for animated titles, `AnimatedScale` on lyric text, or `Cubic`.
 - Don't use debug-mode feel to judge smoothness, or centroid-only metrics (they hid shimmer and curve noise).
 - Don't assume a milestone's UI is "done" because it renders: check the demo list in `CLAUDE.md` and the stand-in
-  table in `milestones.md`.
+  table in `milestones.md` (same folder).
 - Don't add the removed badge shapes next to "Good evening" / "Library" (CLAUDE.md #16).
 - Don't leave probe/perf processes running (`Get-Process tidewater,flutter,dart | Stop-Process`).
 
@@ -136,7 +136,7 @@ The desktop is often locked, so screen capture of the real app returns the lock 
   `tool/probes/e2e_main.dart` + `tool/probes/e2e_check.ps1` (the whole app), `tool/probes/session_probe_main.dart` (secure storage),
   `tool/probes/server_check.dart` (the API). Run app-style tools with `Start-Process flutter.bat ... -RedirectStandardOutput`
   and `WaitForExit`; `flutter run` needs `--no-pub` and the cargo PATH.
-- **libmpv/media_kit quirks** are listed in the M3 wrap-up in `milestones.md`; the ones that bite: its `completed` fires
+- **libmpv/media_kit quirks** are listed in the M3 wrap-up in `milestones.md` (same folder); the ones that bite: its `completed` fires
   per file, its `playing` blinks at every track change, positions can be negative, and it skips a failing file itself.
   Never trust one event to mean one thing; check what is actually happening (is audio advancing?).
 - **Windows media overlay**: cover must be an `https://` URL; `file://` is silently ignored. The overlay counts time by
