@@ -111,9 +111,7 @@ Build in milestones; stop after each so I can run it.
 10. **Casting:** Chromecast and DLNA devices, a cast picker, remote playback control (the Windows app is complete after this).
 11. **Website:** a GitHub Pages one-pager once every Windows build is ready.
 12. **Linux:** desktop target, MPRIS media controls, AppImage and Flatpak.
-13. **Android:** phone layouts, media notification, background playback.
-14. **macOS:** desktop target, system media center, signed and notarized dmg.
-15. **iOS:** phone layouts from Android, background audio, TestFlight and App Store.
+13. **Android:** phone layouts, media notification, background playback. Only if good audio is feasible (see M13); macOS and iOS are dropped.
 After each milestone: `flutter analyze` clean, `flutter test` passing, summarize in ≤ 5 lines. Don't refactor unrelated files. Ask before adding packages not listed. Small, reviewable commits.
 
 ## Commands

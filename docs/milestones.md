@@ -32,9 +32,7 @@ The original plan was shell → server → playback → color/shapes → Now Pla
 |---|-----------|--------|
 | 11 | Website (after all the Windows builds are ready) | ⬜ |
 | 12 | Linux | ⬜ |
-| 13 | Android | ⬜ |
-| 14 | macOS | ⬜ (somewhere in the future…) |
-| 15 | iOS | ⬜ (somewhere in the future…) |
+| 13 | Android (only if EQ, exclusive USB audio and bit-perfect DAP output prove feasible) | ⬜ |
 
 ## Next up: M7
 
@@ -347,6 +345,12 @@ Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Wi
 
 ## M13 — Android
 
+> **Gate: only if the audio is good enough.** An Android player lives or dies on audio quality, and plenty of good
+> Android apps exist. Before building the phone UI, prove the hard parts are reachable from Flutter: a real
+> equalizer, exclusive USB audio output and bit-perfect playback for DAPs (HiBY and similar). If those turn out to be
+> a pain, drop this milestone (it may also come back later). macOS and iOS are dropped: both platforms already have
+> plenty of good apps.
+
 - Responsive shell for phones (see `docs/mockups/tidewater-mobile-prototype.html`): bottom navigation bar in portrait,
   side rail in landscape, mini player above it, queue as a bottom sheet, touch replacements for hover, Ctrl+click and
   keyboard shortcuts (long-press, swipe, back gesture).
@@ -355,32 +359,6 @@ Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Wi
   (`audio_service` + `audio_session`; ask before adding), and `media_kit` Android libs.
 - Permissions (notifications), battery use of the visualizer and idle mode, soft keyboard on login, edge-to-edge
   insets. Build and test with the Android SDK from Windows; publish as an APK on Releases, Play Store later.
-
-## M14 — macOS
-
-> **Somewhere in the future… when I can afford a Mac and a developer license to make one app, lol.** Until then this
-> is a plan only: macOS and iOS apps can only be built, signed and tested on Apple hardware. CI (GitHub macOS runners)
-> can build them, but testing the UI needs a Mac or a tester who has one.
-
-- Flutter's macOS target. Replace the Windows pieces: native traffic-light window controls or a custom title bar,
-  media keys and Now Playing through the system media center, `media_kit` macOS libs.
-- Menu bar (App, File, View, Window), standard shortcuts (Cmd instead of Ctrl), trackpad gestures, Retina assets and a
-  proper `.icns` icon.
-- Needs a Mac and Xcode to build; code signing and notarization with an Apple developer account to distribute outside
-  the App Store. Packaging as a `.dmg`.
-
-## M15 — iOS
-
-> **Somewhere in the future… when I can afford a Mac and a developer license to make one app, lol.** Same story as
-> M14: it needs a Mac, Xcode and the paid Apple developer program ($99 a year).
-
-- Reuses the phone layouts from M13; adds Cupertino-friendly touches only where Material feels wrong (back swipe,
-  safe areas, haptics).
-- Background audio capability and lock-screen controls, `media_kit` iOS libs, App Transport Security for servers on
-  plain HTTP or self-signed certificates.
-- Needs a Mac, Xcode and an Apple developer account (a free one installs for 7 days at a time); TestFlight for
-  testing and the App Store for release, with App Review's rules on streaming clients in mind.
-
 
 ---
 
