@@ -81,11 +81,9 @@ class _BrandTitleState extends State<BrandTitle>
             height: 1.1,
             color: color,
             letterSpacing: -widget.size * .01,
-            fontVariations: [
-              const FontVariation('ROND', 100),
-              FontVariation('wght', 640 + 260 * swell),
-              FontVariation('wdth', 100 + 38 * swell),
-            ],
+            // The Windows engine ignores variable axes, so the swell is carried by
+            // weight alone (see docs/dev-notes.md).
+            fontWeight: FontWeight.values[(5 + (3 * swell).round()).clamp(0, 8)],
           ),
         ),
       ),

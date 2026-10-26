@@ -166,11 +166,9 @@ class _ScenePainter extends CustomPainter {
     // The far water, then the sun's glitter on it.
     _layer(canvas, size, _waves[0], t);
     _glitter(canvas, size, sun, r, t);
+    // The boat sits in the second swell, so that wave passes in front of its hull.
+    _boat(canvas, size, size.width * boatX, t);
     _layer(canvas, size, _waves[1], t);
-
-    // The boat rides the second layer, behind the nearer water.
-    final bx = size.width * boatX;
-    _boat(canvas, size, bx, t);
 
     _layer(canvas, size, _waves[2], t);
     _layer(canvas, size, _waves[3], t);
@@ -275,7 +273,7 @@ class _ScenePainter extends CustomPainter {
     );
     final s = math.min(size.width, size.height) / 900 * 1.25;
     canvas.save();
-    canvas.translate(x, y + 4 * s);
+    canvas.translate(x, y + 2 * s);
     canvas.rotate(slope * .8 + .04 * math.sin(t * .9));
     canvas.scale(s);
 

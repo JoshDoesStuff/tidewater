@@ -12,6 +12,8 @@ import '../widgets/effects/ripple.dart';
 import '../widgets/animated_glyphs.dart';
 import '../widgets/expressive_buttons.dart';
 import '../widgets/pressable.dart';
+import '../widgets/shapes/morph_path.dart';
+import '../widgets/shapes/morph_shape.dart';
 import 'widgets/brand_title.dart';
 import 'widgets/login_scene.dart';
 
@@ -156,6 +158,26 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              Center(
+                                child: SizedBox.square(
+                                  dimension: 84,
+                                  child: MorphShape(
+                                    params: ShapeKind.cookie.params,
+                                    morph: 1,
+                                    spin: Motion.reduced(context) ? 0 : .5,
+                                    shadowAlpha: .2,
+                                    child: ColoredBox(
+                                      color: AppTheme.seed,
+                                      child: Icon(
+                                        Icons.waves_rounded,
+                                        size: 40,
+                                        color: scheme.surface,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
                               Semantics(
                                 header: true,
                                 child: Center(child: const BrandTitle()),

@@ -177,3 +177,6 @@ are flat, no gradients). Regenerate `assets/branding/tidewater_<design>.svg` / `
 `windows/runner/resources/app_icon.ico` (from `windowsDesign` in the render test) with
 `flutter test tool/branding/render_app_icon_test.dart`, then rebuild the Windows app (Windows caches icons; a new .ico may
 need the exe renamed or the icon cache cleared before the taskbar updates).
+
+- The Windows engine ignores `fontVariations` (checked with `tool/probes/font_probe.dart`): only `fontWeight` changes the
+  Google Sans Flex look. Width and roundness need static font instances to show up.
