@@ -9,6 +9,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/services.dart' show FontLoader;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'app_icon.dart';
@@ -59,11 +60,50 @@ Uint8List _ico(Map<int, Uint8List> frames) {
   return out.toBytes();
 }
 
+/// Bundled Roboto so the banner text renders the same everywhere (the SDK ships it
+/// for the test engine).
+Future<void> _loadRoboto() async {
+  final sdk = Platform.environment['FLUTTER_ROOT'] ?? File(Platform.resolvedExecutable).parent.parent.parent.parent.path;
+  final roboto = FontLoader('Roboto');
+  for (final name in ['roboto-regular.ttf', 'roboto-bold.ttf']) {
+    final bytes = await File('$sdk/bin/cache/artifacts/material_fonts/$name').readAsBytes();
+    roboto.addFont(Future.value(ByteData.sublistView(bytes)));
+  }
+  await roboto.load();
+}
+
+/// The GitHub social preview image: 1280 x 640, the icon on the left and the
+/// name beside it.
+Future<Uint8List> _banner() async {
+  const w = 1280, h = 640;
+  final recorder = ui.PictureRecorder();
+  final canvas = ui.Canvas(recorder);
+  canvas.drawRect(ui.Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()), ui.Paint()..color = const ui.Color(0xFF0B2A57));
+  canvas.save();
+  canvas.translate(96, 80);
+  paintIcon(canvas, 480, IconDesign.record);
+  canvas.restore();
+  ui.Paragraph text(String s, double size, ui.FontWeight weight, int color, double width) {
+    final b = ui.ParagraphBuilder(ui.ParagraphStyle(fontFamily: 'Roboto', fontSize: size, fontWeight: weight))
+      ..pushStyle(ui.TextStyle(color: ui.Color(color), fontFamily: 'Roboto', fontSize: size, fontWeight: weight, letterSpacing: size > 60 ? -2 : 0))
+      ..addText(s);
+    return b.build()..layout(ui.ParagraphConstraints(width: width));
+  }
+
+  canvas.drawParagraph(text('Tidewater', 132, ui.FontWeight.bold, 0xFFF4FBFF, 620), const ui.Offset(640, 224));
+  canvas.drawParagraph(text('A Navidrome client for Windows', 38, ui.FontWeight.normal, 0xFF8FCFFF, 640), const ui.Offset(644, 380));
+  final image = await recorder.endRecording().toImage(w, h);
+  final data = await image.toByteData(format: ui.ImageByteFormat.png);
+  image.dispose();
+  return data!.buffer.asUint8List();
+}
+
 void main() {
   testWidgets('render the app icon files', (tester) async {
     await tester.runAsync(() async {
       Directory('assets/branding').createSync(recursive: true);
       for (final f in Directory('assets/branding').listSync().whereType<File>()) {
+        if (f.uri.pathSegments.last.startsWith('tidewater_banner')) continue;
         f.deleteSync(); // drop files from older designs
       }
       for (final design in IconDesign.values) {
@@ -76,5 +116,13 @@ void main() {
       File('windows/runner/resources/app_icon.ico').writeAsBytesSync(_ico(frames));
     });
     expect(File('windows/runner/resources/app_icon.ico').lengthSync(), greaterThan(1000));
+  });
+
+  testWidgets('render the GitHub banner', (tester) async {
+    await tester.runAsync(() async {
+      await _loadRoboto();
+      File('assets/branding/tidewater_banner_1280x640.png').writeAsBytesSync(await _banner());
+    });
+    expect(File('assets/branding/tidewater_banner_1280x640.png').lengthSync(), greaterThan(1000));
   });
 }
