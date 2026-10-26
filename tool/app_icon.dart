@@ -150,7 +150,7 @@ double _surfaceAt(double x) => _waterLevel + _tideAmp * math.sin(2 * math.pi * x
   (double, double) mastTop,
   (double, double) mastBase,
 }) _boat() {
-  final by = _surfaceAt(_boatX) - 20;
+  final by = _surfaceAt(_boatX) - 12;
   (double, double) p(double dx, double dy) => (_boatX + dx * _boatScale, by + dy * _boatScale);
   return (
     hull: [p(-52, -16), p(52, -16), p(46, -2), p(36, 10), p(-36, 10), p(-46, -2)],
@@ -209,8 +209,9 @@ String _recordSvg() {
     <path d="M${arcPoint(_shineFrom)} A$_shineR $_shineR 0 0 1 ${arcPoint(_shineTo)}" fill="none" stroke="${_hex(_recShine)}" stroke-width="16" stroke-linecap="round"/>
     <path d="${_poly(_scallop(_rx, _ry, _labelR, 6, .085), close: true)}" fill="${_hex(_recLabel)}"/>
     <circle cx="$_rx" cy="$_ry" r="18" fill="${_hex(_recHole)}"/>
+    ${_boatSvg()}
     <path d="${_poly(_waterShape(), close: true)}" fill="${_hex(_recWater)}"/>
-    ${_boatSvg()}<path d="${_poly(_tide(drop: 96, amp: 22, phase: _tidePhase + 1.6))}" fill="none" stroke="${_hex(_recWaterLine)}" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${_poly(_tide(drop: 96, amp: 22, phase: _tidePhase + 1.6))}" fill="none" stroke="${_hex(_recWaterLine)}" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="${_poly(_tide())}" fill="none" stroke="${_hex(_recSurface)}" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 </svg>
@@ -237,8 +238,8 @@ void _paintRecord(ui.Canvas canvas) {
   );
   canvas.drawPath(_path(_scallop(_rx, _ry, _labelR, 6, .085), close: true), _fill(_recLabel));
   canvas.drawCircle(center, 18, _fill(_recHole));
+  _paintBoat(canvas); // before the water, so the water covers the hull's bottom
   canvas.drawPath(_path(_waterShape(), close: true), _fill(_recWater));
-  _paintBoat(canvas);
   canvas.drawPath(_path(_tide(drop: 96, amp: 22, phase: _tidePhase + 1.6)), _stroke(_recWaterLine, 12));
   canvas.drawPath(_path(_tide()), _stroke(_recSurface, 20));
 }
