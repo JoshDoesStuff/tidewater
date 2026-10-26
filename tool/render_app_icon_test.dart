@@ -60,11 +60,11 @@ Uint8List _ico(Map<int, Uint8List> frames) {
   return out.toBytes();
 }
 
-/// Roboto Flex (variable, OFL; see third-party-licenses/roboto-flex-OFL.txt) for the
-/// banner's name: its weight and width axes give the Material 3 Expressive look.
-Future<void> _loadRobotoFlex() async {
-  final bytes = await File('tool/fonts/RobotoFlex.ttf').readAsBytes();
-  final flex = FontLoader('RobotoFlex')..addFont(Future.value(ByteData.sublistView(bytes)));
+/// Google Sans Flex (variable, OFL; see third-party-licenses/google-sans-flex-OFL.txt)
+/// for the banner's name: the Material 3 Expressive typeface, with a roundness axis.
+Future<void> _loadGoogleSansFlex() async {
+  final bytes = await File('tool/fonts/GoogleSansFlex.ttf').readAsBytes();
+  final flex = FontLoader('GoogleSansFlex')..addFont(Future.value(ByteData.sublistView(bytes)));
   await flex.load();
 }
 
@@ -76,30 +76,20 @@ Future<Uint8List> _banner() async {
   final canvas = ui.Canvas(recorder);
   paintBanner(canvas, w.toDouble(), h.toDouble());
   // Heavy and wide, with a large optical size: the expressive headline look.
-  // Roboto Flex has no roundness axis, so the corners are rounded by also stroking
-  // the letters with a round join in the same color (it fattens them a little, so
-  // the weight is eased off to match).
-  ui.Paragraph name(double size, {bool outline = false}) {
-    final paint = ui.Paint()..color = const ui.Color(0xFFF4FBFF);
-    if (outline) {
-      paint
-        ..style = ui.PaintingStyle.stroke
-        ..strokeJoin = ui.StrokeJoin.round
-        ..strokeCap = ui.StrokeCap.round
-        ..strokeWidth = size * .034;
-    }
+  ui.Paragraph name(double size) {
     final style = ui.TextStyle(
-      foreground: paint,
-      fontFamily: 'RobotoFlex',
+      color: const ui.Color(0xFFF4FBFF),
+      fontFamily: 'GoogleSansFlex',
       fontSize: size,
-      letterSpacing: size * .02,
+      letterSpacing: -size * .01,
       fontVariations: [
-        const ui.FontVariation('wght', 660),
-        const ui.FontVariation('wdth', 100),
+        const ui.FontVariation('ROND', 100), // fully rounded
+        const ui.FontVariation('wght', 800),
+        const ui.FontVariation('wdth', 105),
         const ui.FontVariation('opsz', 144),
       ],
     );
-    final b = ui.ParagraphBuilder(ui.ParagraphStyle(fontFamily: 'RobotoFlex', fontSize: size))
+    final b = ui.ParagraphBuilder(ui.ParagraphStyle(fontFamily: 'GoogleSansFlex', fontSize: size))
       ..pushStyle(style)
       ..addText('Tidewater');
     return b.build()..layout(const ui.ParagraphConstraints(width: 1000));
@@ -108,13 +98,11 @@ Future<Uint8List> _banner() async {
   // As big as fits between the record and the boat.
   var size = 240.0;
   var title = name(size);
-  while (title.longestLine > 590 && size > 60) {
+  while (title.longestLine > 600 && size > 60) {
     size -= 4;
     title = name(size);
   }
-  final at = ui.Offset((w - title.longestLine) / 2 + 50, 215 - title.height / 2);
-  canvas.drawParagraph(name(size, outline: true), at);
-  canvas.drawParagraph(title, at);
+  canvas.drawParagraph(title, ui.Offset((w - title.longestLine) / 2 + 50, 215 - title.height / 2));
   final image = await recorder.endRecording().toImage(w, h);
   final data = await image.toByteData(format: ui.ImageByteFormat.png);
   image.dispose();
@@ -143,7 +131,7 @@ void main() {
 
   testWidgets('render the GitHub banner', (tester) async {
     await tester.runAsync(() async {
-      await _loadRobotoFlex();
+      await _loadGoogleSansFlex();
       File('assets/branding/tidewater_banner_1280x640.png').writeAsBytesSync(await _banner());
     });
     expect(File('assets/branding/tidewater_banner_1280x640.png').lengthSync(), greaterThan(1000));

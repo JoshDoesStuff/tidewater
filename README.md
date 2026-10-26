@@ -63,7 +63,7 @@ licenses in [third-party-licenses/](third-party-licenses):
 
 - UseAnimations (MIT): Library, Cast, Artists, Lists, Radio, Settings and Volume icons
 - Lucide and Lucide Animated (ISC and MIT): the Home icon
-- Roboto Flex (SIL Open Font License): the name on the banner (the font file is kept in `tool/fonts` to regenerate it)
+- Google Sans Flex (SIL Open Font License): the name on the banner (the font file is kept in `tool/fonts` to regenerate it)
 
 ## License
 
