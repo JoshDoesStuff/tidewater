@@ -20,7 +20,7 @@ The original plan was shell → server → playback → color/shapes → Now Pla
 | 3 | Playback: real engine, queue, SMTC, scrobbling, album and artist pages | ✅ (gaps listed in M3) |
 | 4 | Dynamic color + shapes | ✅ |
 | 5 | Animated icons (sidebar, buttons, transport) | ✅ |
-| 6 | Now Playing polish | 🟡 (real audio, lyrics and queue; the visualizer is still simulated) |
+| 6 | Now Playing polish | ✅ (the visualizer is still simulated until M8) |
 | 7 | Motion polish pass | 🟡 (most of the demo list is in; QA pass outstanding) |
 | 8 | Search, playlists, offline cache, settings, real visualizer | ⬜ (Settings partly ✅) |
 | 9 | Settings overhaul | ⬜ |
@@ -36,9 +36,9 @@ The original plan was shell → server → playback → color/shapes → Now Pla
 | 14 | macOS | ⬜ (somewhere in the future…) |
 | 15 | iOS | ⬜ (somewhere in the future…) |
 
-## Next up: M6
+## Next up: M7
 
-M6 is done apart from one look by eye at the hero flight (open and the new snappier flight back) at different mini player widths and with the compact rail.
+The motion polish pass: walk the demo's behaviors list side by side and tick each off (see the M7 section).
 
 ## Stand-ins and gaps today
 
@@ -229,7 +229,7 @@ Every icon that moves does so with its own one-shot animation; rest state is the
 - **Left alone on purpose:** the play arrows on cards and rows (they already pop in), the heart buttons (they have the
   like pop and burst), login-page field icons (decorative).
 
-## M6 — Now Playing polish (in progress)
+## M6 — Now Playing polish (done)
 
 Built: overlay with hero flight, lyrics list, lyrics toggle, volume slider, idle mode, visualizer styles + picker,
 heart burst, track-change choreography, queue panel (docked or popup), `V`/`L`/`Esc`/`Space`/`N`/`P`/`Q`/`M`.
