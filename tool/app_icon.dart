@@ -136,8 +136,9 @@ List<(double, double)> _tide({double drop = 0, double amp = _tideAmp, double pha
     ];
 
 // A tiny boat riding the surface on the right: a shallow hull, one mast and a
-// pennant flag (after a quick sketch, cleaned up).
-const _boatX = 944.0;
+// pennant flag (after a quick sketch, cleaned up). It tilts to follow the wave
+// under it and sits a little into the water.
+const _boatX = 898.0;
 const _boatScale = .8;
 const _sail = 0xFFF4FBFF;
 const _hull = 0xFFFF7E5F;
@@ -150,8 +151,18 @@ double _surfaceAt(double x) => _waterLevel + _tideAmp * math.sin(2 * math.pi * x
   (double, double) mastTop,
   (double, double) mastBase,
 }) _boat() {
-  final by = _surfaceAt(_boatX) - 12;
-  (double, double) p(double dx, double dy) => (_boatX + dx * _boatScale, by + dy * _boatScale);
+  final slope = _tideAmp * 2 * math.pi / _tideLength * math.cos(2 * math.pi * _boatX / _tideLength + _tidePhase);
+  final tilt = math.atan(slope).clamp(-.17, .17) - .1; // the wave's slope plus a lean for character
+  final by = _surfaceAt(_boatX) - 2; // hull bottom, level with the surface line
+  (double, double) p(double dx, double dy) {
+    final lx = dx * _boatScale;
+    final ly = (dy - 10) * _boatScale; // measured up from the hull's bottom
+    return (
+      _boatX + math.cos(tilt) * lx - math.sin(tilt) * ly,
+      by + math.sin(tilt) * lx + math.cos(tilt) * ly,
+    );
+  }
+
   return (
     hull: [p(-52, -16), p(52, -16), p(46, -2), p(36, 10), p(-36, 10), p(-46, -2)],
     flag: [p(3, -96), p(3, -64), p(46, -80)],
