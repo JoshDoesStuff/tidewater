@@ -120,8 +120,11 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
     return p > duration ? duration : p;
   }
 
+  /// A radio station has no length: the bar is full and cannot be moved.
+  bool _live = false;
+
   double _realFraction() =>
-      _duration.inMicroseconds == 0 ? 0 : _estimate(_duration).inMicroseconds / _duration.inMicroseconds;
+      _live ? 1 : _duration.inMicroseconds == 0 ? 0 : _estimate(_duration).inMicroseconds / _duration.inMicroseconds;
 
   /// The fraction to draw: the playhead, or the transition value while the
   /// wave is retracting or squiggling back, or the dragged position.
@@ -295,6 +298,7 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
   }
 
   void _seekTo(double f, {bool animate = false}) {
+    if (_live) return;
     // A click away from the playhead: the wave squiggles there, not jumps.
     if (animate && (f - _model.lastFrac).abs() > .004) _beginTransition(seek: true);
     // Show the new spot at once; the engine's report catches up a moment later.
@@ -307,6 +311,7 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
   /// A drag moved to [dx]: seek right away (live scrubbing), or just show it
   /// and wait for the drop, so one seek is requested instead of dozens.
   void _scrub(double dx) {
+    if (_live) return;
     final f = _fractionAt(dx);
     if (ref.read(liveScrubProvider)) {
       _seekTo(f);
@@ -343,6 +348,7 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final duration = ref.watch(currentTrackProvider.select((t) => t?.duration)) ?? Duration.zero;
+    _live = ref.watch(currentTrackProvider.select((t) => t?.isRadio ?? false));
     final trackId = ref.watch(currentTrackIdProvider);
     final position = ref.watch(positionProvider);
     final playing = ref.watch(playbackProvider.select((s) => s.playing));

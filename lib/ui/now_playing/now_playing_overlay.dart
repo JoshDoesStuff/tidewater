@@ -715,7 +715,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
             children: [
               if (track.qualityLabel != null) _Tag(label: track.qualityLabel!),
               if (!lyrics.isEmpty) _Tag(label: lyrics.synced ? 'Synced lyrics' : 'Lyrics'),
-              _HeartChip(key: _heartKey, liked: liked, onTap: _toggleLike),
+              if (!track.isRadio) _HeartChip(key: _heartKey, liked: liked, onTap: _toggleLike),
             ],
           ),
         ),
@@ -741,7 +741,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(formatDuration(p), style: style),
-                  Text('-${formatDuration(duration - p)}', style: style),
+                  Text(track.isRadio ? 'LIVE' : '-${formatDuration(duration - p)}', style: style),
                 ],
               );
             },
@@ -805,6 +805,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
     final text = Theme.of(context).textTheme;
     final position = ref.watch(positionProvider);
     final duration = (_shown ?? ref.watch(currentTrackProvider))?.duration ?? Duration.zero;
+    final live = (_shown ?? ref.watch(currentTrackProvider))?.isRadio ?? false;
     final style = text.bodySmall?.copyWith(fontSize: 13, fontWeight: FontWeight.w500, color: scheme.onSurfaceVariant);
     return Positioned(
       left: 0,
@@ -839,7 +840,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
                 top: 0,
                 child: ValueListenableBuilder<Duration>(
                   valueListenable: position,
-                  builder: (context, p, _) => Text('-${formatDuration(duration - p)}', style: style),
+                  builder: (context, p, _) => Text(live ? 'LIVE' : '-${formatDuration(duration - p)}', style: style),
                 ),
               ),
             ],

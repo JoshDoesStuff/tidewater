@@ -41,7 +41,7 @@ The original plan was shell → server → playback → color/shapes → Now Pla
 
 Search, playlists, the list cache, offline, the real visualizer and the sidebar menu toggle (the menu toggle is in).
 
-Done so far: search, list cache, playlists, server-kept queue and position, refresh/scan, context menus on songs and on album/artist/playlist cards, multi-select (Ctrl/Shift+click, selection bar, Esc), drag and drop (songs, albums, artists and playlists onto the mini player or a playlist card), Ctrl+A, removing several songs from a playlist or the queue at once, themed toasts. Home's Continue listening card only shows progress (read-only wavy bar), opens Now Playing, and slides in smoothly once a queue exists. The "wrapping up" screen shows only when saving is slow; Settings can make it always show (held at least 0.7 s).
+Done so far: search, list cache, playlists, server-kept queue and position, refresh/scan, context menus on songs and on album/artist/playlist cards, multi-select (Ctrl/Shift+click, selection bar, Esc), drag and drop (songs, albums, artists and playlists onto the mini player or a playlist card), Ctrl+A, removing several songs from a playlist or the queue at once, themed toasts, a Genres tab with genre pages, and a Radio page (the server's internet radio stations, played as live streams; adding, editing and removing needs an admin account). Home's Continue listening card only shows progress (read-only wavy bar), opens Now Playing, and slides in smoothly once a queue exists. The "wrapping up" screen shows only when saving is slow; Settings can make it always show (held at least 0.7 s).
 
 ## Stand-ins and gaps today
 
@@ -53,8 +53,6 @@ Each is a known, deliberate stand-in. Replace them as the milestones land.
 | `SimulatedEngine` is still the engine in tests, previews and the perf tools (the app itself uses libmpv) | `core/playback/simulated_engine.dart` | stays (test double) |
 | No-op controls: sidebar menu button (hidden for now), header search field | various | M8 (menu button is the sidebar toggle) |
 | Cast button (hidden until casting exists) | header, Now Playing | M10 |
-| Library has no Genres tab (Songs has its own sort and cards/list view; the genre filter is a popup with search, Ctrl+click for several) | `library_page.dart` | M8 |
-| Radio is a placeholder page (Artists, Liked and Lists are real; playlists open a playlist page) | `placeholder_page.dart` | M8 |
 | The quality tag shows the file's own format from the server, not the engine's decoded format | `now_playing_overlay.dart` | M8 (with transcoding) |
 | Lists (albums, songs, artists, playlists, liked) are fetched on every launch, not cached | providers | M8 |
 

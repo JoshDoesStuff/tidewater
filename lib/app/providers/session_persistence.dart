@@ -173,6 +173,7 @@ final sessionPersistenceProvider = Provider<void>((ref) {
   /// True when the server holds this exact queue, song and (within a second or
   /// two) position, so there is nothing new to send.
   bool upToDate() {
+    if (ref.read(playbackProvider).track?.isRadio ?? false) return true; // nothing of a station is saved
     if (serverHolds != true || !ref.read(syncPositionProvider)) return false;
     final s = ref.read(playbackProvider);
     final sent = pushedIds;
@@ -199,6 +200,8 @@ final sessionPersistenceProvider = Provider<void>((ref) {
   Future<void> persist() {
     return saving ??= () async {
       try {
+        // A station is not kept: the queue and place from before it stay saved.
+        if (ref.read(playbackProvider).track?.isRadio ?? false) return;
         if (ref.read(sessionProvider) == null) return;
         if (ref.read(syncPositionProvider) && await pushServer()) return;
         writeLocal();

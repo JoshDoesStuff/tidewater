@@ -19,6 +19,7 @@ final scrobbleServiceProvider = Provider<void>((ref) {
   var disposed = false;
 
   Future<void> send(ScrobbleEvent e) async {
+    if (e.track.isRadio) return; // not a song on the server
     if (!ref.read(scrobbleEnabledProvider) || ref.read(sessionProvider) == null) return;
     try {
       await ref.read(apiProvider).scrobble(e.track.id, submission: e.submission, time: e.startedAt);

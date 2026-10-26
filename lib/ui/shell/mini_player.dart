@@ -140,6 +140,7 @@ class _MiniPlayerBody extends ConsumerWidget {
                     ),
                   ],
                   const SizedBox(width: 4),
+                  if (!track.isRadio)
                   HeartButton(
                     liked: ref.watch(likedProvider.select((l) => l.contains(track.id))),
                     onTap: () => ref.read(likedProvider.notifier).toggle(track),

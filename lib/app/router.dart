@@ -11,8 +11,8 @@ import '../ui/pages/artists_page.dart';
 import '../ui/pages/liked_page.dart';
 import '../ui/pages/lists_page.dart';
 import '../ui/pages/login_page.dart';
-import '../ui/pages/placeholder_page.dart';
 import '../ui/pages/playlist_page.dart';
+import '../ui/pages/radio_page.dart';
 import '../ui/pages/settings_page.dart';
 import '../ui/shell/app_shell.dart';
 import 'destinations.dart';
@@ -80,8 +80,8 @@ Widget _pageFor(Destination d) => switch (d) {
       Destination.artists => const ArtistsPage(),
       Destination.liked => const LikedPage(),
       Destination.lists => const ListsPage(),
+      Destination.radio => const RadioPage(),
       Destination.settings => const SettingsPage(),
-      _ => PlaceholderPage(destination: d),
     };
 
 /// Page enter: fade plus a 14 px rise. The outgoing page fades out so the two

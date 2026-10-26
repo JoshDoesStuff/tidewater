@@ -90,7 +90,7 @@ class MediaKitBackend implements AudioBackend {
   static Duration _clamp(Duration p) => p < Duration.zero ? Duration.zero : p;
 
   mk.Media _media(Track t, {Duration start = Duration.zero}) => mk.Media(
-        resolve(t.id).toString(),
+        t.streamUrl ?? resolve(t.id).toString(),
         extras: {'id': t.id},
         start: start > Duration.zero ? start : null,
       );

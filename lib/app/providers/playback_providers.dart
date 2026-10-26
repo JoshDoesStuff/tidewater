@@ -8,6 +8,7 @@ import '../../core/api/api_exception.dart';
 import '../../core/models/album.dart';
 import '../../core/models/artist.dart';
 import '../../core/models/playlist.dart';
+import '../../core/models/radio_station.dart';
 import '../../core/models/track.dart';
 import '../../core/playback/playback_engine.dart';
 import '../../core/playback/saved_session.dart';
@@ -75,6 +76,9 @@ class PlaybackController extends Notifier<PlaybackState> {
 
   /// All of an artist's albums, in the server's order.
   Future<void> playArtist(Artist artist, {bool shuffle = false}) => _load(() => artistTracks(artist), shuffle: shuffle);
+
+  /// Plays an internet radio station (it replaces the queue).
+  Future<void> playStation(RadioStation station) => _load(() async => [station.asTrack]);
 
   /// Songs of one genre (the first 500 the server gives).
   Future<void> playGenre(String genre, {bool shuffle = false}) =>
@@ -233,6 +237,7 @@ class LikedNotifier extends Notifier<Set<String>> {
   /// Hearts or un-hearts right away and tells the server; if that fails the
   /// heart goes back and a message says so.
   Future<void> toggle(Track track) async {
+    if (track.isRadio) return;
     final was = state.contains(track.id);
     state = was ? ({...state}..remove(track.id)) : {...state, track.id};
     try {

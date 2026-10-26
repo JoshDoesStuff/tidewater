@@ -20,6 +20,7 @@ class Track {
     this.samplingRate,
     this.bitDepth,
     this.starred = false,
+    this.streamUrl,
   });
 
   factory Track.fromJson(Map<String, dynamic> j, {Album? fallbackAlbum}) => Track(
@@ -81,6 +82,10 @@ class Track {
   final int? samplingRate;
   final int? bitDepth;
   final bool starred;
+
+  /// Set for internet radio: the stream to play, instead of a song on the server.
+  final String? streamUrl;
+  bool get isRadio => streamUrl != null;
 
   /// "FLAC · 24-bit / 96 kHz" style tag, or null when the server says nothing.
   String? get qualityLabel {

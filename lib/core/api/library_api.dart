@@ -5,6 +5,7 @@ import '../models/album.dart';
 import '../models/artist.dart';
 import '../models/genre.dart';
 import '../models/playlist.dart';
+import '../models/radio_station.dart';
 import '../models/search_results.dart';
 import '../models/server_play_queue.dart';
 import '../models/track.dart';
@@ -73,6 +74,13 @@ abstract class LibraryApi {
     int? toYear,
     String? genre,
   });
+
+  Future<List<RadioStation>> getRadioStations();
+
+  /// Adds, changes or removes a station (the server only lets admin accounts).
+  Future<void> createRadioStation({required String name, required String streamUrl, String? homepageUrl});
+  Future<void> updateRadioStation(String id, {required String name, required String streamUrl, String? homepageUrl});
+  Future<void> deleteRadioStation(String id);
 
   /// Every genre, with its album and song counts.
   Future<List<Genre>> getGenres();

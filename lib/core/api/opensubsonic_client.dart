@@ -14,6 +14,7 @@ import '../models/artist.dart';
 import '../models/genre.dart';
 import '../models/json_util.dart';
 import '../models/playlist.dart';
+import '../models/radio_station.dart';
 import '../models/search_results.dart';
 import '../models/server_play_queue.dart';
 import '../models/track.dart';
@@ -258,6 +259,28 @@ class OpenSubsonicClient implements LibraryApi {
     });
     final list = body['albumList2'];
     return [for (final a in asObjects(list is Map ? list['album'] : null)) Album.fromJson(a)];
+  }
+
+  @override
+  Future<List<RadioStation>> getRadioStations() async {
+    final body = await _call('getInternetRadioStations');
+    final list = body['internetRadioStations'];
+    return [for (final s in asObjects(list is Map ? list['internetRadioStation'] : null)) RadioStation.fromJson(s)];
+  }
+
+  @override
+  Future<void> createRadioStation({required String name, required String streamUrl, String? homepageUrl}) async {
+    await _call('createInternetRadioStation', {'name': name, 'streamUrl': streamUrl, 'homepageUrl': homepageUrl});
+  }
+
+  @override
+  Future<void> updateRadioStation(String id, {required String name, required String streamUrl, String? homepageUrl}) async {
+    await _call('updateInternetRadioStation', {'id': id, 'name': name, 'streamUrl': streamUrl, 'homepageUrl': homepageUrl});
+  }
+
+  @override
+  Future<void> deleteRadioStation(String id) async {
+    await _call('deleteInternetRadioStation', {'id': id});
   }
 
   @override

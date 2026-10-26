@@ -7,6 +7,7 @@ import 'package:tidewater/core/lyrics/lyrics.dart';
 import 'package:tidewater/core/models/album.dart';
 import 'package:tidewater/core/models/artist.dart';
 import 'package:tidewater/core/models/genre.dart';
+import 'package:tidewater/core/models/radio_station.dart';
 import 'package:tidewater/core/models/playlist.dart';
 import 'package:tidewater/core/models/search_results.dart';
 import 'package:tidewater/core/models/server_play_queue.dart';
@@ -125,6 +126,39 @@ class FakeLibraryApi implements LibraryApi {
           extensions: {'apiKeyAuthentication', 'songLyrics'},
         ),
       );
+
+  /// The radio stations the server keeps.
+  final stations = <RadioStation>[
+    const RadioStation(id: 'rs-1', name: 'Harbour FM', streamUrl: 'http://radio.example/harbour', homepageUrl: 'http://harbour.example'),
+    const RadioStation(id: 'rs-2', name: 'Night Signal', streamUrl: 'http://radio.example/night'),
+  ];
+
+  /// When set, adding, changing and removing stations throws this (a non-admin account).
+  ApiException? failRadioEditWith;
+
+  @override
+  Future<List<RadioStation>> getRadioStations() async => _ok('getRadioStations', () => [...stations]);
+
+  @override
+  Future<void> createRadioStation({required String name, required String streamUrl, String? homepageUrl}) async =>
+      _ok('createRadioStation', () {
+        if (failRadioEditWith != null) throw failRadioEditWith!;
+        stations.add(RadioStation(id: 'rs-${stations.length + 10}', name: name, streamUrl: streamUrl, homepageUrl: homepageUrl));
+      });
+
+  @override
+  Future<void> updateRadioStation(String id, {required String name, required String streamUrl, String? homepageUrl}) async =>
+      _ok('updateRadioStation', () {
+        if (failRadioEditWith != null) throw failRadioEditWith!;
+        final at = stations.indexWhere((s) => s.id == id);
+        stations[at] = RadioStation(id: id, name: name, streamUrl: streamUrl, homepageUrl: homepageUrl);
+      });
+
+  @override
+  Future<void> deleteRadioStation(String id) async => _ok('deleteRadioStation', () {
+        if (failRadioEditWith != null) throw failRadioEditWith!;
+        stations.removeWhere((s) => s.id == id);
+      });
 
   @override
   Future<List<Genre>> getGenres() async => _ok('getGenres', () {
