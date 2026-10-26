@@ -14,7 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'app_icon.dart';
 
 /// The design the Windows build uses.
-const windowsDesign = IconDesign.cookie;
+const windowsDesign = IconDesign.record;
 
 Future<Uint8List> _png(int size, IconDesign design) async {
   final recorder = ui.PictureRecorder();
