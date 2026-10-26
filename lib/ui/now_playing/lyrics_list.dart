@@ -80,7 +80,7 @@ class _LyricsListState extends ConsumerState<LyricsList> with SingleTickerProvid
   List<_LineAnim> _anims = const [];
   double _pad = 0;
   Object? _sheetKey;
-  final _fit = FitScale();
+  final _fit = FitScale(tolerance: .03);
   int _active = 0;
   bool _reduced = false;
   ValueNotifier<Duration>? _position;

@@ -209,6 +209,7 @@ class _GlyphRunState extends State<GlyphRun> {
           emSize: effective.fontSize ?? 14,
           state: widget.state,
           repaint: widget.repaint,
+          devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
         ),
       ),
     );
@@ -223,8 +224,11 @@ class GlyphRunLeaf extends LeafRenderObjectWidget {
     required this.emSize,
     required this.state,
     required this.repaint,
+    required this.devicePixelRatio,
   });
 
+  /// The screen's pixel ratio (the sheet may be baked finer to match a scale above it).
+  final double devicePixelRatio;
   final GlyphSheet sheet;
   final Color tint;
   final double emSize;
@@ -233,7 +237,14 @@ class GlyphRunLeaf extends LeafRenderObjectWidget {
 
   @override
   RenderGlyphRun createRenderObject(BuildContext context) =>
-      RenderGlyphRun(sheet: sheet, tint: tint, emSize: emSize, state: state, repaint: repaint);
+      RenderGlyphRun(
+        sheet: sheet,
+        tint: tint,
+        emSize: emSize,
+        state: state,
+        repaint: repaint,
+        devicePixelRatio: devicePixelRatio,
+      );
 
   @override
   void updateRenderObject(BuildContext context, RenderGlyphRun renderObject) {
@@ -242,7 +253,8 @@ class GlyphRunLeaf extends LeafRenderObjectWidget {
       ..tint = tint
       ..emSize = emSize
       ..state = state
-      ..repaint = repaint;
+      ..repaint = repaint
+      ..devicePixelRatio = devicePixelRatio;
   }
 }
 
@@ -253,13 +265,23 @@ class RenderGlyphRun extends RenderBox {
     required double emSize,
     required LetterState Function(int i) state,
     required Listenable? repaint,
+    required double devicePixelRatio,
   })  : _sheet = sheet,
+        _devicePixelRatio = devicePixelRatio,
         _tint = tint,
         _emSize = emSize,
         _state = state,
         _repaint = repaint;
 
   GlyphSheet _sheet;
+  double _devicePixelRatio;
+
+  set devicePixelRatio(double v) {
+    if (v == _devicePixelRatio) return;
+    _devicePixelRatio = v;
+    markNeedsPaint();
+  }
+
   Color _tint;
   double _emSize;
   LetterState Function(int i) _state;
@@ -335,9 +357,6 @@ class RenderGlyphRun extends RenderBox {
     size = constraints.constrain(_sheet.size);
   }
 
-  /// Rounds a global coordinate to the device pixel grid.
-  double _snap(double v) => (v * _sheet.dpr).round() / _sheet.dpr;
-
   @override
   void paint(PaintingContext context, Offset offset) {
     final sheet = _sheet;
@@ -345,11 +364,13 @@ class RenderGlyphRun extends RenderBox {
     if (atlas == null) return;
     final dpr = sheet.dpr;
 
-    // Pixel-align each glyph's resting position, but only when nothing between
-    // here and the screen scales or rotates (otherwise there is no grid to hit).
+    // Pixel-align each glyph's resting position on the screen's pixel grid. That
+    // works through any uniform scale above this (the player canvas fitted to
+    // the window), but not through a rotation or a stretch.
     final m = getTransformTo(null);
-    final unscaled = (m.entry(0, 0) - 1).abs() < 1e-4 &&
-        (m.entry(1, 1) - 1).abs() < 1e-4 &&
+    final k = m.entry(0, 0);
+    final unscaled = k > 0 &&
+        (m.entry(1, 1) - k).abs() < 1e-4 * k &&
         m.entry(0, 1).abs() < 1e-6 &&
         m.entry(1, 0).abs() < 1e-6;
     final originX = m.entry(0, 3);
@@ -372,10 +393,14 @@ class RenderGlyphRun extends RenderBox {
       var snapY = 0.0;
       if (unscaled) {
         // Align the sprite's top-left (box minus its padding) to device pixels.
-        final imageX = originX + g.box.left - sheet.pad;
-        final imageY = originY + g.box.top - sheet.pad;
-        snapX = _snap(imageX) - imageX;
-        snapY = _snap(imageY) - imageY;
+        // Global, in logical pixels; the device pixel is 1 / devicePixelRatio of it.
+        final imageX = originX + k * (g.box.left - sheet.pad);
+        final imageY = originY + k * (g.box.top - sheet.pad);
+        final deviceX = imageX * _devicePixelRatio;
+        final deviceY = imageY * _devicePixelRatio;
+        // The correction is in this object's own units: global / k.
+        snapX = (deviceX.round() - deviceX) / (_devicePixelRatio * k);
+        snapY = (deviceY.round() - deviceY) / (_devicePixelRatio * k);
       }
 
       // CSS: rotate about the letter box's center, then translate.
@@ -418,19 +443,23 @@ class RenderGlyphRun extends RenderBox {
 /// (a window dragged from a 200 % laptop panel to a 100 % monitor), so
 /// textures are baked at pixel ratio times this.
 class FitScale {
+  FitScale({this.tolerance = .005});
+
+  /// How far the scale may drift (as a fraction) before textures are baked again.
+  final double tolerance;
+
   double value = 1;
 
   /// Re-reads the scale for [context]; true when it moved enough that textures
-  /// should be baked again. Upscaling is followed promptly, a shrink only when
-  /// the texture is much bigger than needed, so ordinary animation doesn't
-  /// rebake.
+  /// should be baked again.
   bool measure(BuildContext context) {
     final box = context.findRenderObject();
     if (box is! RenderBox || !box.attached || !box.hasSize) return false;
     final s = box.getTransformTo(null).getMaxScaleOnAxis();
     if (!s.isFinite || s <= 0) return false;
-    if (s > value * 1.1 || s < value / 1.6) {
-      value = (s * 8).ceil() / 8;
+    if ((s - value).abs() > value * tolerance) {
+      // Exactly the scale on screen, so the texture lands 1:1 on device pixels.
+      value = s;
       return true;
     }
     return false;

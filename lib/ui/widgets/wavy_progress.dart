@@ -216,7 +216,9 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
     if (_buffering || _model.sweepAlpha > 0) _model.sweep = (_model.sweep + dt / 1.15) % 1;
     _model.sweepAlpha = _buffering ? 1 : math.max(0, _model.sweepAlpha - dt / .18);
 
-    if (_model.animating) {
+    // The squiggle back up waits until the buffering squiggle has faded, so the
+    // two never share the bar.
+    if (_model.animating && (_buffering || _model.sweepAlpha <= 0)) {
       final target = _buffering ? 0.0 : _realFraction();
       if (_model.animDur < 0) {
         final dist = (target - _model.animFrom).abs();
@@ -448,12 +450,14 @@ class WavyPainter extends CustomPainter {
     final x1 = size.width - padding;
     final cy = size.height / 2;
     final frac = fraction();
-    // Once the wave has run back to empty, a buffering bar is the sweeping squiggle.
-    if (buffering() && frac < .01) {
-      _paintBuffering(canvas, x0, x1, cy);
+    // Once the wave has run back to empty, a buffering bar is the sweeping
+    // squiggle (which then fades before the wave grows back).
+    if ((buffering() || sweepAlpha() > 0) && frac < .01) {
+      _paintBuffering(canvas, x0, x1, cy, buffering() ? 1 : sweepAlpha());
       return;
     }
-    final xp = x0 + (x1 - x0) * frac;
+    // The playhead stops at the end dot rather than running past it.
+    final xp = math.min(x0 + (x1 - x0) * frac, x1 - 3);
     final amp = amplitude();
     final ph = phase();
     final h = Curves.easeOut.transform(handle().clamp(0.0, 1.0));
@@ -485,7 +489,7 @@ class WavyPainter extends CustomPainter {
     final into = Curves.easeIn.transform(dotShrink().clamp(0.0, 1.0));
     final scale = h * (1 - into);
     if (scale > .02) {
-      final hx = math.min(xp, x1 - 3);
+      final hx = xp;
       final hw = (dragging() ? 2.5 : 4.0) * scale;
       final hh = math.min(13.0, size.height * .32) * scale;
       canvas.drawRRect(
@@ -505,17 +509,15 @@ class WavyPainter extends CustomPainter {
         Paint()..color = track,
       );
     }
-    canvas.drawCircle(Offset(x1 - 3, cy), 2, Paint()..color = played);
-    // The buffering squiggle fades out over the growing wave instead of
-    // vanishing mid-bar when the wait ends.
-    final fade = sweepAlpha();
-    if (fade > 0) _paintSweep(canvas, x0, x1, cy, fade);
+    // The dot goes with the handle that shrinks into it.
+    final dotAlpha = 1 - into;
+    if (dotAlpha > 0) canvas.drawCircle(Offset(x1 - 3, cy), 2, Paint()..color = played.withValues(alpha: dotAlpha));
   }
 
   /// Waiting for sound: a flat track with a squiggle that sweeps along it. The
   /// bar under the squiggle is the squiggle (no gray shows behind it), and
   /// there is no handle.
-  void _paintBuffering(Canvas canvas, double x0, double x1, double cy) {
+  void _paintBuffering(Canvas canvas, double x0, double x1, double cy, double alpha) {
     final s = sweep();
     final span = math.max(60.0, (x1 - x0) * .38);
     final centerX = x0 - span / 2 + (x1 - x0 + span) * s;
@@ -531,7 +533,7 @@ class WavyPainter extends CustomPainter {
     if (x1 > right) {
       canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTRB(right, cy - strokeWidth / 2, x1, cy + strokeWidth / 2), r), bar);
     }
-    _paintSweep(canvas, x0, x1, cy, 1);
+    _paintSweep(canvas, x0, x1, cy, alpha);
   }
 
   /// The sweeping squiggle itself, at [alpha] strength.
