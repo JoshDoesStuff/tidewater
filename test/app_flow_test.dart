@@ -482,15 +482,15 @@ void main() {
   });
 
   group('remembered choices', () {
-    testWidgets('the album sort, song sort and tab are saved to preferences', (tester) async {
+    testWidgets('the album sort and song sort are saved; the Library tab always opens on Albums', (tester) async {
       final container = await pumpApp(tester);
       container.read(librarySortProvider.notifier).set(LibrarySort.year);
       container.read(librarySongSortProvider.notifier).set(SongSort.album);
-      container.read(libraryTabProvider.notifier).set(LibraryTab.songs);
       final prefs = container.read(sharedPreferencesProvider);
       expect(prefs.getString('library_sort'), 'year');
       expect(prefs.getString('library_song_sort'), 'album');
-      expect(prefs.getString('library_tab'), 'songs');
+      container.read(libraryTabProvider.notifier).set(LibraryTab.songs);
+      expect(prefs.getString('library_tab'), isNull, reason: 'the tab is not saved between launches (M8)');
       await disposeApp(tester);
     });
 

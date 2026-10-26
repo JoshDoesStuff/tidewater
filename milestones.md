@@ -259,6 +259,7 @@ Most of the demo list is in. Remaining and review items:
 - Playlists: list, detail, create/edit, add-to-playlist from context menus, reorder.
 - Radio page (placeholder). Library Genres tab.
 - Offline cache: download albums/playlists, cache management (size, clear), offline mode.
+- Remember the last Library tab between launches (it always opens on Albums for now, because the Songs and Playlists  tabs load slowly); do it together with the list cache below, when every tab opens instantly.
 - Remember whether each track has lyrics (disk cache keyed by track id, with the lyrics themselves), so the lyrics  button and the centered controls settle the moment a track starts: skipping to a track known to have lyrics grows  the button in at once, and one known to have none folds it away in step with the skip, not after the lookup.
 - Cache the list data on disk (songs, albums, artists, playlists, liked songs; Home rows) so the Library and the Songs
   tab open instantly and refresh in the background. Today only covers, extracted colors and the saved queue persist.

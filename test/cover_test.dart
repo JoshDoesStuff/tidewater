@@ -117,6 +117,19 @@ void main() {
       expect((await seedFromPixels(_flat(0xff101010))).muted, isTrue);
     });
 
+    test('a small splash of color on a mostly black cover is quiet, not full strength', () async {
+      // 97 % black, 3 % red (think pixel-art heart on a black cover).
+      final seed = await seedFromPixels([..._flat(0xff000000, 970), ..._flat(0xffd32f2f, 30)]);
+      expect(seed.muted, isTrue);
+      final hue = _hue(seed.argb);
+      expect(hue < 30 || hue > 330, isTrue, reason: 'it keeps the splash hue: $hue');
+    });
+
+    test('a warm gray cover (a photo of the moon) does not turn the app orange', () async {
+      final seed = await seedFromPixels([..._flat(0xff8f8a82, 600), ..._flat(0xffd9d4cc, 300), ..._flat(0xff1a1816, 100)]);
+      expect(seed.muted, isTrue);
+    });
+
     test('transparent pixels are ignored', () async {
       final seed = await seedFromPixels([..._flat(0x00ff0000, 900), ..._flat(0xff2e7d32, 100)]);
       expect(seed.muted, isFalse);

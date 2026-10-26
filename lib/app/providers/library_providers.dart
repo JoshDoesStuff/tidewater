@@ -109,10 +109,11 @@ enum LibraryTab {
   final String label;
 }
 
-final libraryTabProvider =
-    NotifierProvider<PickNotifier<LibraryTab>, LibraryTab>(
-      () => SavedPickNotifier('library_tab', LibraryTab.values, LibraryTab.albums),
-    );
+/// Which Library tab is showing. Always opens on Albums; it is remembered while
+/// the app runs (remembering it between launches waits for the list cache, M8).
+final libraryTabProvider = NotifierProvider<PickNotifier<LibraryTab>, LibraryTab>(
+  () => PickNotifier<LibraryTab>(LibraryTab.albums),
+);
 
 final librarySortProvider =
     NotifierProvider<PickNotifier<LibrarySort>, LibrarySort>(

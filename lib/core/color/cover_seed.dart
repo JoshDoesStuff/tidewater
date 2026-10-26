@@ -29,6 +29,23 @@ class CoverSeed {
   String toString() => 'CoverSeed(${argb.toRadixString(16)}${muted ? ', muted' : ''})';
 }
 
+/// How much of the picture has to be colorful before the scheme is allowed to
+/// be.
+const colorfulThreshold = .06;
+
+/// The fraction of pixels (by quantized population) that are properly colorful
+/// and neither near-black nor near-white.
+double _colorfulShare(Map<int, int> colorToCount) {
+  var total = 0;
+  var colorful = 0;
+  colorToCount.forEach((argb, count) {
+    total += count;
+    final hct = Hct.fromInt(argb);
+    if (hct.chroma >= 16 && hct.tone >= 15 && hct.tone <= 92) colorful += count;
+  });
+  return total == 0 ? 0 : colorful / total;
+}
+
 /// Picks the seed from decoded cover pixels (ARGB ints): Celebi quantizing,
 /// then Material's `Score`, which prefers populous, colorful, not-too-dark
 /// colors. Art with no color falls back to its most common color, muted.
@@ -38,7 +55,14 @@ Future<CoverSeed> seedFromPixels(List<int> argbPixels) async {
   final result = await QuantizerCelebi().quantize(opaque, 128);
   const none = 0;
   final ranked = Score.score(result.colorToCount, desired: 1, fallbackColorARGB: none);
-  if (ranked.isNotEmpty && ranked.first != none) return CoverSeed(ranked.first);
+  if (ranked.isNotEmpty && ranked.first != none) {
+    // A cover that is mostly black, white or gray with one small splash of
+    // color (a pixel-art heart on black) shouldn't paint the whole app that
+    // splash's full-strength color. When little of the picture is colorful the
+    // scheme keeps the hue but goes quiet (the neutral variant), like the
+    // gray case below.
+    return CoverSeed(ranked.first, muted: _colorfulShare(result.colorToCount) < colorfulThreshold);
+  }
   var best = 0xff808080;
   var bestCount = -1;
   result.colorToCount.forEach((color, count) {

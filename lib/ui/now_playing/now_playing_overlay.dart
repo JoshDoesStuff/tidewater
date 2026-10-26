@@ -415,7 +415,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
                     squareBase: false,
                     shadow: false,
                     spin: reduced ? 0 : -.18,
-                    child: ColoredBox(color: scheme.tertiaryContainer.withValues(alpha: .55)),
+                    child: ColoredBox(color: scheme.primaryContainer.withValues(alpha: .5)),
                   ),
                 ),
               ),
