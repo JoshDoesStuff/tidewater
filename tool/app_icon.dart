@@ -118,7 +118,7 @@ const _recLabel = 0xFFFF7E5F;
 const _recHole = 0xFF123A72;
 
 const _rx = 512.0;
-const _ry = 436.0;
+const _ry = 480.0;
 const _outer = 250.0;
 const _grooves = [(180.0, 14.0), (132.0, 10.0)];
 const _labelR = 88.0;
@@ -134,8 +134,9 @@ List<(double, double)> _tide({double drop = 0, double amp = _tideAmp, double pha
         (x, _waterLevel + drop + amp * math.sin(2 * math.pi * x / _tideLength + phase)),
     ];
 
-// A tiny sailboat riding the surface on the right.
-const _boatX = 826.0;
+// A tiny boat riding the surface on the right: a shallow hull, one mast and a
+// pennant flag (after a quick sketch, cleaned up).
+const _boatX = 830.0;
 const _sail = 0xFFF4FBFF;
 const _hull = 0xFFFF7E5F;
 
@@ -143,19 +144,17 @@ double _surfaceAt(double x) => _waterLevel + _tideAmp * math.sin(2 * math.pi * x
 
 ({
   List<(double, double)> hull,
-  List<(double, double)> main,
-  List<(double, double)> jib,
+  List<(double, double)> flag,
   (double, double) mastTop,
   (double, double) mastBase,
 }) _boat() {
-  final by = _surfaceAt(_boatX) - 10;
+  final by = _surfaceAt(_boatX) - 16;
   (double, double) p(double dx, double dy) => (_boatX + dx, by + dy);
   return (
-    hull: [p(-64, -20), p(64, -20), p(44, 10), p(-44, 10)],
-    main: [p(8, -150), p(8, -36), p(74, -36)],
-    jib: [p(-8, -124), p(-8, -36), p(-54, -36)],
-    mastTop: p(0, -156),
-    mastBase: p(0, -20),
+    hull: [p(-52, -16), p(52, -16), p(46, -2), p(36, 10), p(-36, 10), p(-46, -2)],
+    flag: [p(3, -96), p(3, -64), p(46, -80)],
+    mastTop: p(0, -98),
+    mastBase: p(0, -16),
   );
 }
 
@@ -163,9 +162,8 @@ String _boatSvg() {
   final b = _boat();
   String shape(List<(double, double)> pts, int color) =>
       '<path d="${_poly(pts, close: true)}" fill="${_hex(color)}" stroke="${_hex(color)}" stroke-width="6" stroke-linejoin="round"/>';
-  return '''${shape(b.main, _sail)}
-    ${shape(b.jib, _sail)}
-    <line x1="${b.mastTop.$1}" y1="${b.mastTop.$2.toStringAsFixed(1)}" x2="${b.mastBase.$1}" y2="${b.mastBase.$2.toStringAsFixed(1)}" stroke="${_hex(_sail)}" stroke-width="8" stroke-linecap="round"/>
+  return '''<line x1="${b.mastTop.$1}" y1="${b.mastTop.$2.toStringAsFixed(1)}" x2="${b.mastBase.$1}" y2="${b.mastBase.$2.toStringAsFixed(1)}" stroke="${_hex(_sail)}" stroke-width="8" stroke-linecap="round"/>
+    ${shape(b.flag, _sail)}
     ${shape(b.hull, _hull)}
 ''';
 }
@@ -177,13 +175,12 @@ void _paintBoat(ui.Canvas canvas) {
     canvas.drawPath(_path(pts, close: true), _stroke(color, 6));
   }
 
-  shape(b.main, _sail);
-  shape(b.jib, _sail);
   canvas.drawLine(
     ui.Offset(b.mastTop.$1, b.mastTop.$2),
     ui.Offset(b.mastBase.$1, b.mastBase.$2),
     _stroke(_sail, 8),
   );
+  shape(b.flag, _sail);
   shape(b.hull, _hull);
 }
 
