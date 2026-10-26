@@ -2,18 +2,14 @@
   <img src="assets/branding/tidewater_banner_1280x640.png" alt="Tidewater" width="100%">
 </p>
 
-<!--
-  ╔══════════════════════════════════════════════════════════════════════╗
-  ║  YOUR SPACE: write whatever you want here (what it is, why you made   ║
-  ║  it, a screenshot, a short story). Delete this comment when you do.   ║
-  ╚══════════════════════════════════════════════════════════════════════╝
--->
 
 ## About
 
-_Write your own intro here._
+Heya! made this as a way to practice using AI to write code, and because I couldn't find a music player for windows that I liked. Claude helped with most of the code for this, and I will admit, as a computer science student, it feels a little weird. After this project is done, I plan to mostly only use AI to assist in development of applications and programs, with mostly human written code. As for this repo, itll be maintainted with security fixes, occasional new features, and eventual addition of a proper website and cross platform support. Anyway, enough of me yapping. Enjoy Tidewater! Its the music client I always wanted. 
 
-<!-- END OF YOUR SPACE -->
+-J
+
+
 
 ## What it is
 
@@ -67,4 +63,5 @@ licenses in [third-party-licenses/](third-party-licenses):
 
 ## License
 
-_Add the license you want for the project here._
+Tidewater is released under the [MIT License](LICENSE). The icon artwork and fonts it uses carry their own
+licenses, listed under Credits above.

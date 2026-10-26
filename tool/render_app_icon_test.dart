@@ -6,6 +6,7 @@
 // the Windows icon (windows/runner/resources/app_icon.ico, PNG frames from 16 to
 // 256 px) from [windowsDesign].
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -76,22 +77,30 @@ Future<Uint8List> _banner() async {
   final canvas = ui.Canvas(recorder);
   paintBanner(canvas, w.toDouble(), h.toDouble());
   // Heavy and wide, with a large optical size: the expressive headline look.
+  // Material 3 Expressive leans on variable fonts: weight and width change from
+  // letter to letter for emphasis instead of one flat setting. Here they roll like a
+  // swell across the word: heavy and wide on the crests (T, w, r), lighter and
+  // narrower in the troughs.
+  const word = 'Tidewater';
   ui.Paragraph name(double size) {
-    final style = ui.TextStyle(
-      color: const ui.Color(0xFFF4FBFF),
-      fontFamily: 'GoogleSansFlex',
-      fontSize: size,
-      letterSpacing: -size * .01,
-      fontVariations: [
-        const ui.FontVariation('ROND', 100), // fully rounded
-        const ui.FontVariation('wght', 800),
-        const ui.FontVariation('wdth', 105),
-        const ui.FontVariation('opsz', 144),
-      ],
-    );
-    final b = ui.ParagraphBuilder(ui.ParagraphStyle(fontFamily: 'GoogleSansFlex', fontSize: size))
-      ..pushStyle(style)
-      ..addText('Tidewater');
+    final b = ui.ParagraphBuilder(ui.ParagraphStyle(fontFamily: 'GoogleSansFlex', fontSize: size));
+    for (var i = 0; i < word.length; i++) {
+      final swell = math.cos(2 * math.pi * i / 4.0); // 1 on a crest, -1 in a trough
+      b.pushStyle(ui.TextStyle(
+        color: const ui.Color(0xFFF4FBFF),
+        fontFamily: 'GoogleSansFlex',
+        fontSize: size,
+        letterSpacing: -size * .01,
+        fontVariations: [
+          const ui.FontVariation('ROND', 100),
+          ui.FontVariation('wght', 720 + 200 * swell),
+          ui.FontVariation('wdth', 102 + 12 * swell),
+          const ui.FontVariation('opsz', 144),
+        ],
+      ));
+      b.addText(word[i]);
+      b.pop();
+    }
     return b.build()..layout(const ui.ParagraphConstraints(width: 1000));
   }
 
