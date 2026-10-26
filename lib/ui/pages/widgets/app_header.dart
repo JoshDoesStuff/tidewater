@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/providers/playback_providers.dart';
 import '../../../app/providers/session_providers.dart';
@@ -7,6 +8,7 @@ import '../../../app/providers/ui_providers.dart';
 import '../../../app/theme/motion.dart';
 import '../../../core/api/server_config.dart';
 import '../../widgets/animated_glyphs.dart';
+import '../../widgets/expressive_buttons.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/shapes/morph_path.dart';
 import '../../widgets/shapes/morph_shape.dart';
@@ -19,7 +21,7 @@ class AppHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Row(
       children: [
-        Expanded(child: SearchPill()),
+        Expanded(child: SearchPill(launcher: true)),
         SizedBox(width: 12),
         _Avatar(),
       ],
@@ -27,39 +29,67 @@ class AppHeader extends StatelessWidget {
   }
 }
 
-/// 56 px search field that widens from 640 to 720 px on focus.
+/// 56 px search field that widens from 640 to 720 px on focus. On Home it is a
+/// launcher ([launcher]): tapping it opens the Search page. On the Search page it
+/// is the real field.
 class SearchPill extends StatefulWidget {
-  const SearchPill({super.key});
+  const SearchPill({
+    super.key,
+    this.launcher = false,
+    this.controller,
+    this.focusNode,
+    this.autofocus = false,
+    this.onChanged,
+    this.onSubmitted,
+    this.onClear,
+  });
+
+  final bool launcher;
+  final TextEditingController? controller;
+  final FocusNode? focusNode;
+  final bool autofocus;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final VoidCallback? onClear;
 
   @override
   State<SearchPill> createState() => _SearchPillState();
 }
 
 class _SearchPillState extends State<SearchPill> {
-  final _focus = FocusNode();
+  late final FocusNode _focus = widget.focusNode ?? FocusNode();
   bool _hovered = false;
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
 
   @override
   void initState() {
     super.initState();
-    _focus.addListener(() => setState(() {}));
+    _focus.addListener(_refresh);
+    widget.controller?.addListener(_refresh);
   }
 
   @override
   void dispose() {
-    _focus.dispose();
+    _focus.removeListener(_refresh);
+    widget.controller?.removeListener(_refresh);
+    if (widget.focusNode == null) _focus.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final hasText = widget.controller?.text.isNotEmpty ?? false;
     return LayoutBuilder(
       builder: (context, box) {
         final target = _focus.hasFocus ? 720.0 : 640.0;
         return Align(
           alignment: Alignment.centerLeft,
           child: MouseRegion(
+            cursor: widget.launcher ? SystemMouseCursors.click : MouseCursor.defer,
             onEnter: (_) => setState(() => _hovered = true),
             onExit: (_) => setState(() => _hovered = false),
             child: AnimatedContainer(
@@ -67,28 +97,47 @@ class _SearchPillState extends State<SearchPill> {
               curve: Motion.curve(context, Motion.spring),
               width: target.clamp(0.0, box.maxWidth),
               height: 56,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.only(left: 24, right: 12),
               decoration: BoxDecoration(
                 color: _hovered || _focus.hasFocus ? scheme.surfaceContainerHighest : scheme.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(28),
               ),
               child: Row(
                 children: [
-                  AnimatedGlyph(kind: GlyphKind.search, size: 24, color: scheme.onSurfaceVariant, hovered: _hovered || _focus.hasFocus),
+                  AnimatedGlyph(
+                    kind: GlyphKind.search,
+                    size: 24,
+                    color: scheme.onSurfaceVariant,
+                    hovered: _hovered || _focus.hasFocus,
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: TextField(
                       focusNode: _focus,
+                      controller: widget.controller,
+                      autofocus: widget.autofocus,
+                      readOnly: widget.launcher,
+                      onTap: widget.launcher ? () => context.go('/search') : null,
+                      onChanged: widget.onChanged,
+                      onSubmitted: widget.onSubmitted,
+                      textInputAction: TextInputAction.search,
                       style: Theme.of(context).textTheme.bodyLarge,
                       decoration: InputDecoration.collapsed(
                         hintText: 'Search your library',
-                        hintStyle: Theme.of(context)
-                            .textTheme
-                            .bodyLarge
-                            ?.copyWith(color: scheme.onSurfaceVariant),
+                        hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
                       ),
                     ),
                   ),
+                  if (hasText && widget.onClear != null)
+                    ExpressiveIconButton(
+                      icon: Icons.close_rounded,
+                      glyph: glyphFor(GlyphKind.close, size: 22),
+                      size: 40,
+                      iconSize: 20,
+                      tone: ButtonTone.ghost,
+                      tooltip: 'Clear',
+                      onPressed: widget.onClear,
+                    ),
                 ],
               ),
             ),

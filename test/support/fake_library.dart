@@ -175,7 +175,14 @@ class FakeLibraryApi implements LibraryApi {
 
   @override
   Future<SearchResults> search(String query, {int artistCount = 5, int albumCount = 10, int songCount = 20}) async =>
-      _ok('search', () => const SearchResults());
+      _ok('search', () {
+        final q = query.toLowerCase();
+        return SearchResults(
+          artists: [for (final a in fakeArtists) if (a.name.toLowerCase().contains(q)) a],
+          albums: [for (final a in fakeAlbums) if (a.title.toLowerCase().contains(q)) a],
+          tracks: [for (final t in fakeTracks) if (t.title.toLowerCase().contains(q)) t],
+        );
+      });
 
   @override
   Future<List<Track>> getSongs({int offset = 0, int size = 500}) async =>

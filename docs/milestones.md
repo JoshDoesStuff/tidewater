@@ -278,6 +278,8 @@ two loops that ignored it, the visualizer and the equalizer bars; both now hold 
 ## M8 — Search, playlists, offline, real visualizer
 
 - Search page (`search3`): artists/albums/songs, recent searches, keyboard-first; wire the header search pill.
+  **Done:** `/search` with the debounced results, recent searches (remembered, removable), `Ctrl+K` or `/` from anywhere,
+  `Enter` remembers, `Esc` clears then leaves, back arrow in the rail; the Home pill opens it.
 - Playlists: list, detail, create/edit, add-to-playlist from context menus, reorder.
 - Radio page (placeholder). Library Genres tab.
 - Offline cache: download albums/playlists, cache management (size, clear), offline mode.

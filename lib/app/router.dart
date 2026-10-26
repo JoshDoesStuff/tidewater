@@ -5,6 +5,7 @@ import '../ui/pages/album_page.dart';
 import '../ui/pages/artist_page.dart';
 import '../ui/pages/home_page.dart';
 import '../ui/pages/library_page.dart';
+import '../ui/pages/search_page.dart';
 import '../ui/pages/artists_page.dart';
 import '../ui/pages/liked_page.dart';
 import '../ui/pages/lists_page.dart';
@@ -42,6 +43,10 @@ GoRouter createRouter({required bool Function() signedIn, Listenable? refresh}) 
         ShellRoute(
           builder: (context, state, child) => AppShell(location: state.uri.path, child: child),
           routes: [
+            GoRoute(
+              path: '/search',
+              pageBuilder: (context, state) => _enterPage(state, const SearchPage()),
+            ),
             GoRoute(
               path: '/album/:id',
               pageBuilder: (context, state) => _enterPage(state, AlbumPage(albumId: state.pathParameters['id']!)),

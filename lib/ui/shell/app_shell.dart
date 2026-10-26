@@ -41,7 +41,10 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   static bool _isDetail(String location) =>
-      location.startsWith('/album/') || location.startsWith('/artist/') || location.startsWith('/playlist/');
+      location.startsWith('/album/') ||
+      location.startsWith('/artist/') ||
+      location.startsWith('/playlist/') ||
+      location == '/search';
 
   final _pointer = ValueNotifier<Offset>(Offset.zero);
 
@@ -90,7 +93,10 @@ class _AppShellState extends ConsumerState<AppShell> {
     final player = ref.read(playbackProvider.notifier);
     final npOpen = ref.read(nowPlayingOpenProvider);
     final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.space) {
+    final ctrl = HardwareKeyboard.instance.isControlPressed;
+    if ((ctrl && key == LogicalKeyboardKey.keyK) || key == LogicalKeyboardKey.slash) {
+      if (!npOpen) GoRouter.of(context).go('/search');
+    } else if (key == LogicalKeyboardKey.space) {
       player.toggle();
     } else if (key == LogicalKeyboardKey.keyN) {
       player.next();
@@ -162,9 +168,11 @@ class _AppShellState extends ConsumerState<AppShell> {
                   width: railWidth,
                   child: NavRail(
                     // Album and artist pages belong to the Library.
-                    selected: widget.location.startsWith('/playlist/')
-                        ? Destination.lists
-                        : (Destination.fromLocation(widget.location) ?? Destination.library),
+                    selected: widget.location == '/search'
+                        ? null
+                        : widget.location.startsWith('/playlist/')
+                            ? Destination.lists
+                            : (Destination.fromLocation(widget.location) ?? Destination.library),
                     compact: compact,
                     onSelected: (d) => context.go(d.path),
                     onMenu: ref.read(railCollapsedProvider.notifier).toggle,
