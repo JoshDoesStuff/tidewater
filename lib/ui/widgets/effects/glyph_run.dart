@@ -56,7 +56,11 @@ class GlyphSheet {
   final double pad;
   final double dpr;
 
-  factory GlyphSheet.build({required String text, required TextStyle style, required double dpr}) {
+  factory GlyphSheet.build({
+    required String text,
+    required TextStyle style,
+    required double dpr,
+  }) {
     // White mask; the real color is applied when drawing.
     // No ligatures or contextual alternates: each letter is drawn on its own, so a
     // joined "fl", "fi" or "tt" glyph would be split in half (a gap in "flavor",
@@ -71,8 +75,29 @@ class GlyphSheet {
         FontFeature.disable('calt'),
       ],
     );
+    // The font kerns a leading hyphen tight against the next capital ("-Crescendo"),
+    // so a hyphen that starts a word gets a little air after it.
+    final chars = text.characters.toList();
+    final airy = base.copyWith(
+      letterSpacing: (base.letterSpacing ?? 0) + (style.fontSize ?? 14) * .1,
+    );
     final whole = TextPainter(
-      text: TextSpan(text: text, style: base),
+      text: TextSpan(
+        style: base,
+        children: [
+          for (var i = 0; i < chars.length; i++)
+            TextSpan(
+              text: chars[i],
+              style:
+                  chars[i] == '-' &&
+                      (i == 0 || chars[i - 1] == ' ') &&
+                      i + 1 < chars.length &&
+                      chars[i + 1].trim().isNotEmpty
+                  ? airy
+                  : null,
+            ),
+        ],
+      ),
       textDirection: TextDirection.ltr,
       maxLines: 1,
     )..layout();
@@ -89,7 +114,10 @@ class GlyphSheet {
     var atlasW = 1.0;
     var offset = 0;
     for (final ch in text.characters) {
-      final selection = TextSelection(baseOffset: offset, extentOffset: offset + ch.length);
+      final selection = TextSelection(
+        baseOffset: offset,
+        extentOffset: offset + ch.length,
+      );
       offset += ch.length;
       final found = whole.getBoxesForSelection(selection);
       if (found.isEmpty) {
@@ -132,7 +160,10 @@ class GlyphSheet {
       for (var i = 0; i < painters.length; i++) {
         final p = painters[i];
         if (p == null) continue;
-        p.paint(canvas, Offset(srcs[i].left / dpr + pad, srcs[i].top / dpr + pad));
+        p.paint(
+          canvas,
+          Offset(srcs[i].left / dpr + pad, srcs[i].top / dpr + pad),
+        );
         p.dispose();
       }
       final picture = recorder.endRecording();
@@ -145,7 +176,10 @@ class GlyphSheet {
         GlyphSprite(
           boxes[i],
           srcs[i],
-          Offset((pad + boxes[i].width / 2) * dpr, (pad + boxes[i].height / 2) * dpr),
+          Offset(
+            (pad + boxes[i].width / 2) * dpr,
+            (pad + boxes[i].height / 2) * dpr,
+          ),
         ),
     ];
     final size = whole.size;
@@ -205,7 +239,10 @@ class _GlyphRunState extends State<GlyphRun> {
     final effective = DefaultTextStyle.of(context).style.merge(widget.style);
     final color = effective.color ?? Theme.of(context).colorScheme.onSurface;
     final maskStyle = effective.copyWith(color: const Color(0xFFFFFFFF));
-    if (_sheet == null || _sheetText != widget.text || _sheetStyle != maskStyle || _sheetDpr != dpr) {
+    if (_sheet == null ||
+        _sheetText != widget.text ||
+        _sheetStyle != maskStyle ||
+        _sheetDpr != dpr) {
       _sheet?.dispose();
       _sheet = GlyphSheet.build(text: widget.text, style: effective, dpr: dpr);
       _sheetText = widget.text;
@@ -248,15 +285,14 @@ class GlyphRunLeaf extends LeafRenderObjectWidget {
   final Listenable? repaint;
 
   @override
-  RenderGlyphRun createRenderObject(BuildContext context) =>
-      RenderGlyphRun(
-        sheet: sheet,
-        tint: tint,
-        emSize: emSize,
-        state: state,
-        repaint: repaint,
-        devicePixelRatio: devicePixelRatio,
-      );
+  RenderGlyphRun createRenderObject(BuildContext context) => RenderGlyphRun(
+    sheet: sheet,
+    tint: tint,
+    emSize: emSize,
+    state: state,
+    repaint: repaint,
+    devicePixelRatio: devicePixelRatio,
+  );
 
   @override
   void updateRenderObject(BuildContext context, RenderGlyphRun renderObject) {
@@ -278,12 +314,12 @@ class RenderGlyphRun extends RenderBox {
     required LetterState Function(int i) state,
     required Listenable? repaint,
     required double devicePixelRatio,
-  })  : _sheet = sheet,
-        _devicePixelRatio = devicePixelRatio,
-        _tint = tint,
-        _emSize = emSize,
-        _state = state,
-        _repaint = repaint;
+  }) : _sheet = sheet,
+       _devicePixelRatio = devicePixelRatio,
+       _tint = tint,
+       _emSize = emSize,
+       _state = state,
+       _repaint = repaint;
 
   GlyphSheet _sheet;
   double _devicePixelRatio;
@@ -335,7 +371,10 @@ class RenderGlyphRun extends RenderBox {
 
   /// Current opacity of every letter (for tests).
   @visibleForTesting
-  List<double> debugOpacities() => [for (var i = 0; i < _sheet.sprites.length; i++) _state(i).opacity.clamp(0.0, 1.0)];
+  List<double> debugOpacities() => [
+    for (var i = 0; i < _sheet.sprites.length; i++)
+      _state(i).opacity.clamp(0.0, 1.0),
+  ];
 
   @override
   void attach(PipelineOwner owner) {
@@ -362,7 +401,8 @@ class RenderGlyphRun extends RenderBox {
   double computeMaxIntrinsicHeight(double width) => _sheet.size.height;
 
   @override
-  Size computeDryLayout(BoxConstraints constraints) => constraints.constrain(_sheet.size);
+  Size computeDryLayout(BoxConstraints constraints) =>
+      constraints.constrain(_sheet.size);
 
   @override
   void performLayout() {
@@ -381,7 +421,8 @@ class RenderGlyphRun extends RenderBox {
     // the window), but not through a rotation or a stretch.
     final m = getTransformTo(null);
     final k = m.entry(0, 0);
-    final unscaled = k > 0 &&
+    final unscaled =
+        k > 0 &&
         (m.entry(1, 1) - k).abs() < 1e-4 * k &&
         m.entry(0, 1).abs() < 1e-6 &&
         m.entry(1, 0).abs() < 1e-6;
@@ -439,7 +480,9 @@ class RenderGlyphRun extends RenderBox {
     // One draw for all letters. modulate: sprite (white, alpha mask) x color.
     context.canvas.drawRawAtlas(
       atlas,
-      count == n ? transforms : Float32List.sublistView(transforms, 0, count * 4),
+      count == n
+          ? transforms
+          : Float32List.sublistView(transforms, 0, count * 4),
       count == n ? rects : Float32List.sublistView(rects, 0, count * 4),
       count == n ? colors : Int32List.sublistView(colors, 0, count),
       BlendMode.modulate,
