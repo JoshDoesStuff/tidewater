@@ -16,32 +16,14 @@ class ViewToggle extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _side(
-          context,
-          GlyphKind.list,
-          'Show as list',
-          !cards,
-          () => onChanged(false),
-        ),
+        _side(context, GlyphKind.list, 'Show as list', !cards, () => onChanged(false)),
         const SizedBox(width: 4),
-        _side(
-          context,
-          GlyphKind.cards,
-          'Show as cards',
-          cards,
-          () => onChanged(true),
-        ),
+        _side(context, GlyphKind.cards, 'Show as cards', cards, () => onChanged(true)),
       ],
     );
   }
 
-  Widget _side(
-    BuildContext context,
-    GlyphKind kind,
-    String label,
-    bool selected,
-    VoidCallback onTap,
-  ) {
+  Widget _side(BuildContext context, GlyphKind kind, String label, bool selected, VoidCallback onTap) {
     final scheme = Theme.of(context).colorScheme;
     return Pressable(
       onTap: onTap,
@@ -55,12 +37,8 @@ class ViewToggle extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected
                 ? scheme.secondaryContainer
-                : (s.hovered
-                      ? scheme.surfaceContainerHighest
-                      : scheme.surfaceContainerHigh),
-            borderRadius: BorderRadius.circular(
-              selected || s.pressed ? 16 : 24,
-            ),
+                : (s.hovered ? scheme.surfaceContainerHighest : scheme.surfaceContainerHigh),
+            borderRadius: BorderRadius.circular(selected || s.pressed ? 16 : 24),
           ),
           child: Center(
             child: AnimatedGlyph(

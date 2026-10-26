@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'
-    show HardwareKeyboard, LogicalKeyboardKey;
+import 'package:flutter/services.dart' show HardwareKeyboard, LogicalKeyboardKey;
 
 import '../../../app/theme/motion.dart';
 import '../../widgets/animated_glyphs.dart';
@@ -25,21 +24,16 @@ class GenrePill extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final active = selected.isNotEmpty;
-    final label = selected.length > 1
-        ? '${selected.length} genres'
-        : (selected.firstOrNull ?? 'Genre');
+    final label = selected.length > 1 ? '${selected.length} genres' : (selected.firstOrNull ?? 'Genre');
     return Pressable(
-      semanticLabel: active
-          ? 'Genre: ${selected.join(", ")}'
-          : 'Filter by genre',
+      semanticLabel: active ? 'Genre: ${selected.join(", ")}' : 'Filter by genre',
       onTap: () async {
         // Ctrl+click opens the multi-select grid instead of the single picker.
         if (HardwareKeyboard.instance.isControlPressed) {
           final picked = await showDialog<Set<String>>(
             context: context,
             barrierColor: Colors.black54,
-            builder: (_) =>
-                _GenreGridDialog(genres: genres, selected: selected),
+            builder: (_) => _GenreGridDialog(genres: genres, selected: selected),
           );
           if (picked != null) onSelected(picked);
           return;
@@ -74,12 +68,7 @@ class GenrePill extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AnimatedGlyph(
-                kind: GlyphKind.filter,
-                size: 20,
-                color: fg,
-                hovered: s.hovered,
-              ),
+              AnimatedGlyph(kind: GlyphKind.filter, size: 20, color: fg, hovered: s.hovered),
               const SizedBox(width: 10),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 140),
@@ -356,12 +345,8 @@ class _GenreGridDialogState extends State<_GenreGridDialog> {
                 children: [
                   Expanded(child: Text('Pick genres', style: text.titleLarge)),
                   Text(
-                    _picked.isEmpty
-                        ? 'None selected'
-                        : '${_picked.length} selected',
-                    style: text.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
+                    _picked.isEmpty ? 'None selected' : '${_picked.length} selected',
+                    style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -372,16 +357,10 @@ class _GenreGridDialogState extends State<_GenreGridDialog> {
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
                   hintText: 'Search genres',
-                  prefixIcon: Icon(
-                    Icons.search_rounded,
-                    color: scheme.onSurfaceVariant,
-                  ),
+                  prefixIcon: Icon(Icons.search_rounded, color: scheme.onSurfaceVariant),
                   filled: true,
                   fillColor: scheme.surfaceContainerHighest,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 14,
-                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(28),
                     borderSide: BorderSide.none,
@@ -395,9 +374,7 @@ class _GenreGridDialogState extends State<_GenreGridDialog> {
                         padding: const EdgeInsets.all(28),
                         child: Text(
                           'No genre matches "${_query.text.trim()}".',
-                          style: text.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
+                          style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                         ),
                       )
                     : SingleChildScrollView(
@@ -422,9 +399,7 @@ class _GenreGridDialogState extends State<_GenreGridDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: _picked.isEmpty
-                        ? null
-                        : () => setState(_picked.clear),
+                    onPressed: _picked.isEmpty ? null : () => setState(_picked.clear),
                     child: const Text('Clear'),
                   ),
                   const SizedBox(width: 8),
@@ -443,11 +418,7 @@ class _GenreGridDialogState extends State<_GenreGridDialog> {
 }
 
 class _GenreChip extends StatelessWidget {
-  const _GenreChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+  const _GenreChip({required this.label, required this.selected, required this.onTap});
 
   final String label;
   final bool selected;
@@ -466,29 +437,21 @@ class _GenreChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected
               ? scheme.secondaryContainer
-              : (s.hovered
-                    ? scheme.surfaceContainerHighest
-                    : scheme.surfaceContainer),
+              : (s.hovered ? scheme.surfaceContainerHighest : scheme.surfaceContainer),
           borderRadius: BorderRadius.circular(selected || s.pressed ? 12 : 20),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (selected) ...[
-              Icon(
-                Icons.check_rounded,
-                size: 18,
-                color: scheme.onSecondaryContainer,
-              ),
+              Icon(Icons.check_rounded, size: 18, color: scheme.onSecondaryContainer),
               const SizedBox(width: 6),
             ],
             Text(
               label,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 fontWeight: FontWeight.w500,
-                color: selected
-                    ? scheme.onSecondaryContainer
-                    : scheme.onSurface,
+                color: selected ? scheme.onSecondaryContainer : scheme.onSurface,
               ),
             ),
           ],

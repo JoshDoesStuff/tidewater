@@ -7,13 +7,7 @@ import '../../widgets/pressable.dart';
 /// A section title with, at the end, a "Show all" button (or any [trailing]
 /// widget, such as a [SectionPillButton]).
 class SectionHeader extends StatelessWidget {
-  const SectionHeader({
-    super.key,
-    required this.title,
-    this.action = 'Show all',
-    this.onAction,
-    this.trailing,
-  });
+  const SectionHeader({super.key, required this.title, this.action = 'Show all', this.onAction, this.trailing});
 
   final String title;
   final String? action;
@@ -37,12 +31,7 @@ class SectionHeader extends StatelessWidget {
           if (trailing != null)
             trailing!
           else if (action != null && onAction != null)
-            SectionPillButton(
-              label: action!,
-              glyph: GlyphKind.back,
-              mirrored: true,
-              onPressed: onAction!,
-            ),
+            SectionPillButton(label: action!, glyph: GlyphKind.back, mirrored: true, onPressed: onAction!),
         ],
       ),
     );
@@ -70,22 +59,12 @@ class SectionPillButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    Widget icon = AnimatedGlyph(
-      kind: glyph,
-      size: 20,
-      color: scheme.onSecondaryContainer,
-      active: false,
-    );
+    Widget icon = AnimatedGlyph(kind: glyph, size: 20, color: scheme.onSecondaryContainer, active: false);
     return Pressable(
       onTap: onPressed,
       semanticLabel: label,
       builder: (context, s) {
-        icon = AnimatedGlyph(
-          kind: glyph,
-          size: 20,
-          color: scheme.onSecondaryContainer,
-          active: s.pressed,
-        );
+        icon = AnimatedGlyph(kind: glyph, size: 20, color: scheme.onSecondaryContainer, active: s.pressed);
         return AnimatedScale(
           scale: s.pressed ? .94 : 1,
           duration: Motion.of(context, Motion.fast),
@@ -97,11 +76,7 @@ class SectionPillButton extends StatelessWidget {
             padding: const EdgeInsets.only(left: 16, right: 14),
             decoration: BoxDecoration(
               color: s.hovered
-                  ? Color.lerp(
-                      scheme.secondaryContainer,
-                      scheme.onSecondaryContainer,
-                      .08,
-                    )
+                  ? Color.lerp(scheme.secondaryContainer, scheme.onSecondaryContainer, .08)
                   : scheme.secondaryContainer,
               borderRadius: BorderRadius.circular(s.pressed ? 12 : 20),
             ),
@@ -111,10 +86,10 @@ class SectionPillButton extends StatelessWidget {
                 Text(
                   label,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: scheme.onSecondaryContainer,
-                  ),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSecondaryContainer,
+                      ),
                 ),
                 const SizedBox(width: 8),
                 mirrored ? Transform.scale(scaleX: -1, child: icon) : icon,
