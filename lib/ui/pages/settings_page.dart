@@ -90,13 +90,6 @@ class SettingsPage extends ConsumerWidget {
                     value: ref.watch(iconGhostProvider),
                     onChanged: ref.read(iconGhostProvider.notifier).set,
                   ),
-                  const SizedBox(height: 8),
-                  _SwitchRow(
-                    title: 'Hide Japanese text',
-                    subtitle: 'Removes Japanese characters from artist, album, track and playlist names. A name that is only Japanese shows as a dash.',
-                    value: ref.watch(hideJapaneseProvider),
-                    onChanged: ref.read(hideJapaneseProvider.notifier).set,
-                  ),
                   const SizedBox(height: 22),
                   Text('Visualizer style', style: text.titleLarge),
                   const SizedBox(height: 4),

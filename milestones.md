@@ -283,7 +283,7 @@ Settings today is one flat column of switches that grew a row at a time. Redo it
 - Group the options under headings (Appearance, Playback, Library, Now Playing, Account, About) with a section nav or
   tabs; the page should still scroll smoothly and keep the reveal animations.
 - Move the scattered preferences in here: view mode (cards/list), default Library tab and sorts, queue style
-  (side panel or popup), hide Japanese text, motion settings, visualizer style, Home layout options.
+  (side panel or popup), motion settings, visualizer style, Home layout options.
 - Account: server address, signed-in user, sign out, and a "forget cached covers" button with the cache size.
 - Playback: scrobbling, lyrics lookup, crossfade and ReplayGain when they exist (M8).
 - About: version, the credits and licences (currently the Credits card), links.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../app/theme/motion.dart';
 import '../widgets/animated_glyphs.dart';
 import '../widgets/pressable.dart';
 
@@ -82,20 +83,23 @@ class _CaptionButton extends StatelessWidget {
       semanticLabel: label,
       cursor: SystemMouseCursors.basic,
       builder: (context, s) {
+        // No filled square: the icon itself lights up (red for close).
         final hot = s.hovered || s.pressed;
-        return Container(
+        final lit = danger ? scheme.error : scheme.primary;
+        return SizedBox(
           width: 46,
           height: TitleBar.height,
-          color: hot
-              ? (danger ? scheme.error : scheme.surfaceContainerHighest)
-              : scheme.surfaceContainerHighest.withValues(alpha: 0),
           child: Center(
-            child: AnimatedGlyph(
-              kind: glyph,
-              size: 16,
-              color: hot && danger ? scheme.onError : scheme.onSurfaceVariant,
-              hovered: s.hovered,
-              active: s.pressed,
+            child: TweenAnimationBuilder<Color?>(
+              tween: ColorTween(end: hot ? lit : scheme.onSurfaceVariant),
+              duration: Motion.of(context, Motion.fast),
+              builder: (context, color, _) => AnimatedGlyph(
+                kind: glyph,
+                size: 16,
+                color: color ?? scheme.onSurfaceVariant,
+                hovered: s.hovered,
+                active: s.pressed,
+              ),
             ),
           ),
         );

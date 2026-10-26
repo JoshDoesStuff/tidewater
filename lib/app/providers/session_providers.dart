@@ -4,7 +4,6 @@ import '../../core/api/connect.dart';
 import '../../core/api/library_api.dart';
 import '../../core/api/server_config.dart';
 import '../../core/api/session_store.dart';
-import 'settings_providers.dart' show hideJapaneseProvider;
 
 /// Overridden in `main()` (and in tests).
 final sessionStoreProvider = Provider<SessionStore>(
@@ -41,8 +40,6 @@ final sessionProvider = NotifierProvider<SessionNotifier, ServerConfig?>(Session
 final apiProvider = Provider<LibraryApi>((ref) {
   final config = ref.watch(sessionProvider);
   if (config == null) throw StateError('Not signed in');
-  // Names are filtered as they are parsed, so flipping the setting refetches.
-  ref.watch(hideJapaneseProvider);
   final api = ref.watch(clientFactoryProvider)(config);
   ref.onDispose(api.close);
   return api;

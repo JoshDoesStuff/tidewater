@@ -99,6 +99,9 @@ class FakeLibraryApi implements LibraryApi {
   /// Holds a track's lyrics lookup open until the completer is completed.
   final lyricsGate = <String, Completer<void>>{};
 
+  /// Holds an album list request open until the completer is completed.
+  final listGate = <AlbumListType, Completer<void>>{};
+
   final calls = <String>[];
 
   List<Album> get _albums => albums ?? fakeAlbums;
@@ -123,6 +126,7 @@ class FakeLibraryApi implements LibraryApi {
 
   @override
   Future<List<Album>> getAlbumList(AlbumListType type, {int size = 20, int offset = 0, int? fromYear, int? toYear}) async {
+    await listGate[type]?.future;
     return _ok('getAlbumList:${type.wire}:$offset', () {
       final list = switch (type) {
         AlbumListType.newest => [..._albums],

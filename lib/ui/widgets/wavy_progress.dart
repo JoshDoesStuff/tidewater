@@ -10,6 +10,9 @@ import '../../app/theme/motion.dart';
 import '../../core/playback/visualizer_source.dart';
 
 /// Mutable state shared between [WavyScrubber] and its painter.
+/// Below this fraction a waiting bar shows only the sweeping squiggle.
+const _sweepBelow = .02;
+
 class _WavyModel {
   double amplitude = 0;
   double phase = 0;
@@ -213,7 +216,14 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
     final k = 1 - math.pow(1 - .1, dt * 60).toDouble();
     _model.amplitude += (_target(source) - _model.amplitude) * k;
     if (_playing) _model.phase += 8.1 * dt;
-    if (_buffering || _model.sweepAlpha > 0) _model.sweep = (_model.sweep + dt / 1.15) % 1;
+    // The sweep starts from the left edge each time the bar is empty and waiting,
+    // not partway along because it ran during the retract.
+    final sweeping = (_buffering || _model.sweepAlpha > 0) && _frac() < _sweepBelow;
+    if (sweeping) {
+      _model.sweep = (_model.sweep + dt / 1.15) % 1;
+    } else if (_buffering) {
+      _model.sweep = 0;
+    }
     _model.sweepAlpha = _buffering ? 1 : math.max(0, _model.sweepAlpha - dt / .18);
 
     // The squiggle back up waits until the buffering squiggle has faded, so the
@@ -225,7 +235,12 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
         _model.animDur = _model.seekAnim ? .22 + .38 * dist : .35 + .45 * dist;
       }
       _model.animT = math.min(1.0, _model.animT + dt / _model.animDur);
-      final e = Curves.easeInOutCubic.transform(_model.animT);
+      // Retracting accelerates away (no lingering stub); growing rushes out and
+      // settles; a click-seek eases both ways.
+      final curve = _model.seekAnim
+          ? Curves.easeInOutCubic
+          : (target < _model.animFrom ? Curves.easeInCubic : Curves.easeOutCubic);
+      final e = curve.transform(_model.animT);
       _model.display = _model.animFrom + (target - _model.animFrom) * e;
       if (_model.animT >= 1) {
         _model.display = target;
@@ -452,7 +467,7 @@ class WavyPainter extends CustomPainter {
     final frac = fraction();
     // Once the wave has run back to empty, a buffering bar is the sweeping
     // squiggle (which then fades before the wave grows back).
-    if ((buffering() || sweepAlpha() > 0) && frac < .01) {
+    if ((buffering() || sweepAlpha() > 0) && frac < _sweepBelow) {
       _paintBuffering(canvas, x0, x1, cy, buffering() ? 1 : sweepAlpha());
       return;
     }

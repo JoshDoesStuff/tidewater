@@ -359,7 +359,10 @@ class _CarouselState extends State<_Carousel> {
           tween: _WeightsTween(end: _weights),
           duration: Motion.of(context, Motion.slow),
           curve: Motion.curve(context, Motion.spring),
-          builder: (context, w, _) {
+          builder: (context, animated, _) {
+            // The animated weights can be for a different number of cards than are
+            // showing (the heroes load one by one), so pad or trim them to fit.
+            final w = [for (var i = 0; i < n; i++) i < animated.length ? animated[i] : 1.0];
             final sum = w.fold<double>(0, (a, b) => a + b);
             return Row(
               children: [
