@@ -42,17 +42,28 @@ class NavRail extends StatelessWidget {
           // The menu button is hidden until it has a job; the back arrow takes its place.
           SizedBox(
             height: 56,
-            child: onBack == null
-                ? null
-                : ExpressiveIconButton(
-                    icon: Icons.arrow_back_rounded,
-                    glyph: glyphFor(GlyphKind.back, size: 24),
-                    size: 56,
-                    iconSize: 24,
-                    squareRadius: 16,
-                    tooltip: 'Back',
-                    onPressed: onBack,
-                  ),
+            // Pops in and out with the spring, scaling from its center.
+            child: AnimatedSwitcher(
+              duration: Motion.of(context, Motion.medium),
+              switchInCurve: Motion.curve(context, Motion.spring),
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(scale: animation, child: child),
+              ),
+              child: onBack == null
+                  ? const SizedBox.shrink(key: ValueKey('no-back'))
+                  : ExpressiveIconButton(
+                      key: const ValueKey('back'),
+                      icon: Icons.arrow_back_rounded,
+                      glyph: glyphFor(GlyphKind.back, size: 24),
+                      size: 56,
+                      iconSize: 24,
+                      squareRadius: 16,
+                      tooltip: 'Back',
+                      onPressed: onBack,
+                    ),
+            ),
           ),
           const SizedBox(height: 34),
           // Scrolls when the window is too short for every item.
