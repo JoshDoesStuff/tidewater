@@ -70,9 +70,13 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
   late final AnimationController _fade = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 280),
-    reverseDuration: const Duration(milliseconds: 260),
+    reverseDuration: const Duration(milliseconds: 520),
   );
-  late final AnimationController _enter = AnimationController(vsync: this, duration: const Duration(milliseconds: 820));
+  late final AnimationController _enter = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 820),
+    reverseDuration: const Duration(milliseconds: 560),
+  );
   late final AnimationController _trackFx =
       AnimationController(vsync: this, duration: const Duration(milliseconds: 600), value: 1);
 
@@ -153,6 +157,9 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
       _fade.value = 0;
       done();
     } else {
+      // Fly the cover back to the mini player while everything else sinks away.
+      _measureFlight();
+      _enter.reverse(from: _enter.value);
       _fade.reverse(from: _fade.value).then((_) => done());
     }
   }

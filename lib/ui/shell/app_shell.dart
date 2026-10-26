@@ -19,6 +19,7 @@ import '../../core/models/track.dart';
 import '../now_playing/now_playing_overlay.dart';
 import '../widgets/animated_glyphs.dart';
 import '../widgets/expressive_buttons.dart';
+import '../pages/album_page.dart' show goBack;
 import 'mini_player.dart';
 import 'nav_rail.dart';
 import 'shell_effects.dart';
@@ -39,6 +40,9 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
+  static bool _isDetail(String location) =>
+      location.startsWith('/album/') || location.startsWith('/artist/') || location.startsWith('/playlist/');
+
   final _pointer = ValueNotifier<Offset>(Offset.zero);
 
   @override
@@ -152,6 +156,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                         : (Destination.fromLocation(widget.location) ?? Destination.library),
                     compact: compact,
                     onSelected: (d) => context.go(d.path),
+                    onBack: _isDetail(widget.location) ? () => goBack(context) : null,
                   ),
                 ),
                 Positioned(

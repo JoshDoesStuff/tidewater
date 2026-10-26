@@ -247,7 +247,9 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                             const SizedBox(width: 6),
                             ViewToggle(
                               cards: ref.watch(likedAsCardsProvider),
-                              onChanged: ref.read(likedAsCardsProvider.notifier).set,
+                              onChanged: ref
+                                  .read(likedAsCardsProvider.notifier)
+                                  .set,
                             ),
                           ],
                         ],
@@ -384,10 +386,17 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
         }
         if (ref.watch(likedAsCardsProvider)) {
           return [
-            _grid(list.length, (i) => TrackCard(tracks: list, index: i, large: true)),
+            _grid(
+              list.length,
+              (i) => TrackCard(tracks: list, index: i, large: true),
+            ),
             if (s.hasError)
               _message(
-                ErrorPanel(error: s.error!, compact: true, onRetry: () => ref.invalidate(libraryAllSongsProvider)),
+                ErrorPanel(
+                  error: s.error!,
+                  compact: true,
+                  onRetry: () => ref.invalidate(libraryAllSongsProvider),
+                ),
                 bottom: true,
               ),
           ];
@@ -495,8 +504,11 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
               mainAxisExtent: extent,
             ),
             itemCount: count,
-            itemBuilder: (context, i) =>
-                StaggerIn(index: i < 24 ? i : 0, child: card(i)),
+            itemBuilder: (context, i) => StaggerIn(
+              // A diagonal wave across the first screenful; later rows just fade up.
+              index: i < columns * 8 ? i ~/ columns + i % columns : 0,
+              child: card(i),
+            ),
           );
         },
       ),
@@ -539,12 +551,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
             itemBuilder: (context, i) => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SkeletonBox(
-                  width: tile,
-                  height: tile,
-                  radius: tile * .26,
-                  
-                ),
+                SkeletonBox(width: tile, height: tile, radius: tile * .26),
                 const SizedBox(height: 14),
                 const SkeletonBox(width: 110, height: 12, radius: 6),
                 const SizedBox(height: 6),
@@ -618,13 +625,16 @@ class _MenuPillState<T> extends State<_MenuPill<T>> {
               initialValue: widget.value,
               // Open *below* the pill. By default Flutter puts the selected item over the button.
               position: PopupMenuPosition.under,
-            // A menu taller than the room under the pill (hundreds of genres) is
-            // pushed up over the button; cap it so it scrolls instead. The pill
-            // sits ~130 px from the top; keep clear of the window's bottom edge.
-            constraints: BoxConstraints(
-              minWidth: 160,
-              maxHeight: (MediaQuery.sizeOf(context).height - 130 - 40).clamp(160.0, 700.0),
-            ),
+              // A menu taller than the room under the pill (hundreds of genres) is
+              // pushed up over the button; cap it so it scrolls instead. The pill
+              // sits ~130 px from the top; keep clear of the window's bottom edge.
+              constraints: BoxConstraints(
+                minWidth: 160,
+                maxHeight: (MediaQuery.sizeOf(context).height - 130 - 40).clamp(
+                  160.0,
+                  700.0,
+                ),
+              ),
               offset: const Offset(0, 8),
               clipBehavior: Clip.antiAlias,
               popUpAnimationStyle: AnimationStyle(
@@ -633,8 +643,8 @@ class _MenuPillState<T> extends State<_MenuPill<T>> {
               ),
               color: scheme.surfaceContainerHigh,
               surfaceTintColor: Colors.transparent,
-            elevation: 2,
-            shadowColor: Colors.black38,
+              elevation: 2,
+              shadowColor: Colors.black38,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
@@ -667,7 +677,12 @@ class _MenuPillState<T> extends State<_MenuPill<T>> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    AnimatedGlyph(kind: widget.glyph, size: 20, color: fg, hovered: _hovered),
+                    AnimatedGlyph(
+                      kind: widget.glyph,
+                      size: 20,
+                      color: fg,
+                      hovered: _hovered,
+                    ),
                     const SizedBox(width: 10),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 140),
@@ -747,82 +762,96 @@ class AlphaRail extends StatelessWidget {
   final ValueChanged<int> onJump;
 
   static final _letters = '#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  static const _minCell = 14.0;
+  static const _maxCell = 20.0;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final shown = _letters;
     final present = <String>{
       for (final l in _letters)
         if (firstIndexForLetter(titles, l) >= 0) l,
     };
-    // Shrinks to fit when the window is short instead of overflowing.
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      alignment: Alignment.topCenter,
-      child: Container(
-        width: 22,
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(11),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final l in shown)
-              Pressable(
-                onTap: () {
-                  // Jump to this letter, or
-                  // to the next one that exists.
-                  final from = _letters.indexOf(l);
-                  for (var i = from; i < _letters.length; i++) {
-                    final at = firstIndexForLetter(titles, _letters[i]);
-                    if (at >= 0) {
-                      onJump(at);
-                      return;
-                    }
-                  }
-                  if (titles.isNotEmpty) onJump(titles.length - 1);
-                },
-                semanticLabel: 'Jump to $l',
-                builder: (context, s) => AnimatedContainer(
-                  duration: Motion.of(context, Motion.medium),
-                  curve: Motion.curve(context, Motion.spring),
-                  width: 22,
-                  height: 17,
-                  alignment: Alignment.center,
-                  transform: Matrix4.diagonal3Values(
-                    s.hovered ? 1.35 : 1,
-                    s.hovered ? 1.35 : 1,
-                    1,
-                  ),
-                  transformAlignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: s.hovered
-                        ? scheme.primary
-                        : scheme.primary.withValues(alpha: 0),
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: Text(
-                    l,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w600,
-                      color: s.hovered
-                          ? scheme.onPrimary
-                          : (present.contains(l)
-                                ? scheme.onSurfaceVariant
-                                : scheme.onSurfaceVariant.withValues(
-                                    alpha: .4,
-                                  )),
+    // Letters keep a readable size: every letter when there is room, every
+    // other one on shorter windows, and no rail when even that won't fit.
+    return LayoutBuilder(
+      builder: (context, box) {
+        final room = box.maxHeight - 8;
+        final List<String> shown;
+        if (room / _letters.length >= _minCell) {
+          shown = _letters;
+        } else {
+          shown = [for (var i = 0; i < _letters.length; i += 2) _letters[i]];
+          if (room / shown.length < _minCell) return const SizedBox.shrink();
+        }
+        final cell = (room / shown.length).clamp(_minCell, _maxCell);
+        return Align(
+          alignment: Alignment.topCenter,
+          child: Container(
+            width: 22,
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final l in shown)
+                  Pressable(
+                    onTap: () {
+                      // Jump to this letter, or
+                      // to the next one that exists.
+                      final from = _letters.indexOf(l);
+                      for (var i = from; i < _letters.length; i++) {
+                        final at = firstIndexForLetter(titles, _letters[i]);
+                        if (at >= 0) {
+                          onJump(at);
+                          return;
+                        }
+                      }
+                      if (titles.isNotEmpty) onJump(titles.length - 1);
+                    },
+                    semanticLabel: 'Jump to $l',
+                    builder: (context, s) => AnimatedContainer(
+                      duration: Motion.of(context, Motion.medium),
+                      curve: Motion.curve(context, Motion.spring),
+                      width: 22,
+                      height: cell,
+                      alignment: Alignment.center,
+                      transform: Matrix4.diagonal3Values(
+                        s.hovered ? 1.35 : 1,
+                        s.hovered ? 1.35 : 1,
+                        1,
+                      ),
+                      transformAlignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: s.hovered
+                            ? scheme.primary
+                            : scheme.primary.withValues(alpha: 0),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Text(
+                        l,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: s.hovered
+                              ? scheme.onPrimary
+                              : (present.contains(l)
+                                    ? scheme.onSurfaceVariant
+                                    : scheme.onSurfaceVariant.withValues(
+                                        alpha: .4,
+                                      )),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-          ],
-        ),
-      ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

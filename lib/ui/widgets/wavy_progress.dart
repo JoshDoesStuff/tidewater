@@ -129,6 +129,19 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
     // A report that lags slightly behind what is already shown must not pull
     // the bar backwards; real seeks (large jumps) are taken as they come.
     final lagging = _playing && !_buffering && actual < shown && shown - actual < const Duration(milliseconds: 300);
+    // The position jumped (Previous restarting the track, a media-key seek):
+    // the wave squiggles there instead of snapping.
+    final jumped = _playing &&
+        !_buffering &&
+        !_model.animating &&
+        !_model.dragging &&
+        (actual - shown).abs() > const Duration(milliseconds: 1500);
+    if (jumped && _duration > Duration.zero) {
+      _beginTransition(seek: true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _sync();
+      });
+    }
     _anchorPos = lagging ? shown : actual;
     _anchorAt = now;
     if (!_playing || _buffering) _frame.value++;

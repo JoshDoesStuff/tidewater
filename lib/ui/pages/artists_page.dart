@@ -184,7 +184,7 @@ class _ArtistsPageState extends ConsumerState<ArtistsPage> {
               ),
               itemCount: list.length,
               itemBuilder: (context, i) => StaggerIn(
-                index: i < 24 ? i : 0,
+                index: i < columns * 8 ? i ~/ columns + i % columns : 0,
                 child: ArtistCard(artist: list[i], large: true),
               ),
             );

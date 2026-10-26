@@ -10,7 +10,6 @@ import '../widgets/effects/letter_reveal.dart';
 import '../widgets/animated_glyphs.dart';
 import '../widgets/expressive_buttons.dart';
 import '../widgets/shapes/morph_path.dart';
-import 'album_page.dart' show goBack;
 import 'page_frame.dart';
 import 'widgets/song_row.dart';
 
@@ -32,14 +31,6 @@ class PlaylistPage extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ExpressiveIconButton(
-              icon: Icons.arrow_back_rounded,
-              glyph: glyphFor(GlyphKind.back),
-              tooltip: 'Back',
-              tone: ButtonTone.ghost,
-              onPressed: () => goBack(context),
-            ),
-            const SizedBox(height: 18),
             if (detail.hasError && !detail.hasValue)
               ErrorPanel(error: detail.error!, onRetry: () => ref.invalidate(playlistDetailProvider(playlistId)))
             else if (!detail.hasValue)

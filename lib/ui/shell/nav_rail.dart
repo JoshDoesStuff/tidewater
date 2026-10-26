@@ -12,13 +12,16 @@ import 'rail_icon_motion.dart';
 /// pill indicator can spring between items as in the demo. [compact] drops
 /// the labels for narrow windows.
 class NavRail extends StatelessWidget {
-  const NavRail({super.key, required this.selected, required this.compact, required this.onSelected});
+  const NavRail({super.key, required this.selected, required this.compact, required this.onSelected, this.onBack});
 
   static double widthFor({required bool compact}) => compact ? 72 : 96;
 
   final Destination? selected;
   final bool compact;
   final ValueChanged<Destination> onSelected;
+
+  /// Set on detail pages (album, artist, playlist): shows a back arrow at the top.
+  final VoidCallback? onBack;
 
   static const _main = [
     Destination.home,
@@ -36,13 +39,20 @@ class NavRail extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: 40),
-          ExpressiveIconButton(
-            icon: Icons.menu_rounded,
-            glyph: glyphFor(GlyphKind.menu, size: 24),
-            size: 56,
-            iconSize: 24,
-            squareRadius: 16,
-            tooltip: 'Menu',
+          // The menu button is hidden until it has a job; the back arrow takes its place.
+          SizedBox(
+            height: 56,
+            child: onBack == null
+                ? null
+                : ExpressiveIconButton(
+                    icon: Icons.arrow_back_rounded,
+                    glyph: glyphFor(GlyphKind.back, size: 24),
+                    size: 56,
+                    iconSize: 24,
+                    squareRadius: 16,
+                    tooltip: 'Back',
+                    onPressed: onBack,
+                  ),
           ),
           const SizedBox(height: 34),
           // Scrolls when the window is too short for every item.

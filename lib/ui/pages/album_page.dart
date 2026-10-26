@@ -66,14 +66,6 @@ class _AlbumPageState extends ConsumerState<AlbumPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ExpressiveIconButton(
-              icon: Icons.arrow_back_rounded,
-              glyph: glyphFor(GlyphKind.back),
-              tooltip: 'Back',
-              tone: ButtonTone.ghost,
-              onPressed: () => goBack(context),
-            ),
-            const SizedBox(height: 18),
             if (detail.hasError && !detail.hasValue)
               ErrorPanel(error: detail.error!, onRetry: () => ref.invalidate(albumDetailProvider(widget.albumId)))
             else if (!detail.hasValue)

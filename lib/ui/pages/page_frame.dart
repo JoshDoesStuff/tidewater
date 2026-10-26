@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class PageFrame extends StatelessWidget {
   const PageFrame({super.key, required this.child});
 
-  static const maxWidth = 1600.0;
+  static const maxWidth = 2400.0;
 
   /// Space reserved at the bottom for the floating mini player and FAB.
   static const bottomClearance = 140.0;
