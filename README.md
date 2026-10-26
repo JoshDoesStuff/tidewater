@@ -30,8 +30,9 @@ progress bar, and colors that follow the album you're playing.
 | Windows | In development (this is what exists today) |
 | Linux | Planned, after the Windows app is complete |
 | Android | Planned (phone layouts in portrait and landscape), if good audio quality is feasible: equalizer, exclusive USB audio, bit-perfect output for players like HiBY |
+| macOS / iOS | Only once I have a Mac (somewhere in the future… when I can afford a Mac and a developer license, lol) |
 
-The order and details are in [docs/milestones.md](docs/milestones.md) (M10 to M14).
+The order and details are in [docs/milestones.md](docs/milestones.md) (M10 to M16).
 
 ## Get started
 

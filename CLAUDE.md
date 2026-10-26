@@ -112,7 +112,9 @@ Build in milestones; stop after each so I can run it.
 11. **Jellyfin:** music-only Jellyfin servers behind the same `LibraryApi` as Navidrome.
 12. **Website:** a GitHub Pages one-pager once every Windows build is ready.
 13. **Linux:** desktop target, MPRIS media controls, AppImage and Flatpak.
-14. **Android:** phone layouts, media notification, background playback. Only if good audio is feasible (see M14); macOS and iOS are dropped.
+14. **Android:** phone layouts, media notification, background playback. Only if good audio is feasible (see M14); 
+15. **macOS:** only once I have a Mac: desktop target, system media center, signed and notarized dmg.
+16. **iOS:** only once I have a Mac: phone layouts, background audio, TestFlight and App Store.
 After each milestone: `flutter analyze` clean, `flutter test` passing, summarize in ≤ 5 lines. Don't refactor unrelated files. Ask before adding packages not listed. Small, reviewable commits.
 
 ## Commands
