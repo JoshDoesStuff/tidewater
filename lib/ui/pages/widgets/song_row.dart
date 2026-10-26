@@ -1,10 +1,10 @@
-import '../../widgets/name_text.dart';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/providers/playback_providers.dart';
+import '../../../app/providers/selection.dart';
 import '../../../app/theme/motion.dart';
 import '../../../core/models/track.dart';
 import '../../shell/shell_keys.dart';
@@ -12,7 +12,9 @@ import '../../widgets/cover_art.dart';
 import '../../widgets/effects/eq_bars.dart';
 import '../../widgets/effects/ripple.dart';
 import '../../widgets/link_text.dart';
+import '../../widgets/name_text.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/track_drag.dart';
 import '../../widgets/track_menu.dart';
 import '../../widgets/heart_button.dart';
 
@@ -25,6 +27,8 @@ class SongRow extends ConsumerWidget {
     required this.onPlay,
     this.onRemove,
     this.leading,
+    this.siblings,
+    this.draggable = true,
   });
 
   static const height = 60.0;
@@ -38,6 +42,12 @@ class SongRow extends ConsumerWidget {
   /// Before the cover (a drag handle while a playlist is being arranged).
   final Widget? leading;
 
+  /// The list this row is in, so Shift+click can pick a range.
+  final List<Track>? siblings;
+
+  /// Whether it can be picked up and dropped on a playlist or the mini player.
+  final bool draggable;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
@@ -47,27 +57,52 @@ class SongRow extends ConsumerWidget {
         current && ref.watch(playbackProvider.select((s) => s.playing));
     final liked = ref.watch(likedProvider.select((s) => s.contains(track.id)));
     final player = ref.read(playbackProvider.notifier);
+    final picked = ref.watch(selectionProvider.select((s) => s.contains(track.id)));
+    final picking = ref.watch(selectionProvider.select((s) => s.isNotEmpty));
+    final selection = ref.read(selectionProvider.notifier);
+    // A row inside the picked ones stands for all of them; any other stands alone.
+    List<Track> group() {
+      final s = ref.read(selectionProvider);
+      return s.contains(track.id) ? s.tracks : [track];
+    }
+
     void menu(Offset at) => showTrackMenu(
       context,
       ref,
       at: at,
-      tracks: [track],
-      onRemove: onRemove,
+      tracks: group(),
+      onRemove: group().length == 1 ? onRemove : null,
     );
-    return GestureDetector(
+    void tapped() {
+      final keys = HardwareKeyboard.instance;
+      if (keys.isShiftPressed && siblings != null && picking) {
+        selection.rangeTo(track, siblings!);
+      } else if (keys.isControlPressed || keys.isMetaPressed || keys.isShiftPressed || picking) {
+        selection.toggle(track);
+      } else {
+        current ? player.toggle() : onPlay();
+      }
+    }
+
+    return TrackDragSource(
+      enabled: draggable,
+      drag: TrackDrag.tracks(group()),
+      child: GestureDetector(
       behavior: HitTestBehavior.translucent,
       onSecondaryTapUp: (d) => menu(d.globalPosition),
       child: Pressable(
-        onTap: () => current ? player.toggle() : onPlay(),
+        onTap: tapped,
         semanticLabel:
-            '${track.title}, ${track.artist}, ${formatDuration(track.duration)}${current ? ', playing' : ''}',
+            '${track.title}, ${track.artist}, ${formatDuration(track.duration)}${current ? ', playing' : ''}${picked ? ', selected' : ''}',
         builder: (context, s) => AnimatedContainer(
           duration: Motion.of(context, Motion.fast),
           height: height,
           padding: const EdgeInsets.only(left: 10, right: 6),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: current
+            color: picked
+                ? scheme.secondaryContainer
+                : current
                 ? scheme.primaryContainer.withValues(alpha: .55)
                 : (s.hovered
                       ? scheme.surfaceContainerHigh
@@ -91,18 +126,20 @@ class SongRow extends ConsumerWidget {
                           seedKey: track.albumId,
                           resolution: 150,
                         ),
-                        if (current || s.hovered)
+                        if (picked || current || s.hovered)
                           ColoredBox(
-                            color: scheme.scrim.withValues(alpha: .45),
+                            color: picked ? scheme.primary.withValues(alpha: .9) : scheme.scrim.withValues(alpha: .45),
                             child: Center(
-                              child: current
+                              child: picked
+                                  ? Icon(Icons.check_rounded, size: 24, color: scheme.onPrimary)
+                                  : current
                                   ? MiniEq(
                                       animating: playing,
                                       color: Colors.white,
                                       size: 16,
                                     )
-                                  : const Icon(
-                                      Icons.play_arrow_rounded,
+                                  : Icon(
+                                      picking ? Icons.radio_button_unchecked_rounded : Icons.play_arrow_rounded,
                                       size: 24,
                                       color: Colors.white,
                                     ),
@@ -198,6 +235,7 @@ class SongRow extends ConsumerWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }

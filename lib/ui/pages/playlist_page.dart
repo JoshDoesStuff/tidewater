@@ -252,6 +252,7 @@ class _BodyState extends ConsumerState<_Body> {
                 key: ValueKey('${tracks[i].id}#$i'),
                 child: SongRow(
                   track: tracks[i],
+                  draggable: false,
                   onPlay: () => player.playTracks(tracks, index: i),
                   onRemove: () => _remove(i),
                   leading: ReorderableDragStartListener(
@@ -278,7 +279,7 @@ class _BodyState extends ConsumerState<_Body> {
             sliver: SliverFixedExtentList(
               itemExtent: SongRow.height,
               delegate: SliverChildBuilderDelegate(
-                (context, i) => SongRow(track: tracks[i], onPlay: () => player.playTracks(tracks, index: i)),
+                (context, i) => SongRow(track: tracks[i], siblings: tracks, onPlay: () => player.playTracks(tracks, index: i)),
                 childCount: tracks.length,
               ),
             ),

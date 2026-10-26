@@ -241,7 +241,7 @@ class _Results extends ConsumerWidget {
           for (final (i, t) in results.tracks.indexed)
             StaggerIn(
               index: i < 12 ? i : 0,
-              child: SongRow(track: t, onPlay: () => player.playTracks(results.tracks, index: i)),
+              child: SongRow(track: t, siblings: results.tracks, onPlay: () => player.playTracks(results.tracks, index: i)),
             ),
         ],
       ],

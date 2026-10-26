@@ -13,6 +13,11 @@ import '../../widgets/effects/eq_bars.dart';
 import '../../widgets/effects/ripple.dart';
 import '../../widgets/link_text.dart';
 import '../../widgets/shapes/morph_path.dart';
+import '../../widgets/track_drag.dart';
+import '../../widgets/track_menu.dart';
+import '../../widgets/playlist_flow.dart';
+import '../../../app/providers/session_providers.dart';
+import '../../../app/providers/ui_providers.dart';
 
 /// An album: squircle cover with title and artist underneath.
 class AlbumCard extends ConsumerWidget {
@@ -43,6 +48,16 @@ class AlbumCard extends ConsumerWidget {
       onTap: () => ref.read(playbackProvider.notifier).playAlbum(album),
       onOpen: () => context.push('/album/${album.id}'),
       onOpenSubtitle: album.artistId == null ? null : () => context.push('/artist/${album.artistId}'),
+      drag: TrackDrag(label: album.title, load: () => ref.read(playbackProvider.notifier).albumTracks(album)),
+      onMenu: (at) => showCollectionMenu(
+        context,
+        ref,
+        at: at,
+        load: () => ref.read(playbackProvider.notifier).albumTracks(album),
+        openLabel: 'Open album',
+        openRoute: '/album/${album.id}',
+        artistRoute: album.artistId == null ? null : '/artist/${album.artistId}',
+      ),
     );
   }
 }
@@ -70,6 +85,15 @@ class ArtistCard extends ConsumerWidget {
       onTap: () => context.push('/artist/${artist.id}'),
       showPlay: false,
       onOpen: () => context.push('/artist/${artist.id}'),
+      drag: TrackDrag(label: artist.name, load: () => ref.read(playbackProvider.notifier).artistTracks(artist)),
+      onMenu: (at) => showCollectionMenu(
+        context,
+        ref,
+        at: at,
+        load: () => ref.read(playbackProvider.notifier).artistTracks(artist),
+        openLabel: 'Open artist',
+        openRoute: '/artist/${artist.id}',
+      ),
     );
   }
 }
@@ -96,6 +120,26 @@ class PlaylistCard extends ConsumerWidget {
       onTap: () => context.push('/playlist/${playlist.id}'),
       showPlay: false,
       onOpen: () => context.push('/playlist/${playlist.id}'),
+      drag: TrackDrag(label: playlist.name, load: () => ref.read(playbackProvider.notifier).playlistTracks(playlist)),
+      onMenu: (at) => showCollectionMenu(
+        context,
+        ref,
+        at: at,
+        load: () => ref.read(playbackProvider.notifier).playlistTracks(playlist),
+        openLabel: 'Open playlist',
+        openRoute: '/playlist/${playlist.id}',
+      ),
+      acceptsDrop: () => playlist.canEdit(ref.read(sessionProvider)?.username ?? ''),
+      onDrop: (drag) async {
+        final List<Track> tracks;
+        try {
+          tracks = await drag.load();
+        } catch (_) {
+          ref.read(toastProvider.notifier).show('Couldn\'t get those songs from the server.', error: true);
+          return;
+        }
+        if (context.mounted) await addToExistingPlaylist(context, ref, playlist, tracks);
+      },
     );
   }
 }
@@ -123,6 +167,10 @@ class MediaCard extends StatefulWidget {
     this.large = false,
     this.onOpen,
     this.onOpenSubtitle,
+    this.onMenu,
+    this.drag,
+    this.onDrop,
+    this.acceptsDrop,
   });
 
   final String title;
@@ -147,6 +195,16 @@ class MediaCard extends StatefulWidget {
 
   /// Opens whatever the subtitle names (an album's artist).
   final VoidCallback? onOpenSubtitle;
+
+  /// Right-click (or the more menu): where on screen it was asked.
+  final void Function(Offset at)? onMenu;
+
+  /// What picking this card up and dropping it carries.
+  final TrackDrag? drag;
+
+  /// Songs dropped on the card (a playlist takes them); [acceptsDrop] can say no.
+  final void Function(TrackDrag drag)? onDrop;
+  final bool Function()? acceptsDrop;
 
   @override
   State<MediaCard> createState() => _MediaCardState();
@@ -238,10 +296,21 @@ class _MediaCardState extends State<MediaCard> {
       },
     );
 
+    Widget tile = cover;
+    if (widget.onMenu != null) {
+      tile = GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onSecondaryTapUp: (d) => widget.onMenu!(d.globalPosition),
+        child: tile,
+      );
+    }
+    if (widget.drag != null) tile = TrackDragSource(drag: widget.drag!, child: tile);
+    if (widget.onDrop != null) tile = TrackDropTarget(radius: 30, onDrop: widget.onDrop!, accepts: widget.acceptsDrop, child: tile);
+
     final card = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        cover,
+        tile,
         SizedBox(height: widget.large ? 14 : 12),
         LinkText(
           text: widget.title,
@@ -355,6 +424,8 @@ class TrackCard extends ConsumerWidget {
       active: current,
       playing: current && ref.watch(playbackProvider.select((s) => s.playing)),
       onTap: () => ref.read(playbackProvider.notifier).playTracks(tracks, index: index),
+      drag: TrackDrag.tracks([track]),
+      onMenu: (at) => showTrackMenu(context, ref, at: at, tracks: [track]),
     );
   }
 }

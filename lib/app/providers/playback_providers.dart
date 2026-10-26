@@ -74,12 +74,20 @@ class PlaybackController extends Notifier<PlaybackState> {
       _load(() async => (await ref.read(apiProvider).getPlaylist(playlist.id)).tracks, shuffle: shuffle);
 
   /// All of an artist's albums, in the server's order.
-  Future<void> playArtist(Artist artist, {bool shuffle = false}) => _load(() async {
-        final api = ref.read(apiProvider);
-        final albums = (await api.getArtist(artist.id)).albums.take(12);
-        final details = await Future.wait([for (final a in albums) api.getAlbum(a.id)]);
-        return [for (final d in details) ...d.tracks];
-      }, shuffle: shuffle);
+  Future<void> playArtist(Artist artist, {bool shuffle = false}) => _load(() => artistTracks(artist), shuffle: shuffle);
+
+  /// The songs of an album, a playlist or an artist (for menus and drags).
+  Future<List<Track>> albumTracks(Album album) async => (await ref.read(apiProvider).getAlbum(album.id)).tracks;
+
+  Future<List<Track>> playlistTracks(Playlist playlist) async =>
+      (await ref.read(apiProvider).getPlaylist(playlist.id)).tracks;
+
+  Future<List<Track>> artistTracks(Artist artist) async {
+    final api = ref.read(apiProvider);
+    final albums = (await api.getArtist(artist.id)).albums.take(12);
+    final details = await Future.wait([for (final a in albums) api.getAlbum(a.id)]);
+    return [for (final d in details) ...d.tracks];
+  }
 
   /// Puts a saved session back, paused.
   Future<void> restore(SavedSession s) {

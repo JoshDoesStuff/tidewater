@@ -422,6 +422,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                   index: i < 12 ? i : 0,
                   child: SongRow(
                     track: list[i],
+                    siblings: list,
                     // Queue everything loaded, in the order shown, from this song.
                     onPlay: () => ref
                         .read(playbackProvider.notifier)

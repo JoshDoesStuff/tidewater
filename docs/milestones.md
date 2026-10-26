@@ -41,7 +41,7 @@ The original plan was shell → server → playback → color/shapes → Now Pla
 
 Search, playlists, the list cache, offline, the real visualizer and the sidebar menu toggle (the menu toggle is in).
 
-Done so far: search, list cache, playlists, server-kept queue and position, refresh/scan. Home's Continue listening card only shows progress (read-only wavy bar), opens Now Playing, and slides in smoothly once a queue exists. The "wrapping up" screen shows only when saving is slow; Settings can make it always show (held at least 0.7 s).
+Done so far: search, list cache, playlists, server-kept queue and position, refresh/scan, context menus on songs and on album/artist/playlist cards, multi-select (Ctrl/Shift+click, selection bar, Esc), drag and drop (songs, albums, artists and playlists onto the mini player or a playlist card). Home's Continue listening card only shows progress (read-only wavy bar), opens Now Playing, and slides in smoothly once a queue exists. The "wrapping up" screen shows only when saving is slow; Settings can make it always show (held at least 0.7 s).
 
 ## Stand-ins and gaps today
 

@@ -10,6 +10,7 @@ import '../../app/providers/library_providers.dart';
 import '../../app/providers/playback_providers.dart';
 import '../../app/providers/cover_prefetch.dart';
 import '../../app/providers/scrobble_providers.dart';
+import '../../app/providers/selection.dart';
 import '../../app/providers/session_persistence.dart';
 import '../../app/providers/system_media_providers.dart';
 import '../../app/providers/settings_providers.dart';
@@ -21,6 +22,8 @@ import '../widgets/animated_glyphs.dart';
 import '../widgets/expressive_buttons.dart';
 import '../pages/album_page.dart' show goBack;
 import 'mini_player.dart';
+import 'selection_bar.dart';
+import '../widgets/track_drag.dart';
 import 'nav_rail.dart';
 import 'shell_effects.dart';
 import 'title_bar.dart';
@@ -47,6 +50,13 @@ class _AppShellState extends ConsumerState<AppShell> {
       location == '/search';
 
   final _pointer = ValueNotifier<Offset>(Offset.zero);
+
+  @override
+  void didUpdateWidget(AppShell old) {
+    super.didUpdateWidget(old);
+    // Songs picked on one page do not follow you to the next.
+    if (old.location != widget.location) Future.microtask(() => mounted ? ref.read(selectionProvider.notifier).clear() : null);
+  }
 
   @override
   void initState() {
@@ -84,6 +94,24 @@ class _AppShellState extends ConsumerState<AppShell> {
     return null;
   }
 
+  /// Songs dropped on the mini player join the end of the queue (or start it).
+  Future<void> _dropOnQueue(TrackDrag drag) async {
+    final player = ref.read(playbackProvider.notifier);
+    try {
+      final tracks = await drag.load();
+      if (tracks.isEmpty) return;
+      if (ref.read(playbackProvider).queue.isEmpty) {
+        await player.playTracks(tracks);
+        return;
+      }
+      await player.addLast(tracks);
+      ref.read(toastProvider.notifier).show(tracks.length == 1 ? 'Added to the queue.' : 'Added ${tracks.length} songs to the queue.');
+    } catch (_) {
+      ref.read(toastProvider.notifier).show('Couldn\'t add those to the queue.', error: true);
+    }
+    ref.read(selectionProvider.notifier).clear();
+  }
+
   /// Space play/pause, N next, P previous, L lyrics, V visualizer style,
   /// Esc closes Now Playing. Ignored while typing in a text field.
   bool _onKey(KeyEvent event) {
@@ -94,6 +122,10 @@ class _AppShellState extends ConsumerState<AppShell> {
     final npOpen = ref.read(nowPlayingOpenProvider);
     final key = event.logicalKey;
     final ctrl = HardwareKeyboard.instance.isControlPressed;
+    if (key == LogicalKeyboardKey.escape && !npOpen && ref.read(selectionProvider).isNotEmpty) {
+      ref.read(selectionProvider.notifier).clear();
+      return true;
+    }
     if ((ctrl && key == LogicalKeyboardKey.keyK) || key == LogicalKeyboardKey.slash) {
       if (!npOpen) GoRouter.of(context).go('/search');
     } else if (key == LogicalKeyboardKey.space) {
@@ -183,7 +215,19 @@ class _AppShellState extends ConsumerState<AppShell> {
                   left: 0,
                   right: 0,
                   bottom: 24,
-                  child: Center(child: ConstrainedBox(constraints: BoxConstraints(maxWidth: miniWidth), child: const MiniPlayer())),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: miniWidth),
+                      // Drop songs on the pill to add them to the end of the queue.
+                      child: TrackDropTarget(radius: 36, onDrop: _dropOnQueue, child: const MiniPlayer()),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: TitleBar.height + 8,
+                  child: const Center(child: SelectionBar()),
                 ),
                 Positioned(
                   right: 32,

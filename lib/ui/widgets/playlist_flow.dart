@@ -32,7 +32,14 @@ Future<void> addToPlaylistFlow(BuildContext context, WidgetRef ref, List<Track> 
     await actions.create(picked.newName!, tracks);
     return;
   }
-  final playlist = picked.playlist!;
+  await addToExistingPlaylist(context, ref, picked.playlist!, tracks);
+}
+
+/// Adds [tracks] to [playlist], asking about songs it already holds (see
+/// [duplicateBehaviorProvider]). Used by the picker and by dropping songs on a playlist.
+Future<void> addToExistingPlaylist(BuildContext context, WidgetRef ref, Playlist playlist, List<Track> tracks) async {
+  if (tracks.isEmpty) return;
+  final actions = ref.read(playlistActionsProvider);
   var toAdd = tracks;
   try {
     final existing = (await ref.read(playlistDetailProvider(playlist.id).future)).tracks.map((t) => t.id).toSet();

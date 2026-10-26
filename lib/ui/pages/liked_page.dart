@@ -165,6 +165,7 @@ class LikedPage extends ConsumerWidget {
               index: i < 12 ? i : 0,
               child: SongRow(
                 track: songs[i],
+                siblings: songs,
                 onPlay: () => ref.read(playbackProvider.notifier).playTracks(songs, index: i),
               ),
             ),
