@@ -30,8 +30,7 @@ progress bar, and colors that follow the album you're playing.
 | Windows | In development (this is what exists today) |
 | Linux | Planned, after the Windows app is complete |
 | Android | Planned (phone layouts in portrait and landscape) |
-| macOS | Somewhere in the future… when I can afford a Mac and a developer license to make one app, lol |
-| iOS | Same: somewhere in the future, once there's a Mac and a developer license |
+| macOS / iOS | Somewhere in the future… when I can afford a Mac and a developer license to make one app, lol |
 
 The order and details are in [docs/milestones.md](docs/milestones.md) (M10 to M14).
 
