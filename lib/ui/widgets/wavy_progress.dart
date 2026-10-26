@@ -72,6 +72,7 @@ class WavyScrubber extends ConsumerStatefulWidget {
     this.strokeWidth = 4,
     this.padding = 2,
     this.flow = 1,
+    this.readOnly = false,
   });
 
   final double amplitude;
@@ -84,6 +85,9 @@ class WavyScrubber extends ConsumerStatefulWidget {
 
   /// How fast the ripples travel (1 is the demo's pace).
   final double flow;
+
+  /// Only shows the progress: no handle, and clicking or dragging does nothing.
+  final bool readOnly;
 
   @override
   ConsumerState<WavyScrubber> createState() => _WavyScrubberState();
@@ -154,6 +158,7 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
   @override
   void initState() {
     super.initState();
+    if (widget.readOnly) _model.handle = 0;
     final source = ref.read(positionProvider);
     _positionSource = source;
     _anchorPos = source.value;
@@ -184,7 +189,7 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
     _model.animating = true;
   }
 
-  double get _handleTarget => ((_model.animating && !_model.seekAnim) || _buffering || !_playing) && !_model.dragging ? 0 : 1;
+  double get _handleTarget => widget.readOnly ? 0 : ((_model.animating && !_model.seekAnim) || _buffering || !_playing) && !_model.dragging ? 0 : 1;
 
   /// Where the end dot sits, as a fraction of the bar.
   double _dotFraction() {
@@ -372,6 +377,29 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
         if (mounted) _sync();
       });
     }
+    final bar = RepaintBoundary(
+      child: CustomPaint(
+        size: Size.infinite,
+        painter: WavyPainter(
+          repaint: Listenable.merge([position, _frame]),
+          fraction: _frac,
+          amplitude: () => _model.amplitude,
+          phase: () => _model.phase,
+          dragging: () => _model.dragging,
+          buffering: () => _model.buffering,
+          sweep: () => _reduced ? .5 : _model.sweep,
+          handle: () => _model.handle,
+          dotShrink: () => _model.dotShrink,
+          sweepAlpha: () => _model.sweepAlpha,
+          wavelength: widget.wavelength,
+          strokeWidth: widget.strokeWidth,
+          padding: widget.padding,
+          played: scheme.primary,
+          track: scheme.secondaryContainer,
+        ),
+      ),
+    );
+    if (widget.readOnly) return IgnorePointer(child: bar);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -386,28 +414,7 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
         onHorizontalDragUpdate: (d) => _scrub(d.localPosition.dx),
         onHorizontalDragEnd: (_) => _endDrag(),
         onHorizontalDragCancel: () => _endDrag(cancel: true),
-        child: RepaintBoundary(
-          child: CustomPaint(
-            size: Size.infinite,
-            painter: WavyPainter(
-              repaint: Listenable.merge([position, _frame]),
-              fraction: _frac,
-              amplitude: () => _model.amplitude,
-              phase: () => _model.phase,
-              dragging: () => _model.dragging,
-              buffering: () => _model.buffering,
-              sweep: () => _reduced ? .5 : _model.sweep,
-              handle: () => _model.handle,
-              dotShrink: () => _model.dotShrink,
-              sweepAlpha: () => _model.sweepAlpha,
-              wavelength: widget.wavelength,
-              strokeWidth: widget.strokeWidth,
-              padding: widget.padding,
-              played: scheme.primary,
-              track: scheme.secondaryContainer,
-            ),
-          ),
-        ),
+        child: bar,
       ),
     );
   }

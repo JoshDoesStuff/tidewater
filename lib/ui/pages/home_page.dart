@@ -10,7 +10,6 @@ import 'package:go_router/go_router.dart';
 import '../../app/destinations.dart';
 import '../../app/providers/library_providers.dart';
 import '../../app/providers/playback_providers.dart';
-import '../../app/providers/session_persistence.dart';
 import '../../app/providers/ui_providers.dart';
 import '../../app/theme/app_theme.dart';
 import '../../app/theme/motion.dart';
@@ -274,7 +273,6 @@ class _HomePageState extends ConsumerState<HomePage> {
         heroes: picks.albums,
         tags: picks.tags,
         resume: ref.watch(currentTrackProvider) != null,
-        restoring: ref.watch(queueRestoringProvider),
       );
     }
     return Column(
@@ -389,16 +387,11 @@ class _Carousel extends StatefulWidget {
     required this.heroes,
     required this.tags,
     required this.resume,
-    required this.restoring,
   });
 
   final List<Album> heroes;
   final List<String> tags;
   final bool resume;
-
-  /// The saved queue is still being looked for: a placeholder holds the place of
-  /// "Continue listening" so the cards do not shift when it arrives.
-  final bool restoring;
 
   @override
   State<_Carousel> createState() => _CarouselState();
@@ -419,10 +412,10 @@ class _CarouselState extends State<_Carousel> {
     final n = widget.heroes.length;
     return LayoutBuilder(
       builder: (context, box) {
-        final wantQuick =
-            box.maxWidth >= 900 && (widget.resume || widget.restoring);
-        // The slot opens and closes smoothly: the hero cards slide to make room, or
-        // spread out again if there turns out to be nothing to continue.
+        final wantQuick = box.maxWidth >= 900 && widget.resume;
+        // The hero cards fill the row by default. When there is something to continue
+        // (the queue comes back from the server a moment after launch) the slot opens
+        // smoothly: the cards slide over and the card fades in.
         return TweenAnimationBuilder<double>(
           tween: Tween(end: wantQuick ? 1.0 : 0.0),
           duration: Motion.of(context, Motion.slow),
@@ -455,16 +448,7 @@ class _CarouselState extends State<_Carousel> {
                             maxWidth: _ContinueListening.width,
                             child: Opacity(
                               opacity: q,
-                              child: AnimatedSwitcher(
-                                duration: Motion.of(context, Motion.medium),
-                                child: widget.resume
-                                    ? const _ContinueListening(
-                                        key: ValueKey('continue'),
-                                      )
-                                    : const _ContinuePlaceholder(
-                                        key: ValueKey('continue-placeholder'),
-                                      ),
-                              ),
+                              child: const _ContinueListening(),
                             ),
                           ),
                         ),
@@ -721,7 +705,7 @@ class _HeroCard extends ConsumerWidget {
 /// title, how far along it is, and a button to resume or pause. Hovering
 /// lifts the card, tints it with the accent and springs the button bigger.
 class _ContinueListening extends ConsumerWidget {
-  const _ContinueListening({super.key});
+  const _ContinueListening();
 
   static const width = 300.0;
 
@@ -850,7 +834,7 @@ class _ContinueListening extends ConsumerWidget {
                       const Spacer(),
                       Row(
                         children: [
-                          // The app's own wavy progress bar (tap to seek).
+                          // The app's wavy progress bar, for show only: no handle, no seeking.
                           const Expanded(
                             child: SizedBox(
                               height: 28,
@@ -858,6 +842,7 @@ class _ContinueListening extends ConsumerWidget {
                                 amplitude: 3,
                                 wavelength: 18,
                                 strokeWidth: 4,
+                                readOnly: true,
                               ),
                             ),
                           ),
@@ -905,12 +890,3 @@ class _ContinueListening extends ConsumerWidget {
   }
 }
 
-/// Holds the place of "Continue listening" while the saved queue is looked for
-/// (it can come from the server), so the cards do not jump when it arrives.
-class _ContinuePlaceholder extends StatelessWidget {
-  const _ContinuePlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) =>
-      const SizedBox.expand(child: SkeletonBox(radius: 32));
-}

@@ -76,6 +76,13 @@ class SettingsPage extends ConsumerWidget {
                   const _QueueStatusLine(),
                   const SizedBox(height: 8),
                   _SwitchRow(
+                    title: 'Always show the "wrapping up" screen',
+                    subtitle: 'When you close the app. Off, it only appears if saving to the server is taking a while. On, it shows every time and stays up for a moment so you can see it.',
+                    value: ref.watch(wrapUpAlwaysProvider),
+                    onChanged: ref.read(wrapUpAlwaysProvider.notifier).set,
+                  ),
+                  const SizedBox(height: 8),
+                  _SwitchRow(
                     title: 'Look up missing lyrics online',
                     subtitle: 'When your server has no lyrics for a track, ask lrclib.net. This sends the artist, title, album and length of that track to lrclib.net.',
                     value: ref.watch(lrclibEnabledProvider),

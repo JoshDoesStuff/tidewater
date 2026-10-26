@@ -16,7 +16,7 @@ void main() {
   testWidgets('with live scrubbing off, a drag seeks once, when it is let go', (tester) async {
     final c = await pumpApp(tester);
     await playPaused(tester, c);
-    final bar = find.byType(WavyScrubber).first;
+    final bar = find.byWidgetPredicate((w) => w is WavyScrubber && !w.readOnly).first;
     final rect = tester.getRect(bar);
     final g = await tester.startGesture(rect.centerLeft + const Offset(10, 0));
     await g.moveBy(Offset(rect.width * .5, 0));
@@ -32,7 +32,7 @@ void main() {
     final c = await pumpApp(tester);
     c.read(liveScrubProvider.notifier).set(true);
     await playPaused(tester, c);
-    final rect = tester.getRect(find.byType(WavyScrubber).first);
+    final rect = tester.getRect(find.byWidgetPredicate((w) => w is WavyScrubber && !w.readOnly).first);
     final g = await tester.startGesture(rect.centerLeft + const Offset(10, 0));
     await g.moveBy(Offset(rect.width * .5, 0));
     await advance(tester, const Duration(milliseconds: 300));
@@ -50,7 +50,7 @@ void main() {
   testWidgets('a click ahead of or behind the playhead seeks there (and animates, without errors)', (tester) async {
     final c = await pumpApp(tester);
     await playPaused(tester, c);
-    final rect = tester.getRect(find.byType(WavyScrubber).first);
+    final rect = tester.getRect(find.byWidgetPredicate((w) => w is WavyScrubber && !w.readOnly).first);
     await tester.tapAt(rect.centerLeft + Offset(rect.width * .75, 0));
     await tester.pump(const Duration(milliseconds: 100));
     await advance(tester, const Duration(seconds: 1));

@@ -250,3 +250,21 @@ class SyncPositionNotifier extends Notifier<bool> {
 }
 
 final syncPositionProvider = NotifierProvider<SyncPositionNotifier, bool>(SyncPositionNotifier.new);
+
+/// Show the "Wrapping up" screen every time the app is closed, and keep it up
+/// for a moment so it can be seen. Off (the default), it only appears when
+/// saving to the server takes more than a moment, and closing is as quick as the
+/// save. Persisted.
+class WrapUpAlwaysNotifier extends Notifier<bool> {
+  static const _key = 'wrap_up_always';
+
+  @override
+  bool build() => ref.watch(sharedPreferencesProvider).getBool(_key) ?? false;
+
+  void set(bool value) {
+    state = value;
+    ref.read(sharedPreferencesProvider).setBool(_key, value);
+  }
+}
+
+final wrapUpAlwaysProvider = NotifierProvider<WrapUpAlwaysNotifier, bool>(WrapUpAlwaysNotifier.new);

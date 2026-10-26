@@ -8,6 +8,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../app/providers/playback_providers.dart';
 import '../../app/providers/session_persistence.dart';
+import '../../app/providers/settings_providers.dart';
 import '../../app/theme/motion.dart';
 import '../widgets/squiggle_loader.dart';
 
@@ -16,12 +17,13 @@ import '../widgets/squiggle_loader.dart';
 /// they are sent when you pause, but a window closed mid-song would otherwise
 /// lose up to 30 seconds of position. `main` turns on `setPreventClose`.
 ///
-/// A "Wrapping up" screen covers the window from the first moment, so closing
-/// always shows what it is doing, and stays at least [minimumShow] so it is not a
-/// flash. It waits two seconds at most for the server, then closes whatever
-/// happened.
+/// A "Wrapping up" screen covers the window when saving takes more than a moment
+/// ([showAfter]), so a slow server does not look like a frozen app. With the
+/// "always show" setting it appears at once on every close and stays at least
+/// [minimumShow] so it can be seen. It waits two seconds at most for the server,
+/// then closes whatever happened.
 class CloseGuard extends ConsumerStatefulWidget {
-  const CloseGuard({super.key, required this.child, this.save, this.onClosed});
+  const CloseGuard({super.key, required this.child, this.save, this.onClosed, this.alwaysShow});
 
   final Widget child;
 
@@ -32,7 +34,13 @@ class CloseGuard extends ConsumerStatefulWidget {
   /// (pause, hide the window, then end the process). Tests replace both.)
   final Future<void> Function()? onClosed;
 
-  /// The least time the "wrapping up" screen stays up, even for a quick save.
+  /// Overrides the "always show the wrapping up screen" setting (tests).
+  final bool? alwaysShow;
+
+  /// How long a save may take before the screen appears (unless set to always show).
+  static const showAfter = Duration(milliseconds: 250);
+
+  /// The least time the screen stays up when it is set to always show.
   static const minimumShow = Duration(milliseconds: 700);
 
   /// The longest the window waits for the server.
@@ -65,14 +73,24 @@ class _CloseGuardState extends ConsumerState<CloseGuard> with WindowListener {
   Future<void> close() async {
     if (_closing) return; // a second click while waiting changes nothing
     _closing = true;
-    setState(() => _showWrapUp = true);
-    final shown = Future<void>.delayed(CloseGuard.minimumShow);
+    final bool always = widget.alwaysShow ?? ref.read(wrapUpAlwaysProvider);
+    Timer? slow;
+    Future<void>? shown;
+    if (always) {
+      setState(() => _showWrapUp = true);
+      shown = Future<void>.delayed(CloseGuard.minimumShow);
+    } else {
+      slow = Timer(CloseGuard.showAfter, () {
+        if (mounted) setState(() => _showWrapUp = true);
+      });
+    }
     try {
       await (widget.save ?? flushSessionPersistence)().timeout(CloseGuard.giveUpAfter);
     } catch (_) {
       // Closing matters more than saving.
     }
-    await shown;
+    slow?.cancel();
+    if (shown != null) await shown;
     await (widget.onClosed ?? _finish)();
   }
 
