@@ -26,6 +26,23 @@ class _WavyModel {
   /// buffering starts, and squiggles back up to the playhead when it ends.
   bool animating = false;
   double display = 0;
+  double animFrom = 0;
+
+  /// 0 to 1 through the current transition, and how long it takes in seconds
+  /// (set on its first frame, longer for a longer way to travel).
+  double animT = 0;
+  double animDur = -1;
+
+  /// A seek (a click on the bar): the wave travels to the new spot and the
+  /// handle stays, unlike a track change or buffering where it slips away.
+  bool seekAnim = false;
+
+  /// 1 while the buffering squiggle is wanted; it fades out, not vanishes, when
+  /// the wait is over.
+  double sweepAlpha = 0;
+
+  /// The handle shrinks into the end dot once the playhead is over it.
+  double dotShrink = 0;
 
   /// The fraction drawn last, where a transition starts from.
   double lastFrac = 0;
@@ -134,16 +151,27 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
       _playing ? widget.amplitude + widget.breathe * source.average(0, VisualizerSource.bands) : 0;
 
   /// Starts the quick retract / squiggle-back from whatever is on screen now.
-  void _beginTransition() {
+  void _beginTransition({bool seek = false}) {
     if (_reduced) {
       _model.animating = false;
       return;
     }
+    _model.seekAnim = seek;
+    _model.animFrom = _model.lastFrac;
     _model.display = _model.lastFrac;
+    _model.animT = 0;
+    _model.animDur = -1;
     _model.animating = true;
   }
 
-  double get _handleTarget => (_model.animating || _buffering) && !_model.dragging ? 0 : 1;
+  double get _handleTarget => ((_model.animating && !_model.seekAnim) || _buffering || !_playing) && !_model.dragging ? 0 : 1;
+
+  /// Where the end dot sits, as a fraction of the bar.
+  double _dotFraction() {
+    final w = context.size?.width ?? 0;
+    final span = w - 2 * widget.padding;
+    return span <= 0 ? 1 : (span - 3) / span;
+  }
 
   void _sync() {
     final source = ref.read(visualizerSourceProvider);
@@ -155,7 +183,13 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
       _frame.value++;
       return;
     }
-    final needed = _playing || _buffering || _model.animating || _model.handle != _handleTarget || _model.amplitude > .02;
+    final needed = _playing ||
+        _buffering ||
+        _model.animating ||
+        _model.sweepAlpha > 0 ||
+        _model.dotShrink > 0 ||
+        _model.handle != _handleTarget ||
+        _model.amplitude > .02;
     if (needed && _ticker == null) {
       _last = Duration.zero;
       _ticker = createTicker(_onTick)..start();
@@ -179,16 +213,26 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
     final k = 1 - math.pow(1 - .1, dt * 60).toDouble();
     _model.amplitude += (_target(source) - _model.amplitude) * k;
     if (_playing) _model.phase += 8.1 * dt;
-    if (_buffering) _model.sweep = (_model.sweep + dt / 1.15) % 1;
+    if (_buffering || _model.sweepAlpha > 0) _model.sweep = (_model.sweep + dt / 1.15) % 1;
+    _model.sweepAlpha = _buffering ? 1 : math.max(0, _model.sweepAlpha - dt / .18);
 
     if (_model.animating) {
       final target = _buffering ? 0.0 : _realFraction();
-      _model.display += (target - _model.display) * (1 - math.exp(-dt * 16));
-      if ((target - _model.display).abs() < .004) {
+      if (_model.animDur < 0) {
+        final dist = (target - _model.animFrom).abs();
+        _model.animDur = _model.seekAnim ? .22 + .38 * dist : .35 + .45 * dist;
+      }
+      _model.animT = math.min(1.0, _model.animT + dt / _model.animDur);
+      final e = Curves.easeInOutCubic.transform(_model.animT);
+      _model.display = _model.animFrom + (target - _model.animFrom) * e;
+      if (_model.animT >= 1) {
         _model.display = target;
         _model.animating = false;
+        _model.seekAnim = false;
       }
     }
+    final atDot = !_buffering && !_model.animating && _frac() >= _dotFraction();
+    _model.dotShrink = (_model.dotShrink + (atDot ? dt : -dt) / .14).clamp(0.0, 1.0);
     final handleTarget = _handleTarget;
     final step = dt * 7;
     _model.handle += (handleTarget - _model.handle).clamp(-step, step);
@@ -197,6 +241,8 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
     if (!_playing &&
         !_buffering &&
         !_model.animating &&
+        _model.sweepAlpha == 0 &&
+        _model.dotShrink == 0 &&
         _model.handle == handleTarget &&
         _model.amplitude < .02) {
       _model.amplitude = 0;
@@ -209,7 +255,9 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
     return (dx / w).clamp(0.0, 1.0);
   }
 
-  void _seekTo(double f) {
+  void _seekTo(double f, {bool animate = false}) {
+    // A click away from the playhead: the wave squiggles there, not jumps.
+    if (animate && (f - _model.lastFrac).abs() > .004) _beginTransition(seek: true);
     // Show the new spot at once; the engine's report catches up a moment later.
     _anchorPos = Duration(microseconds: (_duration.inMicroseconds * f).round());
     _anchorAt = _clock.elapsed;
@@ -232,7 +280,7 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
   void _endDrag({bool cancel = false}) {
     final f = _model.scrubFrac;
     _model.scrubFrac = null;
-    if (f != null && !cancel) _seekTo(f);
+    if (f != null && !cancel) _seekTo(f, animate: true);
     _setDragging(false);
   }
 
@@ -296,7 +344,7 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
         behavior: HitTestBehavior.opaque,
         // A tap seeks once it is a tap, not when the finger lands, so the start
         // of a drag doesn't trigger a seek of its own.
-        onTapUp: (d) => _seekTo(_fractionAt(d.localPosition.dx)),
+        onTapUp: (d) => _seekTo(_fractionAt(d.localPosition.dx), animate: true),
         onHorizontalDragStart: (d) {
           _setDragging(true);
           _scrub(d.localPosition.dx);
@@ -316,6 +364,8 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
               buffering: () => _model.buffering,
               sweep: () => _reduced ? .5 : _model.sweep,
               handle: () => _model.handle,
+              dotShrink: () => _model.dotShrink,
+              sweepAlpha: () => _model.sweepAlpha,
               wavelength: widget.wavelength,
               strokeWidth: widget.strokeWidth,
               padding: widget.padding,
@@ -362,6 +412,8 @@ class WavyPainter extends CustomPainter {
     required this.buffering,
     required this.sweep,
     required this.handle,
+    required this.dotShrink,
+    required this.sweepAlpha,
     required this.wavelength,
     required this.strokeWidth,
     required this.padding,
@@ -378,6 +430,12 @@ class WavyPainter extends CustomPainter {
 
   /// 0 to 1: how much of the playhead handle is showing.
   final double Function() handle;
+
+  /// 0 to 1: the handle shrinking into the end dot.
+  final double Function() dotShrink;
+
+  /// 0 to 1: how visible the buffering squiggle still is as it fades out.
+  final double Function() sweepAlpha;
   final double wavelength;
   final double strokeWidth;
   final double padding;
@@ -399,8 +457,6 @@ class WavyPainter extends CustomPainter {
     final amp = amplitude();
     final ph = phase();
     final h = Curves.easeOut.transform(handle().clamp(0.0, 1.0));
-    // The handle also slips away over the last moment of a track.
-    final endFade = ((1 - frac) / .008).clamp(0.0, 1.0);
 
     // Played portion: a sine path that ends 6 px before the handle (right at
     // the playhead while the handle is away). Sampled finely (about 20 points
@@ -424,14 +480,17 @@ class WavyPainter extends CustomPainter {
         ..color = played,
     );
 
-    // Handle: grows while dragging, scales in and out with [handle].
-    final scale = h * endFade;
+    // Handle: grows while dragging, scales in and out with [handle]. At the end
+    // of the bar it stops over the dot and shrinks into it, fast.
+    final into = Curves.easeIn.transform(dotShrink().clamp(0.0, 1.0));
+    final scale = h * (1 - into);
     if (scale > .02) {
+      final hx = math.min(xp, x1 - 3);
       final hw = (dragging() ? 2.5 : 4.0) * scale;
       final hh = math.min(13.0, size.height * .32) * scale;
       canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromLTWH(xp - hw / 2, cy - hh, hw, hh * 2), Radius.circular(hw / 2)),
-        Paint()..color = played.withValues(alpha: scale),
+        RRect.fromRectAndRadius(Rect.fromLTWH(hx - hw / 2, cy - hh, hw, hh * 2), Radius.circular(hw / 2)),
+        Paint()..color = played,
       );
     }
 
@@ -446,9 +505,11 @@ class WavyPainter extends CustomPainter {
         Paint()..color = track,
       );
     }
-    // The dot at the end fades as the playhead reaches it.
-    final dotAlpha = ((1 - frac) / .012).clamp(0.0, 1.0);
-    if (dotAlpha > 0) canvas.drawCircle(Offset(x1 - 3, cy), 2, Paint()..color = played.withValues(alpha: dotAlpha));
+    canvas.drawCircle(Offset(x1 - 3, cy), 2, Paint()..color = played);
+    // The buffering squiggle fades out over the growing wave instead of
+    // vanishing mid-bar when the wait ends.
+    final fade = sweepAlpha();
+    if (fade > 0) _paintSweep(canvas, x0, x1, cy, fade);
   }
 
   /// Waiting for sound: a flat track with a squiggle that sweeps along it. The
@@ -470,6 +531,16 @@ class WavyPainter extends CustomPainter {
     if (x1 > right) {
       canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTRB(right, cy - strokeWidth / 2, x1, cy + strokeWidth / 2), r), bar);
     }
+    _paintSweep(canvas, x0, x1, cy, 1);
+  }
+
+  /// The sweeping squiggle itself, at [alpha] strength.
+  void _paintSweep(Canvas canvas, double x0, double x1, double cy, double alpha) {
+    final s = sweep();
+    final span = math.max(60.0, (x1 - x0) * .38);
+    final centerX = x0 - span / 2 + (x1 - x0 + span) * s;
+    final from = math.max(x0, centerX - span / 2);
+    final to = math.min(x1, centerX + span / 2);
     if (to <= from) return;
     final path = Path();
     for (var x = from; x <= to; x += 1.5) {
@@ -484,7 +555,7 @@ class WavyPainter extends CustomPainter {
         ..strokeWidth = strokeWidth
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
-        ..color = played,
+        ..color = played.withValues(alpha: alpha),
     );
   }
 

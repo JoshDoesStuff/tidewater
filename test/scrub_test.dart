@@ -46,4 +46,18 @@ void main() {
     expect(find.text('Show all'), findsOneWidget, reason: 'Recently added has more albums than fit; Most played has 3');
     await disposeApp(tester);
   });
+
+  testWidgets('a click ahead of or behind the playhead seeks there (and animates, without errors)', (tester) async {
+    final c = await pumpApp(tester);
+    await playPaused(tester, c);
+    final rect = tester.getRect(find.byType(WavyScrubber).first);
+    await tester.tapAt(rect.centerLeft + Offset(rect.width * .75, 0));
+    await tester.pump(const Duration(milliseconds: 100));
+    await advance(tester, const Duration(seconds: 1));
+    expect(c.read(positionProvider).value, greaterThan(const Duration(seconds: 100)));
+    await tester.tapAt(rect.centerLeft + Offset(rect.width * .25, 0));
+    await advance(tester, const Duration(seconds: 1));
+    expect(c.read(positionProvider).value, lessThan(const Duration(seconds: 80)));
+    await disposeApp(tester);
+  });
 }
