@@ -497,7 +497,7 @@ class WavyPainter extends CustomPainter {
     // explicit so the length grows continuously instead of in sampling jumps.
     final wave = wavePath(
       start: x0,
-      end: math.max(x0, xp - 2 * h),
+      end: math.max(x0, xp - .5 * h),
       centerY: cy,
       amplitude: amp,
       wavelength: wavelength,
@@ -519,7 +519,7 @@ class WavyPainter extends CustomPainter {
     final scale = h * (1 - into);
     if (scale > .02) {
       final hx = xp;
-      final hw = (dragging() ? 2.5 : 4.0) * scale;
+      final hw = (dragging() ? 3.0 : 5.0) * scale;
       final hh = math.min(13.0, size.height * .32) * scale;
       canvas.drawRRect(
         RRect.fromRectAndRadius(Rect.fromLTWH(hx - hw / 2, cy - hh, hw, hh * 2), Radius.circular(hw / 2)),
