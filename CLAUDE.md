@@ -93,7 +93,7 @@ Honor reduced motion: `MediaQuery.disableAnimations` plus a Settings toggle → 
 
 ## Visual rules
 - Window: custom title bar (`window_manager`, hidden native title bar, our own draggable region + min/max/close). Rounded outer corners follow Windows 11.
-- Shell: left `NavigationRail` (Home, Library, Artists, Lists, Radio; Settings pinned bottom) with a pill indicator that springs between items; menu button on top; content to the right; search bar + avatar in the header (the cast button returns in M15); mini player pill floats bottom-center; FAB bottom-right.
+- Shell: left `NavigationRail` (Home, Library, Artists, Lists, Radio; Settings pinned bottom) with a pill indicator that springs between items; menu button on top; content to the right; search bar + avatar in the header (the cast button returns in M10); mini player pill floats bottom-center; FAB bottom-right.
 - No hardcoded colors outside the color-scheme generator. Everything via `Theme.of(context).colorScheme` (animated scheme).
 - Keep animations cheap: `RepaintBoundary` around painters and large animated subtrees; cache shape `Path`s when `m` and `rot` are unchanged; cap visualizer to 60 fps and pause when Now Playing is hidden or the window is minimized.
 
@@ -107,12 +107,13 @@ Build in milestones; stop after each so I can run it.
 6. **Now Playing:** overlay + hero transition, lyrics list, lyrics toggle, volume slider, idle mode, simulated visualizer with all styles + picker.
 7. **Motion polish pass** against the demo list above (ripples, tilt, reveals, heart burst, wash, ambient).
 8. **Search, playlists, offline cache, settings, real visualizer.**
-10. **Website:** a GitHub Pages one-pager once every Windows build is ready.
-11. **Linux:** desktop target, MPRIS media controls, AppImage and Flatpak.
-12. **Android:** phone layouts, media notification, background playback.
-13. **macOS:** desktop target, system media center, signed and notarized dmg.
-14. **iOS:** phone layouts from Android, background audio, TestFlight and App Store.
-15. **Casting:** the final milestone: Chromecast and DLNA devices, a cast picker, remote playback control.
+9. **Settings overhaul:** grouped, searchable settings page with account, playback and about sections.
+10. **Casting:** Chromecast and DLNA devices, a cast picker, remote playback control (the Windows app is complete after this).
+11. **Website:** a GitHub Pages one-pager once every Windows build is ready.
+12. **Linux:** desktop target, MPRIS media controls, AppImage and Flatpak.
+13. **Android:** phone layouts, media notification, background playback.
+14. **macOS:** desktop target, system media center, signed and notarized dmg.
+15. **iOS:** phone layouts from Android, background audio, TestFlight and App Store.
 After each milestone: `flutter analyze` clean, `flutter test` passing, summarize in ≤ 5 lines. Don't refactor unrelated files. Ask before adding packages not listed. Small, reviewable commits.
 
 ## Commands

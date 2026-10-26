@@ -11,7 +11,7 @@ import '../../widgets/pressable.dart';
 import '../../widgets/shapes/morph_path.dart';
 import '../../widgets/shapes/morph_shape.dart';
 
-/// Search pill and avatar along the top of a page (the cast button returns in M15).
+/// Search pill and avatar along the top of a page (the cast button returns in M10).
 class AppHeader extends StatelessWidget {
   const AppHeader({super.key});
 

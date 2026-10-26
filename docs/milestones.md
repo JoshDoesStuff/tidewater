@@ -29,12 +29,12 @@ The original plan was shell → server → playback → color/shapes → Now Pla
 
 | # | Milestone | Status |
 |---|-----------|--------|
-| 10 | Website (after all the Windows builds are ready) | ⬜ |
-| 11 | Linux | ⬜ |
-| 12 | Android | ⬜ |
-| 13 | macOS | ⬜ (somewhere in the future…) |
-| 14 | iOS | ⬜ (somewhere in the future…) |
-| 15 | Casting (the final milestone) | ⬜ |
+| 10 | Casting | ⬜ |
+| 11 | Website (after all the Windows builds are ready) | ⬜ |
+| 12 | Linux | ⬜ |
+| 13 | Android | ⬜ |
+| 14 | macOS | ⬜ (somewhere in the future…) |
+| 15 | iOS | ⬜ (somewhere in the future…) |
 
 ## Next up: M6
 
@@ -49,7 +49,7 @@ Each is a known, deliberate stand-in. Replace them as the milestones land.
 | `SimulatedVisualizerSource` (time-based, not from audio) | `core/playback/visualizer_source.dart` | M8 |
 | `SimulatedEngine` is still the engine in tests, previews and the perf tools (the app itself uses libmpv) | `core/playback/simulated_engine.dart` | stays (test double) |
 | No-op controls: sidebar menu button (hidden for now), header search field | various | M8 (menu button is the sidebar toggle) |
-| Cast button (hidden until casting exists) | header, Now Playing | M15 |
+| Cast button (hidden until casting exists) | header, Now Playing | M10 |
 | Library has no Genres tab (Songs has its own sort and cards/list view; the genre filter is a popup with search, Ctrl+click for several) | `library_page.dart` | M8 |
 | Radio is a placeholder page (Artists, Liked and Lists are real; playlists open a playlist page) | `placeholder_page.dart` | M8 |
 | The quality tag shows the file's own format from the server, not the engine's decoded format | `now_playing_overlay.dart` | M8 (with transcoding) |
@@ -248,7 +248,7 @@ Still to do:
 
 - Verify the hero flight by eye when the mini player is at different widths and the rail is compact.
 - Idle mode on real playback: track end and window deactivation.
-- Cast button hidden from the header and Now Playing until M15 (casting is the final milestone).
+- Cast button hidden from the header and Now Playing until M10.
 - Done since: the back arrow replaces the hidden menu button on detail pages (springs in and out), wider content cap on
   big monitors, diagonal grid stagger, a readable A-Z rail, the squiggle on a track restart, a snappier flight back
   on close (360 ms, symmetrical ease, the cover holds no longer), Google Sans Flex with bundled Noto Sans JP and SC and
@@ -306,7 +306,20 @@ Settings today is one flat column of switches that grew a row at a time. Redo it
 - Add a search box that filters the settings.
 - Every preference stays persisted through `sharedPreferencesProvider`, with tests that each one survives a restart.
 
-## M10 — Website
+## M10 — Casting
+
+The cast button (header and Now Playing) was removed from the UI until this lands. It comes before the website and
+the platform ports so that the Windows app is complete first.
+
+- Cast to Chromecast / Google Cast and DLNA / UPnP renderers on the local network: discover devices, show them in a
+  picker from the cast button (animated, Material 3 Expressive), and send the current queue.
+- Playback hands over to the remote device: the mini player and Now Playing show where it is playing, volume and
+  seek control the remote, local audio pauses. Falls back cleanly if the device disappears.
+- Needs stream URLs the device can reach (Navidrome over the LAN or a reachable address), and a decision on
+  transcoding for devices that do not play every format. Likely needs new packages: ask first.
+- Bring back the `cast.json` animation (still in `assets/icons/`, `castGlyph`) for the button.
+
+## M11 — Website
 
 Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Windows release).
 
@@ -316,7 +329,7 @@ Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Wi
 - Screenshots and a short screen recording once the UI has settled. Keep the credits and licenses reachable from it.
 - Optional later: a custom domain, and a changelog page generated from the release notes.
 
-## M11 — Linux
+## M12 — Linux
 
 - Flutter's Linux desktop target. Replace the Windows-only pieces: the custom frameless window (`window_manager`
   works on Linux too; check the resize edges and rounded corners), media keys and now-playing via MPRIS instead of
@@ -326,7 +339,7 @@ Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Wi
 - Secure storage needs libsecret on Linux; check the fallback when no keyring is running.
 - Icons: add the `.png` set and a `.desktop` file; reuse `tool/branding`.
 
-## M12 — Android
+## M13 — Android
 
 - Responsive shell for phones (see `docs/mockups/tidewater-mobile-prototype.html`): bottom navigation bar in portrait,
   side rail in landscape, mini player above it, queue as a bottom sheet, touch replacements for hover, Ctrl+click and
@@ -337,7 +350,7 @@ Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Wi
 - Permissions (notifications), battery use of the visualizer and idle mode, soft keyboard on login, edge-to-edge
   insets. Build and test with the Android SDK from Windows; publish as an APK on Releases, Play Store later.
 
-## M13 — macOS
+## M14 — macOS
 
 > **Somewhere in the future… when I can afford a Mac and a developer license to make one app, lol.** Until then this
 > is a plan only: macOS and iOS apps can only be built, signed and tested on Apple hardware. CI (GitHub macOS runners)
@@ -350,29 +363,18 @@ Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Wi
 - Needs a Mac and Xcode to build; code signing and notarization with an Apple developer account to distribute outside
   the App Store. Packaging as a `.dmg`.
 
-## M14 — iOS
+## M15 — iOS
 
 > **Somewhere in the future… when I can afford a Mac and a developer license to make one app, lol.** Same story as
-> M13: it needs a Mac, Xcode and the paid Apple developer program ($99 a year).
+> M14: it needs a Mac, Xcode and the paid Apple developer program ($99 a year).
 
-- Reuses the phone layouts from M12; adds Cupertino-friendly touches only where Material feels wrong (back swipe,
+- Reuses the phone layouts from M13; adds Cupertino-friendly touches only where Material feels wrong (back swipe,
   safe areas, haptics).
 - Background audio capability and lock-screen controls, `media_kit` iOS libs, App Transport Security for servers on
   plain HTTP or self-signed certificates.
 - Needs a Mac, Xcode and an Apple developer account (a free one installs for 7 days at a time); TestFlight for
   testing and the App Store for release, with App Review's rules on streaming clients in mind.
 
-## M15 — Casting (the final milestone)
-
-The cast button (header and Now Playing) was removed from the UI until this lands.
-
-- Cast to Chromecast / Google Cast and DLNA / UPnP renderers on the local network: discover devices, show them in a
-  picker from the cast button (animated, Material 3 Expressive), and send the current queue.
-- Playback hands over to the remote device: the mini player and Now Playing show where it is playing, volume and
-  seek control the remote, local audio pauses. Falls back cleanly if the device disappears.
-- Needs stream URLs the device can reach (Navidrome over the LAN or a reachable address), and a decision on
-  transcoding for devices that do not play every format. Likely needs new packages: ask first.
-- Bring back the `cast.json` animation (still in `assets/icons/`, `castGlyph`) for the button.
 
 ---
 
