@@ -27,6 +27,7 @@ final listStoreProvider = Provider<ListStore>((ref) {
 /// An index over the library's artists, albums and songs for autosuggest. It
 /// grows as the lists load (from the saved copy first), and exists only while
 /// something watches it, so the full song list is not loaded for nothing.
+// Not used by the UI right now (the autosuggest dropdown was taken out); kept for later.
 final libraryIndexProvider = Provider.autoDispose<LibraryIndex>((ref) {
   final albums = ref.watch(libraryAlbumsProvider(LibrarySort.recentlyAdded)).value?.albums ?? const [];
   final artists = ref.watch(artistsProvider).value ?? const [];

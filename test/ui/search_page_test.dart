@@ -68,29 +68,6 @@ void main() {
     await disposeApp(tester);
   });
 
-  testWidgets('typing drops down suggestions from the whole library; arrows and Enter pick one, Esc closes the list first', (tester) async {
-    final c = await pumpApp(tester);
-    c.read(routerProvider).go('/search');
-    await advance(tester, const Duration(seconds: 2));
-    await tester.enterText(find.byType(TextField), 'velv');
-    await advance(tester, const Duration(milliseconds: 100));
-    expect(find.byTooltip('Use this search'), findsWidgets);
-
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-    await advance(tester, const Duration(milliseconds: 300));
-    expect(find.byTooltip('Use this search'), findsNothing, reason: 'the first Esc closes the list');
-    expect(c.read(searchQueryProvider), 'velv', reason: 'and keeps what was typed');
-
-    await tester.enterText(find.byType(TextField), 'velve');
-    await advance(tester, const Duration(milliseconds: 100));
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-    await tester.testTextInput.receiveAction(TextInputAction.search);
-    await advance(tester, const Duration(seconds: 1));
-    expect(c.read(searchQueryProvider), 'Velvet Static', reason: 'the highlighted suggestion became the search');
-    expect(c.read(recentSearchesProvider), ['Velvet Static']);
-    await disposeApp(tester);
-  });
-
   testWidgets('Ctrl+K opens Search from anywhere', (tester) async {
     final c = await pumpApp(tester);
     await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);

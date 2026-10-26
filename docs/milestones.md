@@ -280,6 +280,9 @@ two loops that ignored it, the visualizer and the equalizer bars; both now hold 
 - Search page (`search3`): artists/albums/songs, recent searches, keyboard-first; wire the header search pill.
   **Done:** `/search` with the debounced results, recent searches (remembered, removable), `Ctrl+K` or `/` from anywhere,
   `Enter` remembers, `Esc` clears then leaves, back arrow in the rail; the Home pill opens it.
+  A local index (`LibraryIndex`, with typo-tolerant matching) is built and tested, but the autosuggest dropdown built on
+  it was taken out because it did not look right; the index is kept for later. The searching indicator is the
+  buffering squiggle from the progress bar.
 - Playlists: list, detail, create/edit, add-to-playlist from context menus, reorder.
 - Radio page (placeholder). Library Genres tab.
 - Offline cache: download albums/playlists, cache management (size, clear), offline mode.

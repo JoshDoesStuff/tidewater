@@ -2,12 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/providers/list_cache_providers.dart';
 import '../../app/providers/playback_providers.dart';
 import '../../app/providers/search_providers.dart';
-import '../../app/theme/motion.dart';
 import '../../core/models/search_results.dart';
-import '../../core/search/library_index.dart';
 import '../widgets/async_states.dart';
 import '../widgets/effects/stagger_in.dart';
 import '../widgets/pressable.dart';
@@ -19,24 +16,10 @@ import 'widgets/app_header.dart';
 import 'widgets/section_header.dart';
 import 'widgets/song_row.dart';
 
-/// One line of the autosuggest list: a recent search or a match from the
-/// library index.
-class _Pick {
-  const _Pick.recent(this.text) : suggestion = null;
-  _Pick.match(Suggestion s) : text = s.title, suggestion = s;
-
-  final String text;
-  final Suggestion? suggestion;
-
-  bool get isRecent => suggestion == null;
-}
-
 /// Search the library: artists, albums and songs for what is typed, or the
-/// recent searches while nothing is. While typing, a list of suggestions from
-/// the whole library (instant, from a local index) drops down under the field.
-/// Keyboard first: `Ctrl+K` or `/` opens it with the field focused, the arrow
-/// keys move through the suggestions, `Enter` searches (or takes the highlighted
-/// suggestion), `Esc` closes the list, then clears the field, then leaves.
+/// recent searches while nothing is. Keyboard first: `Ctrl+K` or `/` opens it
+/// with the field focused, `Enter` remembers the search, `Esc` clears the field
+/// and then leaves.
 class SearchPage extends ConsumerStatefulWidget {
   const SearchPage({super.key});
 
@@ -52,10 +35,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   late final RecentSearchesNotifier _recent;
   String _found = '';
 
-  /// The suggestion list is hidden after a pick or a submit, until typing again.
-  bool _dismissed = true;
-  int _highlight = -1;
-
   @override
   void initState() {
     super.initState();
@@ -64,9 +43,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     ref.listenManual(searchResultsProvider, (_, next) {
       final r = next.value;
       if (r != null && !r.isEmpty) _found = ref.read(searchQueryProvider);
-    });
-    _focus.addListener(() {
-      if (mounted) setState(() {});
     });
   }
 
@@ -78,15 +54,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     super.dispose();
   }
 
-  void _typed(String q) {
-    ref.read(searchQueryProvider.notifier).set(q);
-    setState(() {
-      _dismissed = false;
-      _highlight = -1;
-    });
-  }
-
-  void _setText(String q) {
+  void _setQuery(String q) {
     _controller.value = TextEditingValue(text: q, selection: TextSelection.collapsed(offset: q.length));
     ref.read(searchQueryProvider.notifier).set(q);
     _focus.requestFocus();
@@ -95,47 +63,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void _clear() {
     _controller.clear();
     ref.read(searchQueryProvider.notifier).set('');
-    setState(() {
-      _dismissed = true;
-      _highlight = -1;
-    });
     _focus.requestFocus();
   }
 
-  /// Search for [q]: remember it and close the suggestions.
-  void _search(String q) {
-    _setText(q);
-    _recent.add(q);
-    setState(() {
-      _dismissed = true;
-      _highlight = -1;
-    });
-  }
-
-  List<_Pick> _picks(String query, LibraryIndex index) {
-    if (query.isEmpty || _dismissed || !_focus.hasFocus) return const [];
-    final q = LibraryIndex.normalize(query);
-    final recents = [
-      for (final r in ref.read(recentSearchesProvider))
-        if (LibraryIndex.normalize(r).contains(q) && LibraryIndex.normalize(r) != q) _Pick.recent(r),
-    ].take(3);
-    final matches = [for (final s in index.suggest(query)) _Pick.match(s)];
-    return [...recents, ...matches];
-  }
-
-  void _move(int by, int count) {
-    if (count == 0) return;
-    setState(() => _highlight = (_highlight + 1 + by + count + 1) % (count + 1) - 1);
-  }
-
-  /// Esc: close the suggestions first, then clear what is typed, then leave.
-  void _escape(bool open) {
-    if (open) {
-      setState(() {
-        _dismissed = true;
-        _highlight = -1;
-      });
-    } else if (_controller.text.isNotEmpty) {
+  /// Esc: clear what is typed first, then leave the page.
+  void _escape() {
+    if (_controller.text.isNotEmpty) {
       _clear();
     } else {
       goBack(context);
@@ -146,21 +79,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   Widget build(BuildContext context) {
     final query = ref.watch(searchQueryProvider).trim();
     final results = ref.watch(searchResultsProvider);
-    ref.watch(recentSearchesProvider);
-    // Watched from the start, so the index is loading (or loaded from the saved
-    // lists) by the time the first letter is typed.
-    final index = ref.watch(libraryIndexProvider);
-    final picks = _picks(query, index);
-    final open = picks.isNotEmpty;
-    final loading = query.isNotEmpty && results.isLoading;
     return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.escape): () => _escape(open),
-        if (open) ...{
-          const SingleActivator(LogicalKeyboardKey.arrowDown): () => _move(1, picks.length),
-          const SingleActivator(LogicalKeyboardKey.arrowUp): () => _move(-1, picks.length),
-        },
-      },
+      bindings: {const SingleActivator(LogicalKeyboardKey.escape): _escape},
       child: PageFrame(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 36, 32, PageFrame.bottomClearance),
@@ -171,39 +91,20 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 controller: _controller,
                 focusNode: _focus,
                 autofocus: true,
-                onChanged: _typed,
+                onChanged: ref.read(searchQueryProvider.notifier).set,
                 onSubmitted: (q) {
-                  if (_highlight >= 0 && _highlight < picks.length) {
-                    _search(picks[_highlight].text);
-                  } else {
-                    _search(q);
-                  }
+                  _recent.add(q);
+                  _focus.requestFocus();
                 },
                 onClear: _clear,
               ),
-              AnimatedSize(
-                duration: Motion.of(context, Motion.fast),
-                curve: Motion.curve(context, Motion.standard),
-                alignment: Alignment.topLeft,
-                child: open
-                    ? _Suggestions(
-                        picks: picks,
-                        highlight: _highlight,
-                        onPick: (p) => _search(p.text),
-                        onFill: (p) {
-                          _setText(p.text);
-                          setState(() => _highlight = -1);
-                        },
-                      )
-                    : const SizedBox(width: double.infinity),
-              ),
-              // A squiggle ripples under the field while a search is on its way.
+              // The buffering squiggle runs under the field while a search is on its way.
               Padding(
-                padding: const EdgeInsets.only(top: 6, left: 12, right: 12),
-                child: SquiggleLoader(active: loading),
+                padding: const EdgeInsets.only(top: 14, left: 20, right: 20),
+                child: SquiggleLoader(active: query.isNotEmpty && results.isLoading),
               ),
               if (query.isEmpty)
-                _Recent(onPick: _search)
+                _Recent(onPick: _setQuery)
               else
                 results.when(
                   data: (r) => _Results(results: r, query: query),
@@ -221,137 +122,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// The dropdown under the field.
-class _Suggestions extends StatelessWidget {
-  const _Suggestions({required this.picks, required this.highlight, required this.onPick, required this.onFill});
-
-  final List<_Pick> picks;
-  final int highlight;
-  final ValueChanged<_Pick> onPick;
-  final ValueChanged<_Pick> onFill;
-
-  static IconData _icon(_Pick p) => switch (p.suggestion?.kind) {
-        null => Icons.history_rounded,
-        SuggestionKind.artist => Icons.person_rounded,
-        SuggestionKind.album => Icons.album_rounded,
-        SuggestionKind.song => Icons.music_note_rounded,
-      };
-
-  static String _kind(SuggestionKind k) => switch (k) {
-        SuggestionKind.artist => 'Artist',
-        SuggestionKind.album => 'Album',
-        SuggestionKind.song => 'Song',
-      };
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Container(
-        width: 640,
-        constraints: const BoxConstraints(maxWidth: 720),
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(28)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final (i, p) in picks.indexed)
-              Pressable(
-                onTap: () => onPick(p),
-                semanticLabel: p.isRecent ? 'Recent search ${p.text}' : '${p.text}, ${_kind(p.suggestion!.kind)}',
-                builder: (context, s) {
-                  final on = s.hovered || i == highlight;
-                  final sug = p.suggestion;
-                  return AnimatedContainer(
-                    duration: Motion.of(context, Motion.fast),
-                    height: 52,
-                    margin: const EdgeInsets.symmetric(horizontal: 8),
-                    padding: const EdgeInsets.only(left: 12, right: 4),
-                    decoration: BoxDecoration(
-                      color: on ? scheme.surfaceContainerHighest : Colors.transparent,
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(_icon(p), size: 22, color: scheme.onSurfaceVariant),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _Highlighted(
-                                text: p.text,
-                                start: sug?.matchStart ?? -1,
-                                length: sug?.matchLength ?? 0,
-                                style: text.bodyLarge,
-                              ),
-                              if (sug != null)
-                                Text(
-                                  '${_kind(sug.kind)} · ${sug.subtitle}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                                ),
-                            ],
-                          ),
-                        ),
-                        // Puts the suggestion in the field without searching, like Google's arrow.
-                        IconButton(
-                          tooltip: 'Use this search',
-                          visualDensity: VisualDensity.compact,
-                          iconSize: 20,
-                          onPressed: () => onFill(p),
-                          icon: const Icon(Icons.north_west_rounded),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// [text] with the part that matched what was typed in bold.
-class _Highlighted extends StatelessWidget {
-  const _Highlighted({required this.text, required this.start, required this.length, required this.style});
-
-  final String text;
-  final int start;
-  final int length;
-  final TextStyle? style;
-
-  @override
-  Widget build(BuildContext context) {
-    final from = start.clamp(0, text.length);
-    final to = (start + length).clamp(from, text.length);
-    if (start < 0 || to == from) {
-      return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
-    }
-    return Text.rich(
-      TextSpan(
-        style: style,
-        children: [
-          TextSpan(text: text.substring(0, from)),
-          TextSpan(
-            text: text.substring(from, to),
-            style: const TextStyle(fontWeight: FontWeight.w800),
-          ),
-          TextSpan(text: text.substring(to)),
-        ],
-      ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
     );
   }
 }
