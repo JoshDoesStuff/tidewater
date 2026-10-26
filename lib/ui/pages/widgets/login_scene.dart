@@ -140,7 +140,9 @@ class _ScenePainter extends CustomPainter {
 
     // Sun: a record, rising a little over the level and turning slowly.
     final r = math.min(size.width, size.height) * .24;
-    final sun = Offset(size.width * recordX, hz - r * .35);
+    // The record bobs slowly in the swell.
+    final bob = r * .06 * math.sin(t * .5);
+    final sun = Offset(size.width * recordX, hz - r * .35 + bob);
     canvas.drawCircle(
       sun,
       r * 2.6,
