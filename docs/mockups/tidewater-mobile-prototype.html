@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tidewater mobile prototype</title>
+<style>
+  :root { --bg:#0c1722; --surf:#15283a; --surf2:#1f3a56; --pri:#8fcfff; --onpri:#06223a; --on:#e8f1f8; --dim:#8da2b5; --coral:#ff7e5f; --ease:cubic-bezier(.05,.7,.1,1); }
+  * { box-sizing:border-box; margin:0; font-family:system-ui,"Segoe UI",Roboto,sans-serif; -webkit-tap-highlight-color:transparent; }
+  body { background:#04080c; color:var(--on); min-height:100vh; display:flex; flex-direction:column; align-items:center; gap:14px; padding:18px; }
+  .tools { display:flex; gap:10px; align-items:center; font-size:13px; color:var(--dim); }
+  .tools button { background:var(--surf2); color:var(--on); border:0; border-radius:16px; padding:8px 14px; cursor:pointer; font-size:13px; }
+  /* the phone */
+  .device { width:360px; height:740px; background:var(--bg); border:9px solid #000; border-radius:38px; position:relative; overflow:hidden; transition:width .5s var(--ease), height .5s var(--ease); }
+  .device.land { width:740px; height:360px; }
+  .status { position:absolute; top:0; left:0; right:0; height:24px; display:flex; justify-content:space-between; padding:6px 16px 0; font-size:11px; color:var(--dim); z-index:5; pointer-events:none; }
+  .screens { position:absolute; inset:24px 0 64px 0; overflow-y:auto; scrollbar-width:none; padding:6px 16px 90px; }
+  .land .screens { inset:14px 0 0 76px; padding-bottom:80px; }
+  .screen { display:none; animation:rise .4s var(--ease); } .screen.on { display:block; }
+  @keyframes rise { from { opacity:0; transform:translateY(14px); } }
+  h1 { font-size:26px; margin:4px 0 12px; letter-spacing:-.5px; }
+  h3 { font-size:14px; margin:16px 0 8px; display:flex; justify-content:space-between; align-items:center; }
+  .chip { font-size:12px; padding:7px 13px; border-radius:16px; background:var(--surf2); border:0; color:var(--on); cursor:pointer; }
+  .chip.on { background:var(--pri); color:var(--onpri); font-weight:700; }
+  .search { height:44px; border-radius:22px; background:var(--surf); display:flex; align-items:center; padding:0 16px; color:var(--dim); font-size:14px; gap:8px; }
+  .hero { margin-top:12px; height:110px; border-radius:26px; padding:14px; display:flex; flex-direction:column; justify-content:flex-end; background:linear-gradient(135deg,#2f6aa8,#14304f); cursor:pointer; transition:transform .2s; }
+  .hero:active { transform:scale(.97); }
+  .hero small { color:#cfe3f4; }
+  .row { display:flex; gap:12px; overflow-x:auto; scrollbar-width:none; }
+  .album { flex:none; width:96px; cursor:pointer; font-size:11px; }
+  .album .art { width:96px; height:96px; border-radius:26px; margin-bottom:6px; transition:border-radius .35s var(--ease), transform .2s; }
+  .album:active .art { border-radius:50%; transform:scale(.95); }
+  .album small { color:var(--dim); display:block; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .grid .album, .grid .art { width:100%; } .grid .art { height:auto; aspect-ratio:1; }
+  .land .grid { grid-template-columns:repeat(4,1fr); }
+  .artist { text-align:center; font-size:12px; } .artist .art { border-radius:50%; width:100%; aspect-ratio:1; margin-bottom:6px; }
+  .song { display:flex; align-items:center; gap:12px; padding:8px 0; font-size:14px; cursor:pointer; }
+  .song .art { width:44px; height:44px; border-radius:14px; flex:none; } .song small { display:block; color:var(--dim); font-size:12px; }
+  .song .heart { margin-left:auto; color:var(--dim); font-size:20px; }
+  .song .heart.on { color:var(--coral); }
+  .settings div { padding:14px 4px; border-bottom:1px solid var(--surf2); display:flex; justify-content:space-between; font-size:14px; }
+  /* nav */
+  .nav { position:absolute; left:0; right:0; bottom:0; height:64px; background:var(--surf); display:flex; justify-content:space-around; align-items:center; z-index:4; }
+  .land .nav { right:auto; top:0; width:68px; height:auto; flex-direction:column; padding:10px 0; }
+  .nav button { background:none; border:0; color:var(--dim); font-size:10px; cursor:pointer; text-align:center; }
+  .nav button i { display:block; width:46px; height:26px; margin:0 auto 3px; border-radius:13px; font-style:normal; font-size:16px; line-height:26px; transition:background .35s, transform .35s var(--ease); }
+  .nav button.on { color:var(--on); font-weight:700; } .nav button.on i { background:var(--surf2); transform:scaleX(1.12); }
+  /* mini player */
+  .mini { position:absolute; left:10px; right:10px; bottom:72px; height:56px; border-radius:28px; background:var(--surf2); display:flex; align-items:center; gap:10px; padding:0 8px 0 8px; z-index:3; font-size:12px; cursor:pointer; box-shadow:0 8px 20px #0007; overflow:hidden; }
+  .land .mini { left:84px; bottom:10px; }
+  .mini .art { width:40px; height:40px; border-radius:50%; flex:none; transition:border-radius .4s; } .mini.playing .art { border-radius:14px; }
+  .mini .t { flex:1; line-height:1.25; min-width:0; } .mini .t b, .mini .t small { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .mini small { color:var(--dim); }
+  .mini .prog { position:absolute; left:0; bottom:0; height:3px; background:var(--pri); }
+  .rb { width:38px; height:38px; border-radius:50%; border:0; background:var(--pri); color:var(--onpri); font-size:14px; cursor:pointer; flex:none; transition:border-radius .25s, transform .15s; }
+  .rb:active { transform:scale(.9); } .rb.sq { border-radius:13px; }
+  .rb.ghost { background:transparent; color:var(--on); }
+  /* now playing */
+  .np { position:absolute; inset:0; background:var(--bg); z-index:10; transform:translateY(105%); transition:transform .55s var(--ease); padding:30px 22px 20px; display:flex; flex-direction:column; }
+  .np.open { transform:none; }
+  .np .top { display:flex; justify-content:space-between; font-size:12px; color:var(--dim); align-items:center; }
+  .np .top button { background:var(--surf); border:0; color:var(--on); width:38px; height:38px; border-radius:50%; cursor:pointer; margin-left:6px; font-size:15px; }
+  .np .body { flex:1; display:flex; flex-direction:column; min-height:0; }
+  .land .np .body { flex-direction:row; gap:24px; align-items:center; }
+  .cover { aspect-ratio:1; border-radius:46px; margin:14px auto 12px; width:84%; max-width:300px; background:radial-gradient(circle at 30% 25%,#ffb199,var(--coral)); transition:border-radius .8s var(--ease); }
+  .np.play .cover { border-radius:50% 44% 50% 44%/44% 50% 44% 50%; animation:spin 30s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .land .cover { width:210px; margin:0; flex:none; }
+  .info { flex:1; min-width:0; }
+  .title { font-size:23px; font-weight:700; letter-spacing:-.4px; } .artist-l { color:var(--dim); font-size:15px; margin:2px 0 8px; }
+  svg.wave { width:100%; height:26px; display:block; cursor:pointer; }
+  .times { display:flex; justify-content:space-between; font-size:11px; color:var(--dim); }
+  .ctrl { display:flex; justify-content:center; align-items:center; gap:10px; margin:10px 0; }
+  .ctrl .k { width:48px; height:48px; border-radius:24px; background:var(--surf2); border:0; color:var(--on); font-size:16px; cursor:pointer; transition:border-radius .2s; }
+  .ctrl .k:active { border-radius:14px; } .ctrl .k.act { background:var(--pri); color:var(--onpri); }
+  .ctrl .big { width:84px; height:60px; border-radius:30px; background:var(--pri); color:var(--onpri); font-size:22px; border:0; cursor:pointer; transition:border-radius .3s; } .ctrl .big.pl { border-radius:20px; }
+  .lyrics { background:var(--surf); border-radius:22px; padding:12px 14px; font-size:13px; line-height:1.55; color:var(--dim); } .lyrics em { color:var(--pri); font-style:normal; font-weight:700; font-size:16px; transition:all .4s; }
+  .sheet { position:absolute; left:0; right:0; bottom:0; height:62%; background:var(--surf); border-radius:26px 26px 0 0; padding:10px 16px; z-index:12; transform:translateY(105%); transition:transform .5s var(--ease); font-size:13px; overflow-y:auto; }
+  .sheet.open { transform:none; } .land .sheet { left:auto; width:340px; top:0; height:100%; border-radius:26px 0 0 26px; transform:translateX(105%); } .land .sheet.open { transform:none; }
+  .grab { width:38px; height:4px; border-radius:2px; background:var(--dim); margin:0 auto 10px; }
+  .q { display:flex; align-items:center; gap:10px; padding:7px 0; } .q .art { width:34px; height:34px; border-radius:10px; flex:none; } .q.cur { color:var(--pri); font-weight:700; }
+  .hint { max-width:620px; text-align:center; font-size:12px; color:var(--dim); }
+</style>
+</head>
+<body>
+
+<div class="tools">
+  <button id="rot">⟲ Rotate (portrait / landscape)</button>
+  <span>Tap an album or the mini player, then try the buttons, the bar, the heart and the queue.</span>
+</div>
+
+<div class="device" id="dev">
+  <div class="status"><span>9:41</span><span>5G ▮▮▮</span></div>
+
+  <div class="screens" id="screens">
+    <div class="screen on" id="s-home">
+      <div class="search">⌕ Search your library</div>
+      <h1 style="margin-top:14px">Good evening</h1>
+      <div class="hero" data-play="0"><small>Continue listening</small><b>ARE.U.FREE.NEXT.WEEK</b><small>117★FC</small></div>
+      <h3>Jump back in</h3><div class="row" id="r-jump"></div>
+      <h3>Recently added <button class="chip">Show all →</button></h3><div class="row" id="r-new"></div>
+      <h3>Surprise me <button class="chip" id="reroll">⇄ Shuffle picks</button></h3><div class="row" id="r-rand"></div>
+    </div>
+    <div class="screen" id="s-lib">
+      <h1>Library</h1>
+      <div style="display:flex;gap:6px;margin-bottom:10px"><button class="chip on">Albums</button><button class="chip">Songs</button><button class="chip">Playlists</button></div>
+      <div style="display:flex;gap:6px;margin-bottom:14px"><button class="chip">⇅ Recently added</button><button class="chip">Genre ▾</button></div>
+      <div class="grid" id="g-lib"></div>
+    </div>
+    <div class="screen" id="s-art"><h1>Artists</h1><div class="grid" id="g-art" style="grid-template-columns:repeat(3,1fr)"></div></div>
+    <div class="screen" id="s-liked"><h1>Liked songs</h1><div id="l-liked"></div></div>
+    <div class="screen" id="s-more"><h1>More</h1><div class="settings"><div>Lists <span>›</span></div><div>Radio <span>›</span></div><div>Settings <span>›</span></div><div>Queue as bottom sheet <span>on</span></div><div>Live scrubbing <span>off</span></div></div></div>
+  </div>
+
+  <div class="mini" id="mini"><div class="art" id="mArt"></div><div class="t"><b id="mT">ARE.U.FREE</b><small id="mA">117★FC</small></div><button class="rb" id="mPP">▶</button><button class="rb ghost" id="mH">♡</button><div class="prog" id="mProg" style="width:0"></div></div>
+
+  <nav class="nav" id="nav">
+    <button class="on" data-s="home"><i>⌂</i>Home</button>
+    <button data-s="lib"><i>♫</i>Library</button>
+    <button data-s="art"><i>☺</i>Artists</button>
+    <button data-s="liked"><i>♥</i>Liked</button>
+    <button data-s="more"><i>⋯</i>More</button>
+  </nav>
+
+  <div class="np" id="np">
+    <div class="top"><button id="close">⌄</button><span>Now playing</span><span><button id="bViz">▮▮</button><button id="bQ">☰</button></span></div>
+    <div class="body">
+      <div class="cover" id="cover"></div>
+      <div class="info">
+        <div class="title" id="nT">ARE.U.FREE</div><div class="artist-l" id="nA">117★FC</div>
+        <svg class="wave" id="wave" viewBox="0 0 300 26" preserveAspectRatio="none"></svg>
+        <div class="times"><span id="tE">0:00</span><span id="tR">-3:20</span></div>
+        <div class="ctrl"><button class="k" id="bSh">⤮</button><button class="k" id="bPrev">⏮</button><button class="big" id="bPP">▶</button><button class="k" id="bNext">⏭</button><button class="k" id="bHeart">♡</button></div>
+        <div class="lyrics" id="ly"><em>A million miles away,</em><br>I'm lost in the dark, don't know…</div>
+      </div>
+    </div>
+    <div class="sheet" id="sheet"><div class="grab"></div><b>Queue</b> · <span id="qN"></span><div id="qList"></div></div>
+  </div>
+</div>
+
+<p class="hint">A rough interactive sketch, not the real app: dummy data and simple CSS animation. It shows the layout ideas (bottom bar ↔ side rail, mini player, queue sheet, portrait / landscape Now Playing) and the app's signature motion (the cover turning into a scalloped shape while playing, the wavy bar, buttons squaring off on press).</p>
+
+<script>
+const albums = [
+  ['ARE.U.FREE.NEXT.WEEK','117★FC','#ff7e5f'],['HYPER4ID','t+pazolite','#9bd34a'],['Nocturne Sound','João Luís','#8a7fd4'],
+  ['Don’t Stop','Alex Hagen','#d6a77a'],['Bring It Back','Costa Music','#e9824f'],['Long Ride','Lovepark','#38c7b0'],
+  ['binary data','HDN','#6a6fe0'],['Stargaze','Juggernaut.','#e66a9a'],['unbeatable [ost]','D-CELL','#e3b95c'],['Festival','Toby Fox','#444b66'],
+];
+const art = c => `background:linear-gradient(135deg,${c},${c}99)`;
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const card = (a,i) => `<div class="album" data-play="${i}"><div class="art" style="${art(a[2])}"></div>${a[0]}<small>${a[1]}</small></div>`;
+const fill = (id, idx) => $(id).innerHTML = idx.map(i => card(albums[i], i)).join('');
+fill('#r-jump',[1,2,3,4,5]); fill('#r-new',[5,6,7,8,9,0]); fill('#r-rand',[7,3,9,2,6]); fill('#g-lib',[0,1,2,3,4,5,6,7]);
+$('#g-art').innerHTML = albums.slice(0,9).map(a => `<div class="artist"><div class="art" style="${art(a[2])}"></div>${a[1]}</div>`).join('');
+const liked = new Set([0,3]);
+function drawLiked(){ $('#l-liked').innerHTML = albums.map((a,i)=>`<div class="song" data-play="${i}"><div class="art" style="${art(a[2])}"></div><div>${a[0]}<small>${a[1]}</small></div><span class="heart ${liked.has(i)?'on':''}" data-h="${i}">${liked.has(i)?'♥':'♡'}</span></div>`).join(''); }
+drawLiked();
+$('#reroll').onclick = () => { const idx=[...albums.keys()].sort(()=>Math.random()-.5).slice(0,5); const r=$('#r-rand'); r.style.opacity=0; r.style.transform='translateY(8px)'; setTimeout(()=>{fill('#r-rand',idx); r.style.transition='all .45s'; r.style.opacity=1; r.style.transform='none';},160); };
+
+// navigation
+$$('#nav button').forEach(b => b.onclick = () => { $$('#nav button').forEach(x=>x.classList.toggle('on',x===b)); $$('.screen').forEach(s=>s.classList.toggle('on',s.id==='s-'+b.dataset.s)); $('#screens').scrollTop=0; });
+$('#rot').onclick = () => { $('#dev').classList.toggle('land'); wave(); };
+
+// player
+let cur=0, pos=0, playing=false; const LEN=200;
+const fmt = s => Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+function setTrack(i){ cur=i; pos=0; const a=albums[i];
+  $('#mT').textContent=$('#nT').textContent=a[0]; $('#mA').textContent=$('#nA').textContent=a[1];
+  $('#mArt').style.background=`linear-gradient(135deg,${a[2]},${a[2]}99)`; $('#cover').style.background=`radial-gradient(circle at 30% 25%,${a[2]}cc,${a[2]})`;
+  syncHeart(); queue(); play(true); }
+function play(p){ playing=p; $('#mPP').textContent=$('#bPP').textContent=p?'❚❚':'▶'; $('#mPP').classList.toggle('sq',p); $('#bPP').classList.toggle('pl',p); $('#mini').classList.toggle('playing',p); $('#np').classList.toggle('play',p); }
+function syncHeart(){ const l=liked.has(cur); $('#bHeart').textContent=$('#mH').textContent=l?'♥':'♡'; $('#bHeart').classList.toggle('act',l); }
+document.addEventListener('click', e => {
+  const p = e.target.closest('[data-play]'); if (p && !e.target.dataset.h) { setTrack(+p.dataset.play); }
+  const h = e.target.dataset.h; if (h!==undefined){ liked.has(+h)?liked.delete(+h):liked.add(+h); drawLiked(); syncHeart(); }
+});
+$('#mini').onclick = e => { if (e.target.closest('button')) return; $('#np').classList.add('open'); wave(); };
+$('#close').onclick = () => { $('#np').classList.remove('open'); $('#sheet').classList.remove('open'); };
+$('#mPP').onclick = $('#bPP').onclick = () => play(!playing);
+$('#bNext').onclick = () => setTrack((cur+1)%albums.length); $('#bPrev').onclick = () => setTrack((cur+albums.length-1)%albums.length);
+$('#bHeart').onclick = $('#mH').onclick = () => { liked.has(cur)?liked.delete(cur):liked.add(cur); drawLiked(); syncHeart(); };
+$('#bSh').onclick = () => $('#bSh').classList.toggle('act'); $('#bViz').onclick = () => $('#bViz').classList.toggle('act');
+$('#bQ').onclick = () => $('#sheet').classList.toggle('open');
+$('#sheet').querySelector('.grab').onclick = () => $('#sheet').classList.remove('open');
+function queue(){ $('#qN').textContent=albums.length+' tracks'; $('#qList').innerHTML=albums.map((a,i)=>`<div class="q ${i===cur?'cur':''}" data-play="${i}"><div class="art" style="${art(a[2])}"></div>${a[0]}</div>`).join(''); }
+queue();
+
+// wavy bar
+function wave(){ const w=300, f=pos/LEN, x=Math.max(2,f*w-6); let d='M2 13'; for(let X=2;X<=x;X+=2) d+=` L${X} ${13+(playing?4:0)*Math.sin((X/9)-pos*5)}`;
+  $('#wave').innerHTML=`<path d="${d}" stroke="var(--pri)" stroke-width="4" fill="none" stroke-linecap="round"/><rect x="${x+3}" y="13" width="${Math.max(0,w-x-5)}" height="4" rx="2" transform="translate(0,-2)" fill="var(--surf2)"/><rect x="${x-1}" y="4" width="3.5" height="18" rx="1.7" fill="var(--pri)"/>`; }
+$('#wave').addEventListener('click', e => { const r=e.currentTarget.getBoundingClientRect(); pos=(e.clientX-r.left)/r.width*LEN; wave(); });
+setInterval(()=>{ if(playing){ pos+=.1; if(pos>=LEN) setTrack((cur+1)%albums.length); }
+  $('#tE').textContent=fmt(pos); $('#tR').textContent='-'+fmt(LEN-pos); $('#mProg').style.width=(pos/LEN*100)+'%'; wave();
+  $('#ly').innerHTML = pos%20<10 ? '<em>A million miles away,</em><br>I’m lost in the dark, don’t know…' : 'A million miles away,<br><em>I’m lost in the dark, don’t know…</em>'; },100);
+wave();
+</script>
+</body>
+</html>
