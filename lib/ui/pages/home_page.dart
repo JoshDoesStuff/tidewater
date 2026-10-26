@@ -52,8 +52,8 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   /// The three hero picks, kept until their lists change so the carousel
   /// doesn't reshuffle on every rebuild.
-  String? _randomId, _recentId, _newId;
-  String? _randomListKey;
+  String? _recentId, _newId;
+  Album? _randomHero;
 
   void _showAll(LibraryTab tab, [LibrarySort? sort]) {
     ref.read(libraryTabProvider.notifier).set(tab);
@@ -84,7 +84,8 @@ class _HomePageState extends ConsumerState<HomePage> {
             _jumpBackIn(newest, recent, heroes),
             SectionHeader(
               title: 'Recently added',
-              onAction: () => _showAll(LibraryTab.albums, LibrarySort.recentlyAdded),
+              // "Show all" only when the row can't show everything on one line.
+              onAction: (newest.value?.length ?? 0) > fit ? () => _showAll(LibraryTab.albums, LibrarySort.recentlyAdded) : null,
             ),
             _CardRow<Album>(
               value: shown,
@@ -134,7 +135,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             if (frequent.value?.isNotEmpty ?? false) ...[
               SectionHeader(
                 title: 'Most played',
-                onAction: () => _showAll(LibraryTab.albums, LibrarySort.mostPlayed),
+                onAction: (frequent.value?.length ?? 0) > fit ? () => _showAll(LibraryTab.albums, LibrarySort.mostPlayed) : null,
               ),
               _CardRow<Album>(
                 value: frequent.whenData((l) => l.take(fit).toList()),
@@ -185,14 +186,16 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     final fromRecent = choose(recent.value, _recentId, (id) => _recentId = id);
     final fromNew = choose(shown.value, _newId, (id) => _newId = id);
-    // A new random list (Shuffle picks) means a new hero pick from it, made when
-    // the list arrives, not from the old list at the moment of the press.
-    final randomKey = random.value?.map((a) => a.id).join(',');
-    if (randomKey != _randomListKey) {
-      _randomListKey = randomKey;
-      _randomId = null;
+    // The random hero stays put when Shuffle picks fetches a new row; it is only
+    // replaced if another hero slot has taken the same album.
+    Album? fromAll = _randomHero;
+    if (fromAll != null && taken.contains(fromAll.id)) fromAll = null;
+    if (fromAll == null) {
+      final pool = [for (final a in random.value ?? const <Album>[]) if (!taken.contains(a.id)) a];
+      if (pool.isNotEmpty) fromAll = pool[_random.nextInt(pool.length)];
     }
-    final fromAll = choose(random.value, _randomId, (id) => _randomId = id);
+    _randomHero = fromAll;
+    if (fromAll != null) taken.add(fromAll.id);
     return (
       albums: [?fromAll, ?fromRecent, ?fromNew],
       tags: [if (fromAll != null) 'Random', if (fromRecent != null) 'Recently played', if (fromNew != null) 'New'],

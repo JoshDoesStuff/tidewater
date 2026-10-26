@@ -78,6 +78,13 @@ class SettingsPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   _SwitchRow(
+                    title: 'Live scrubbing',
+                    subtitle: 'The song seeks as you drag the progress bar. Off, it jumps once when you let go, which avoids a buffering flash mid-drag.',
+                    value: ref.watch(liveScrubProvider),
+                    onChanged: ref.read(liveScrubProvider.notifier).set,
+                  ),
+                  const SizedBox(height: 8),
+                  _SwitchRow(
                     title: 'Faint icon while it redraws',
                     subtitle: 'Some icons erase and draw themselves again when clicked. On keeps a faint copy of the icon underneath so it never fully disappears.',
                     value: ref.watch(iconGhostProvider),

@@ -209,3 +209,20 @@ class IconGhostNotifier extends Notifier<bool> {
 }
 
 final iconGhostProvider = NotifierProvider<IconGhostNotifier, bool>(IconGhostNotifier.new);
+
+/// Seek while dragging the progress bar. Off (the default) the song jumps once,
+/// when the bar is let go, which avoids a burst of seeks (and a buffering
+/// flash) mid-drag. Persisted.
+class LiveScrubNotifier extends Notifier<bool> {
+  static const _key = 'live_scrub';
+
+  @override
+  bool build() => ref.watch(sharedPreferencesProvider).getBool(_key) ?? false;
+
+  void set(bool value) {
+    state = value;
+    ref.read(sharedPreferencesProvider).setBool(_key, value);
+  }
+}
+
+final liveScrubProvider = NotifierProvider<LiveScrubNotifier, bool>(LiveScrubNotifier.new);
