@@ -59,6 +59,7 @@ class SearchPill extends StatefulWidget {
 class _SearchPillState extends State<SearchPill> {
   late final FocusNode _focus = widget.focusNode ?? FocusNode();
   bool _hovered = false;
+  bool _pressed = false;
 
   void _refresh() {
     if (mounted) setState(() {});
@@ -98,6 +99,9 @@ class _SearchPillState extends State<SearchPill> {
             // the padding opens it (on Home) or focuses the field.
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
+              onTapDown: (_) => setState(() => _pressed = true),
+              onTapUp: (_) => setState(() => _pressed = false),
+              onTapCancel: () => setState(() => _pressed = false),
               onTap: widget.launcher
                   ? () => context.go('/search')
                   : _focus.requestFocus,
@@ -119,7 +123,8 @@ class _SearchPillState extends State<SearchPill> {
                       kind: GlyphKind.search,
                       size: 24,
                       color: scheme.onSurfaceVariant,
-                      hovered: _hovered || _focus.hasFocus,
+                      // The glass plays once per click, not on hover or focus.
+                      active: _pressed,
                     ),
                     const SizedBox(width: 16),
                     Expanded(

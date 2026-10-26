@@ -50,6 +50,9 @@ class ListCache implements ListStore {
     try {
       final file = _file(await _dir, name);
       final bytes = await Isolate.run(() => utf8.encode(jsonEncode(items)));
+      // The same list again (the usual case: nothing changed since last launch)
+      // is not written at all, which saves the SSD a few megabytes per start.
+      if (await file.exists() && await _same(file, bytes)) return;
       // Write beside it and rename, so a crash never leaves a half file.
       final temp = File('${file.path}.tmp');
       await temp.writeAsBytes(bytes, flush: true);
@@ -58,6 +61,15 @@ class ListCache implements ListStore {
       // A cache that cannot be written is only slower, never wrong.
     }
   }
+}
+
+Future<bool> _same(File file, List<int> bytes) async {
+  if (await file.length() != bytes.length) return false;
+  final old = await file.readAsBytes();
+  for (var i = 0; i < old.length; i++) {
+    if (old[i] != bytes[i]) return false;
+  }
+  return true;
 }
 
 /// An in-memory [ListStore] for tests.
