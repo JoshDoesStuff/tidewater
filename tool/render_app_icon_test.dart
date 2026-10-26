@@ -22,7 +22,7 @@ const boatFromSize = 64;
 
 Future<Uint8List> _png(int size, IconDesign design) async {
   final recorder = ui.PictureRecorder();
-  paintIcon(ui.Canvas(recorder), size.toDouble(), design, boat: size >= boatFromSize);
+  paintIcon(ui.Canvas(recorder), size.toDouble(), design, boat: size >= boatFromSize, simple: size < boatFromSize);
   final image = await recorder.endRecording().toImage(size, size);
   final data = await image.toByteData(format: ui.ImageByteFormat.png);
   image.dispose();

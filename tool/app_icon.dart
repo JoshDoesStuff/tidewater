@@ -240,8 +240,24 @@ String _recordSvg() {
 ''';
 }
 
-void _paintRecord(ui.Canvas canvas, {required bool boat}) {
+void _paintRecord(ui.Canvas canvas, {required bool boat, required bool simple}) {
   const center = ui.Offset(_rx, _ry);
+  if (simple) {
+    // Taskbar sizes: a few bold shapes, no hairline rings, shine or second wave,
+    // so it stays clean instead of crunchy at 16 to 48 px.
+    canvas.drawRect(const ui.Rect.fromLTWH(0, 0, iconSize, iconSize), _fill(_recBg));
+    const bold = ui.Offset(_rx, 450);
+    canvas.drawCircle(bold, 290, _stroke(_recLine, 84));
+    canvas.drawPath(_path(_scallop(_rx, 450, 160, 6, .085), close: true), _fill(_recLabel));
+    canvas.drawCircle(bold, 40, _fill(_recHole));
+    // The water sits lower here so more of the record shows above it.
+    canvas.save();
+    canvas.translate(0, 110);
+    canvas.drawPath(_path(_waterShape(), close: true), _fill(_recWater));
+    canvas.drawPath(_path(_tide()), _stroke(_recSurface, 46));
+    canvas.restore();
+    return;
+  }
   void rings(int outer, List<int> grooves) {
     canvas.drawCircle(center, _outer, _stroke(outer, 30));
     for (final (i, g) in _grooves.indexed) {
@@ -275,8 +291,9 @@ String iconSvg(IconDesign design) => switch (design) {
 
 /// Draws [design] scaled to [size] pixels square, clipped to the rounded tile.
 /// [boat] draws the record design's little sailboat; at taskbar sizes it is
-/// only a smudge, so the Windows icon leaves it off its small frames.
-void paintIcon(ui.Canvas canvas, double size, IconDesign design, {bool boat = true}) {
+/// only a smudge, so the Windows icon leaves it off its small frames. [simple]
+/// also drops the fine detail (rings, shine, second wave) for those sizes.
+void paintIcon(ui.Canvas canvas, double size, IconDesign design, {bool boat = true, bool simple = false}) {
   canvas.save();
   canvas.scale(size / iconSize);
   canvas.clipRRect(
@@ -286,7 +303,7 @@ void paintIcon(ui.Canvas canvas, double size, IconDesign design, {bool boat = tr
     case IconDesign.cookie:
       _paintCookie(canvas);
     case IconDesign.record:
-      _paintRecord(canvas, boat: boat);
+      _paintRecord(canvas, boat: boat, simple: simple);
   }
   canvas.restore();
 }
