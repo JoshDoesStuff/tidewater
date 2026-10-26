@@ -44,10 +44,16 @@ class LetterSpeedNotifier extends Notifier<double> {
 
 final letterSpeedProvider = NotifierProvider<LetterSpeedNotifier, double>(LetterSpeedNotifier.new);
 
-/// The automatic pace of the title swap: 1.3x for short titles, 1.7x for long ones
-/// (20 characters or fewer, 45 or more), in between for the rest. The Settings
-/// speed multiplies it.
-double titlePace(String title) => 1.3 + .4 * ((title.runes.length - 20) / 25).clamp(0.0, 1.0);
+/// The automatic pace of the title swap, by title length: 1x for a one-word title
+/// like "Xeon" (6 characters or fewer), 1.3x around 23 characters ("Head Full of
+/// Nightmares"), 1.7x for 45 or more, and smoothly in between. The Settings speed
+/// multiplies it.
+double titlePace(String title) {
+  final n = title.runes.length.toDouble();
+  if (n <= 6) return 1.0;
+  if (n <= 23) return 1.0 + .3 * (n - 6) / 17;
+  return 1.3 + .4 * ((n - 23) / 22).clamp(0.0, 1.0);
+}
 
 /// Dark is the default; light is supported.
 class DarkThemeNotifier extends Notifier<bool> {

@@ -58,7 +58,19 @@ class GlyphSheet {
 
   factory GlyphSheet.build({required String text, required TextStyle style, required double dpr}) {
     // White mask; the real color is applied when drawing.
-    final base = style.copyWith(color: const Color(0xFFFFFFFF), decoration: TextDecoration.none);
+    // No ligatures or contextual alternates: each letter is drawn on its own, so a
+    // joined "fl", "fi" or "tt" glyph would be split in half (a gap in "flavor",
+    // squeezed "tt"), and a letter that changes shape beside its neighbors would
+    // come out wrong. Kerning stays: positions come from the whole string.
+    final base = style.copyWith(
+      color: const Color(0xFFFFFFFF),
+      decoration: TextDecoration.none,
+      fontFeatures: const [
+        FontFeature.disable('liga'),
+        FontFeature.disable('clig'),
+        FontFeature.disable('calt'),
+      ],
+    );
     final whole = TextPainter(
       text: TextSpan(text: text, style: base),
       textDirection: TextDirection.ltr,
