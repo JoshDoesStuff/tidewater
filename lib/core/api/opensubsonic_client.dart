@@ -134,8 +134,32 @@ class OpenSubsonicClient implements LibraryApi {
   }
 
   /// Calls a JSON endpoint and returns the `subsonic-response` body.
-  Future<Map<String, dynamic>> _call(String endpoint, [Map<String, Object?> params = const {}]) async {
-    final res = await _send<String>(_uri(endpoint, params), ResponseType.plain);
+  Future<Map<String, dynamic>> _call(String endpoint, [Map<String, Object?> params = const {}]) async =>
+      _answer(await _send<String>(_uri(endpoint, params), ResponseType.plain));
+
+  /// Same, but the parameters travel in a form-encoded POST body (the login stays
+  /// in the address). For calls whose parameters would not fit in a URL, such as
+  /// a queue of thousands of song ids.
+  Future<Map<String, dynamic>> _post(String endpoint, Map<String, Object?> params) async {
+    final body = Uri(
+      queryParameters: {
+        for (final e in params.entries)
+          if (e.value != null) e.key: e.value is Iterable ? [for (final v in e.value as Iterable) v.toString()] : e.value.toString(),
+      },
+    ).query;
+    try {
+      final res = await _dio.postUri<String>(
+        _uri(endpoint),
+        data: body,
+        options: Options(contentType: Headers.formUrlEncodedContentType, responseType: ResponseType.plain),
+      );
+      return _answer(res);
+    } on DioException catch (e) {
+      throw _mapDioError(e);
+    }
+  }
+
+  Map<String, dynamic> _answer(Response<String> res) {
     final status = res.statusCode ?? 0;
     if (status == 401 || status == 403) {
       throw const ApiException(ApiErrorKind.badCredentials, 'The server refused the login.');
@@ -363,12 +387,13 @@ class OpenSubsonicClient implements LibraryApi {
   }
 
   @override
-  Future<void> savePlayQueue(List<String> ids, {String? current, Duration position = Duration.zero}) =>
-      _call('savePlayQueue', {
-        'id': ids,
-        'current': current,
-        'position': position.inMilliseconds,
-      });
+  Future<void> savePlayQueue(List<String> ids, {String? current, Duration position = Duration.zero}) {
+    final params = {'id': ids, 'current': current, 'position': position.inMilliseconds};
+    // A hundred ids fit in an address; thousands (a queue of the whole library) go in the body.
+    return ids.length > _maxIdsInUrl ? _post('savePlayQueue', params) : _call('savePlayQueue', params);
+  }
+
+  static const _maxIdsInUrl = 100;
 
   @override
   Future<ServerPlayQueue?> getPlayQueue() async {

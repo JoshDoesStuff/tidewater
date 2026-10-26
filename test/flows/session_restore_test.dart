@@ -72,12 +72,12 @@ void main() {
 
     test('very long queues are cut around the current track', () {
       final many = [
-        for (var i = 0; i < 2500; i++)
+        for (var i = 0; i < 12500; i++)
           Track(id: 't$i', title: 'T$i', artist: 'a', albumId: 'x', albumTitle: 'x', duration: const Duration(seconds: 1)),
       ];
-      final back = SavedSession.decode(_saved(tracks: many, index: 1800).encode())!;
+      final back = SavedSession.decode(_saved(tracks: many, index: 11800).encode())!;
       expect(back.tracks.length, SavedSession.maxTracks);
-      expect(back.tracks[back.index].id, 't1800');
+      expect(back.tracks[back.index].id, 't11800');
     });
   });
 

@@ -31,7 +31,7 @@ class SavedSession {
   final DateTime? savedAt;
 
   /// Queues longer than this are cut around the current track when saving.
-  static const maxTracks = 1000;
+  static const maxTracks = 10000;
 
   String encode() {
     var from = 0;

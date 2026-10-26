@@ -219,6 +219,26 @@ void main() {
       expect(a.requests.first.queryParameters['submission'], 'true');
       expect(a.requests.first.queryParameters['id'], 'tr-1');
     });
+
+    test('a short play queue goes in the address, a huge one in a POST body', () async {
+      final a = _routes({'savePlayQueue': 'ping_ok.json'});
+      final c = _client(a);
+      await c.savePlayQueue(['a', 'b'], current: 'b', position: const Duration(seconds: 12));
+      expect(a.methods.last, 'GET');
+      expect(a.requests.last.queryParametersAll['id'], ['a', 'b']);
+      expect(a.requests.last.queryParameters['position'], '12000');
+
+      final ids = [for (var i = 0; i < 5000; i++) 'song-$i'];
+      await c.savePlayQueue(ids, current: 'song-42', position: const Duration(seconds: 3));
+      expect(a.methods.last, 'POST');
+      expect(a.requests.last.toString().length, lessThan(400), reason: 'the address stays short');
+      expect(a.requests.last.queryParameters['u'], 'josh', reason: 'the login stays in the address');
+      final body = a.bodies.last;
+      expect(body.split('&').where((p) => p.startsWith('id=')).length, 5000);
+      expect(body, contains('current=song-42'));
+      expect(body, contains('position=3000'));
+      expect(body, isNot(contains('sesame')));
+    });
   });
 
   group('parseServerUrl', () {

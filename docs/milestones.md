@@ -295,7 +295,7 @@ two loops that ignored it, the visualizer and the equalizer bars; both now hold 
   rewritten, and the player is told not to cache on disk.
   Further: once the server has proved it keeps the queue (a push read back), the queue is not written to disk at all; the
   copy on this PC is only written when syncing is off or the server cannot hold it. Shuffle and repeat are two settings.
-  (The server holds about 200 songs around the current one.) Settings also has "Scan the server" (admin only: starts
+  (Up to 10,000 songs go to the server; a queue of more than 100 is sent as a POST body, since the ids would not fit in an address.) Settings also has "Scan the server" (admin only: starts
   `startScan`, waits on `getScanStatus`, then refreshes).
 - **List cache**: cache the list data on disk (songs, albums, artists, playlists, liked songs; Home rows) so the
   Library and the Songs tab open instantly and refresh in the background. Today only covers, extracted colors and the

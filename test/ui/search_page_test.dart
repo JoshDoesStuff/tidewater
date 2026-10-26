@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -65,6 +66,26 @@ void main() {
     await tester.tap(find.text('zzzzzz'));
     await advance(tester, const Duration(seconds: 1));
     expect(c.read(searchQueryProvider), 'zzzzzz');
+    await disposeApp(tester);
+  });
+
+  testWidgets('clicking the glass on the Search page keeps the field focused (the pill does not shrink and grow back)', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows; // only desktop blurs a field on an outside tap
+    final c = await pumpApp(tester);
+    c.read(routerProvider).go('/search');
+    await advance(tester, const Duration(seconds: 1));
+    final field = find.byType(EditableText);
+    expect(tester.widget<EditableText>(field).focusNode.hasFocus, isTrue);
+    final node = tester.widget<EditableText>(field).focusNode;
+    final changes = <bool>[];
+    node.addListener(() => changes.add(node.hasFocus));
+    final rect = tester.getRect(find.byType(TextField));
+    await tester.tapAt(Offset(rect.left - 30, rect.center.dy));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(changes, isEmpty, reason: 'the field is never blurred and refocused by the click');
+    await advance(tester, const Duration(seconds: 1));
+    expect(tester.widget<EditableText>(field).focusNode.hasFocus, isTrue);
+    debugDefaultTargetPlatformOverride = null;
     await disposeApp(tester);
   });
 

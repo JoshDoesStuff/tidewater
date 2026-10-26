@@ -28,9 +28,9 @@ const _repeatKey = 'player.repeat';
 /// How often the position goes to the server while playing.
 const _serverPushEvery = Duration(seconds: 30);
 
-/// The server keeps about this many songs of a queue (around the current one),
-/// which keeps the request small.
-const _serverQueueMax = 200;
+/// The most songs of a queue sent to the server (around the current one when it is
+/// longer). A queue that long goes in a POST body, not in the address.
+const _serverQueueMax = 10000;
 
 /// Identifies the server and user a saved queue belongs to.
 String serverKeyOf(ServerConfig c) => '${c.baseUrl}|${c.username}';

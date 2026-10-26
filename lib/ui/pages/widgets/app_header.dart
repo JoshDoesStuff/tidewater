@@ -97,67 +97,72 @@ class _SearchPillState extends State<SearchPill> {
             onExit: (_) => setState(() => _hovered = false),
             // The whole pill is the target, not just the text: a click on the icon or
             // the padding opens it (on Home) or focuses the field.
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTapDown: (_) => setState(() => _pressed = true),
-              onTapUp: (_) => setState(() => _pressed = false),
-              onTapCancel: () => setState(() => _pressed = false),
-              onTap: widget.launcher
-                  ? () => context.go('/search')
-                  : _focus.requestFocus,
-              child: AnimatedContainer(
-                duration: Motion.of(context, Motion.slow),
-                curve: Motion.curve(context, Motion.spring),
-                width: target.clamp(0.0, box.maxWidth),
-                height: 56,
-                padding: const EdgeInsets.only(left: 24, right: 12),
-                decoration: BoxDecoration(
-                  color: _hovered || _focus.hasFocus
-                      ? scheme.surfaceContainerHighest
-                      : scheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(28),
-                ),
-                child: Row(
-                  children: [
-                    AnimatedGlyph(
-                      kind: GlyphKind.search,
-                      size: 24,
-                      color: scheme.onSurfaceVariant,
-                      // The glass plays once per click, not on hover or focus.
-                      active: _pressed,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextField(
-                        focusNode: _focus,
-                        controller: widget.controller,
-                        autofocus: widget.autofocus,
-                        readOnly: widget.launcher,
-                        onTap: widget.launcher
-                            ? () => context.go('/search')
-                            : null,
-                        onChanged: widget.onChanged,
-                        onSubmitted: widget.onSubmitted,
-                        textInputAction: TextInputAction.search,
-                        style: Theme.of(context).textTheme.bodyLarge,
-                        decoration: InputDecoration.collapsed(
-                          hintText: 'Search your library',
-                          hintStyle: Theme.of(context).textTheme.bodyLarge
-                              ?.copyWith(color: scheme.onSurfaceVariant),
+            // A click on the icon or the padding is inside the field as far as focus
+            // goes: without the tap region it would first blur the text field (a tap
+            // outside it), shrinking the pill, then focus it again, growing it.
+            child: TextFieldTapRegion(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) => setState(() => _pressed = true),
+                onTapUp: (_) => setState(() => _pressed = false),
+                onTapCancel: () => setState(() => _pressed = false),
+                onTap: widget.launcher
+                    ? () => context.go('/search')
+                    : _focus.requestFocus,
+                child: AnimatedContainer(
+                  duration: Motion.of(context, Motion.slow),
+                  curve: Motion.curve(context, Motion.spring),
+                  width: target.clamp(0.0, box.maxWidth),
+                  height: 56,
+                  padding: const EdgeInsets.only(left: 24, right: 12),
+                  decoration: BoxDecoration(
+                    color: _hovered || _focus.hasFocus
+                        ? scheme.surfaceContainerHighest
+                        : scheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                  child: Row(
+                    children: [
+                      AnimatedGlyph(
+                        kind: GlyphKind.search,
+                        size: 24,
+                        color: scheme.onSurfaceVariant,
+                        // The glass plays once per click, not on hover or focus.
+                        active: _pressed,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          focusNode: _focus,
+                          controller: widget.controller,
+                          autofocus: widget.autofocus,
+                          readOnly: widget.launcher,
+                          onTap: widget.launcher
+                              ? () => context.go('/search')
+                              : null,
+                          onChanged: widget.onChanged,
+                          onSubmitted: widget.onSubmitted,
+                          textInputAction: TextInputAction.search,
+                          style: Theme.of(context).textTheme.bodyLarge,
+                          decoration: InputDecoration.collapsed(
+                            hintText: 'Search your library',
+                            hintStyle: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
                         ),
                       ),
-                    ),
-                    if (hasText && widget.onClear != null)
-                      ExpressiveIconButton(
-                        icon: Icons.close_rounded,
-                        glyph: glyphFor(GlyphKind.close, size: 22),
-                        size: 40,
-                        iconSize: 20,
-                        tone: ButtonTone.ghost,
-                        tooltip: 'Clear',
-                        onPressed: widget.onClear,
-                      ),
-                  ],
+                      if (hasText && widget.onClear != null)
+                        ExpressiveIconButton(
+                          icon: Icons.close_rounded,
+                          glyph: glyphFor(GlyphKind.close, size: 22),
+                          size: 40,
+                          iconSize: 20,
+                          tone: ButtonTone.ghost,
+                          tooltip: 'Clear',
+                          onPressed: widget.onClear,
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),

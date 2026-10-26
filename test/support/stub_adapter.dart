@@ -25,10 +25,16 @@ class StubAdapter implements HttpClientAdapter {
 
   final FutureOr<StubResponse> Function(Uri uri) handler;
   final requests = <Uri>[];
+  final methods = <String>[];
+
+  /// The body of each request (empty for GETs).
+  final bodies = <String>[];
 
   @override
   Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
     requests.add(options.uri);
+    methods.add(options.method);
+    bodies.add(requestStream == null ? '' : utf8.decode([for (final chunk in await requestStream.toList()) ...chunk]));
     final r = await handler(options.uri);
     final bytes = r.body is String ? utf8.encode(r.body as String) : r.body as List<int>;
     return ResponseBody.fromBytes(
