@@ -490,13 +490,14 @@ class WavyPainter extends CustomPainter {
     final ph = phase();
     final h = Curves.easeOut.transform(handle().clamp(0.0, 1.0));
 
-    // Played portion: a sine path that ends 6 px before the handle (right at
-    // the playhead while the handle is away). Sampled finely (about 20 points
+    // Played portion: a sine path that runs right into the handle, like
+    // Symfonium's (its round end cap tucks inside the handle), and ends at
+    // the playhead while the handle is away. Sampled finely (about 20 points
     // per wavelength) so it reads as a smooth curve, and the final point is
     // explicit so the length grows continuously instead of in sampling jumps.
     final wave = wavePath(
       start: x0,
-      end: math.max(x0, xp - 6 * h),
+      end: math.max(x0, xp - 2 * h),
       centerY: cy,
       amplitude: amp,
       wavelength: wavelength,
