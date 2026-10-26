@@ -9,10 +9,22 @@ import '../../../app/theme/motion.dart';
 /// The sign-in backdrop: a record for a sun low over the water, layers of
 /// slow waves and a small boat riding them. All colors come from the scheme.
 class LoginScene extends StatefulWidget {
-  const LoginScene({super.key, required this.sunX, required this.horizon});
+  const LoginScene({
+    super.key,
+    required this.sunX,
+    required this.boatX,
+    required this.horizon,
+    required this.accent,
+  });
 
   /// Where the sun sits across the window (0 to 1).
   final double sunX;
+
+  /// Where the boat rides across the window (0 to 1).
+  final double boatX;
+
+  /// The record label and the hull (the icon's coral).
+  final Color accent;
 
   /// Where the water starts down the window (0 to 1).
   final double horizon;
@@ -55,6 +67,8 @@ class _LoginSceneState extends State<LoginScene>
           scheme: Theme.of(context).colorScheme,
           time: _time,
           sunX: widget.sunX,
+          boatX: widget.boatX,
+          accent: widget.accent,
           horizon: widget.horizon,
         ),
       ),
@@ -88,12 +102,16 @@ class _ScenePainter extends CustomPainter {
     required this.scheme,
     required this.time,
     required this.sunX,
+    required this.boatX,
     required this.horizon,
+    required this.accent,
   }) : super(repaint: time);
 
   final ColorScheme scheme;
   final ValueListenable<double> time;
   final double sunX;
+  final double boatX;
+  final Color accent;
   final double horizon;
 
   static const _waves = [
@@ -151,7 +169,7 @@ class _ScenePainter extends CustomPainter {
     _layer(canvas, size, _waves[1], t);
 
     // The boat rides the second layer, behind the nearer water.
-    final bx = size.width * (sunX > .5 ? sunX - .3 : sunX + .3);
+    final bx = size.width * boatX;
     _boat(canvas, size, bx, t);
 
     _layer(canvas, size, _waves[2], t);
@@ -191,7 +209,7 @@ class _ScenePainter extends CustomPainter {
     canvas.save();
     canvas.translate(c.dx, c.dy);
     canvas.rotate(t * .25);
-    canvas.drawCircle(Offset.zero, r * .34, Paint()..color = scheme.primary);
+    canvas.drawCircle(Offset.zero, r * .34, Paint()..color = accent);
     canvas.drawCircle(
       Offset(0, -r * .22),
       r * .045,
@@ -262,7 +280,7 @@ class _ScenePainter extends CustomPainter {
     canvas.scale(s);
 
     final sail = Paint()..color = scheme.onSurface;
-    final hull = Paint()..color = scheme.primary;
+    final hull = Paint()..color = accent;
     canvas.drawPath(
       Path()
         ..moveTo(3, -92)
@@ -302,5 +320,9 @@ class _ScenePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ScenePainter old) =>
-      old.scheme != scheme || old.sunX != sunX || old.horizon != horizon;
+      old.scheme != scheme ||
+      old.sunX != sunX ||
+      old.boatX != boatX ||
+      old.accent != accent ||
+      old.horizon != horizon;
 }

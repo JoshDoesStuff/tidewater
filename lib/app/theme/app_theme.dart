@@ -6,6 +6,10 @@ abstract final class AppTheme {
   /// Seed used until the first album plays and its cover colors take over.
   static const seed = Color(0xFFFF7E5F);
 
+  /// The blue of the Tidewater icon and banner; the sign-in screen is themed
+  /// from it before any album colors exist ([seed] is the icon's coral).
+  static const brandBlue = Color(0xFF1B57B8);
+
   /// Foreground for text/icons drawn directly on top of cover art or a scrim.
   /// Art is not themed, so this is deliberately fixed.
   static const onArt = Color(0xFFFFFFFF);

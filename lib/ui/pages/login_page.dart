@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers/session_providers.dart';
+import '../../app/theme/app_theme.dart';
 import '../../app/theme/motion.dart';
 import '../../core/api/api_exception.dart';
 import '../../core/api/connect.dart';
 import '../../core/api/server_config.dart';
 import '../shell/title_bar.dart';
-import '../widgets/effects/letter_reveal.dart';
 import '../widgets/effects/ripple.dart';
 import '../widgets/animated_glyphs.dart';
 import '../widgets/expressive_buttons.dart';
 import '../widgets/pressable.dart';
+import 'widgets/brand_title.dart';
 import 'widgets/login_scene.dart';
 
 /// Server URL, user and password / API key. Shown whenever no server is
@@ -106,6 +107,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Themed from the Tidewater blue: no album has played yet.
+    return Theme(
+      data: AppTheme.build(
+        Theme.of(context).brightness,
+        seedColor: AppTheme.brandBlue,
+      ),
+      child: Builder(builder: _form),
+    );
+  }
+
+  Widget _form(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final error = _error;
@@ -113,18 +125,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       color: scheme.surface,
       child: LayoutBuilder(
         builder: (context, box) {
-          // Wide windows put the form on the left and the sun on the right.
+          // The record rises on the left, the form sits in the middle and the
+          // boat sails on the right.
           final wide = box.maxWidth >= 900;
           return Stack(
             children: [
               Positioned.fill(
                 child: LoginScene(
-                  sunX: wide ? .7 : .5,
-                  horizon: wide ? .66 : .74,
+                  sunX: wide ? .17 : .2,
+                  boatX: wide ? .83 : .8,
+                  horizon: wide ? .66 : .8,
+                  accent: AppTheme.seed,
                 ),
               ),
               Align(
-                alignment: wide ? const Alignment(-.5, 0) : Alignment.center,
+                alignment: Alignment.center,
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(24, 56, 24, 32),
                   child: ConstrainedBox(
@@ -143,12 +158,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             children: [
                               Semantics(
                                 header: true,
-                                child: Center(
-                                  child: LetterReveal(
-                                    text: 'Tidewater',
-                                    style: text.displaySmall,
-                                  ),
-                                ),
+                                child: Center(child: const BrandTitle()),
                               ),
                               const SizedBox(height: 8),
                               Text(
