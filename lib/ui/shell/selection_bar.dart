@@ -60,7 +60,7 @@ class SelectionBar extends ConsumerWidget {
                   _Action(Icons.favorite_border_rounded, 'Like', () => _like(ref, selection)),
                   if (scope?.remove != null)
                     _Action(Icons.playlist_remove_rounded, scope!.removeLabel, () async {
-                      final picked = selection.tracks;
+                      final picked = selection.keys;
                       ref.read(selectionProvider.notifier).clear();
                       await scope.remove!(picked);
                     }),

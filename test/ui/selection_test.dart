@@ -198,4 +198,38 @@ void main() {
     await advance(tester, const Duration(seconds: 6));
     await disposeApp(tester);
   });
+
+  testWidgets('Shift+click in the queue picks from the playing song to the one clicked', (tester) async {
+    final c = await pumpApp(tester);
+    final player = c.read(playbackProvider.notifier);
+    await player.playTracks(fakeTracks.take(5).toList(), index: 1);
+    await advance(tester, const Duration(seconds: 1));
+    c.read(nowPlayingOpenProvider.notifier).set(true);
+    c.read(queueOpenProvider.notifier).set(true);
+    await advance(tester, const Duration(seconds: 1));
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.tap(find.text(fakeTracks[3].title).last);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await advance(tester, const Duration(milliseconds: 300));
+    expect(c.read(queueSelectionProvider), {1, 2, 3});
+    await player.toggle();
+    await advance(tester, const Duration(seconds: 6));
+    await disposeApp(tester);
+  });
+
+  testWidgets('a song twice in a playlist: removing the picked row leaves the other copy', (tester) async {
+    final api = FakeLibraryApi();
+    api.playlistSongs['pl-1'] = [fakeTracks[0], fakeTracks[1], fakeTracks[0]];
+    final c = await pumpApp(tester, api: api);
+    c.read(routerProvider).go('/playlist/pl-1');
+    await advance(tester, const Duration(seconds: 2));
+    await _ctrlTap(tester, find.text(fakeTracks[0].title).last); // the third row only
+    expect(c.read(selectionProvider).length, 1);
+    await advance(tester, const Duration(milliseconds: 400));
+    await tester.tap(find.byTooltip('Remove from playlist'));
+    await advance(tester, const Duration(seconds: 1));
+    expect([for (final t in api.playlistSongs['pl-1']!) t.id], [fakeTracks[0].id, fakeTracks[1].id]);
+    await advance(tester, const Duration(seconds: 6));
+    await disposeApp(tester);
+  });
 }

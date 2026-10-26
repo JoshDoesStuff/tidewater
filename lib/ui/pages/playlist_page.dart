@@ -106,9 +106,13 @@ class _BodyState extends ConsumerState<_Body> {
   }
 
   /// Takes every picked song out (a song that is in the list twice goes both times).
-  Future<void> _removeMany(List<Track> picked) async {
-    final ids = {for (final t in picked) t.id};
-    final indexes = [for (final (i, t) in _tracks.indexed) if (ids.contains(t.id)) i];
+  /// A row's pick key: the same song twice in a list are two different rows.
+  static String _rowKey(Track t, int i) => '${t.id}#$i';
+
+  /// Takes only the picked rows out, not other copies of the same song.
+  Future<void> _removeMany(List<String> pickedKeys) async {
+    final picked = pickedKeys.toSet();
+    final indexes = [for (final (i, t) in _tracks.indexed) if (picked.contains(_rowKey(t, i))) i];
     if (indexes.isEmpty) return;
     setState(() => _local = [for (final (i, t) in _tracks.indexed) if (!indexes.contains(i)) t]);
     if (!await ref.read(playlistActionsProvider).removeAll(_playlist, indexes) && mounted) {
@@ -234,6 +238,7 @@ class _BodyState extends ConsumerState<_Body> {
       slivers: [
         SelectionScope(
           tracks: tracks,
+          keys: [for (final (i, t) in tracks.indexed) _rowKey(t, i)],
           remove: editable ? _removeMany : null,
           removeLabel: 'Remove from playlist',
           child: const SliverToBoxAdapter(),
@@ -271,6 +276,9 @@ class _BodyState extends ConsumerState<_Body> {
                 child: SongRow(
                   track: tracks[i],
                   draggable: false,
+                  siblings: tracks,
+                  pickKey: _rowKey(tracks[i], i),
+                  siblingKeys: [for (final (k, t) in tracks.indexed) _rowKey(t, k)],
                   onPlay: () => player.playTracks(tracks, index: i),
                   onRemove: () => _remove(i),
                   leading: ReorderableDragStartListener(
@@ -297,7 +305,13 @@ class _BodyState extends ConsumerState<_Body> {
             sliver: SliverFixedExtentList(
               itemExtent: SongRow.height,
               delegate: SliverChildBuilderDelegate(
-                (context, i) => SongRow(track: tracks[i], siblings: tracks, onPlay: () => player.playTracks(tracks, index: i)),
+                (context, i) => SongRow(
+                  track: tracks[i],
+                  siblings: tracks,
+                  pickKey: _rowKey(tracks[i], i),
+                  siblingKeys: [for (final (k, t) in tracks.indexed) _rowKey(t, k)],
+                  onPlay: () => player.playTracks(tracks, index: i),
+                ),
                 childCount: tracks.length,
               ),
             ),

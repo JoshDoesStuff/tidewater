@@ -130,7 +130,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       }
       final scope = ref.read(selectionScopeProvider);
       if (scope == null || scope.tracks.isEmpty) return false;
-      ref.read(selectionProvider.notifier).selectAll(scope.tracks);
+      ref.read(selectionProvider.notifier).selectAll(scope.tracks, keys: scope.keys);
       return true;
     }
     if (key == LogicalKeyboardKey.escape && npOpen && ref.read(queueSelectionProvider).isNotEmpty) {

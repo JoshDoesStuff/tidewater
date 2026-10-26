@@ -7,10 +7,18 @@ import '../../core/models/track.dart';
 /// Wrap the songs a page shows (a sliver or a box) so Ctrl+A can pick them all,
 /// and, with [remove], so the selection bar can take them out of the list.
 class SelectionScope extends ConsumerStatefulWidget {
-  const SelectionScope({super.key, required this.tracks, required this.child, this.remove, this.removeLabel = 'Remove'});
+  const SelectionScope({
+    super.key,
+    required this.tracks,
+    required this.child,
+    this.keys,
+    this.remove,
+    this.removeLabel = 'Remove',
+  });
 
   final List<Track> tracks;
-  final Future<void> Function(List<Track> picked)? remove;
+  final List<String>? keys;
+  final Future<void> Function(List<String> pickedKeys)? remove;
   final String removeLabel;
   final Widget child;
 
@@ -24,7 +32,7 @@ class _SelectionScopeState extends ConsumerState<SelectionScope> {
   void _register() {
     Future.microtask(() {
       if (!mounted) return;
-      _scope.set(this, SelectionScopeData(tracks: widget.tracks, remove: widget.remove, removeLabel: widget.removeLabel));
+      _scope.set(this, SelectionScopeData(tracks: widget.tracks, keys: widget.keys, remove: widget.remove, removeLabel: widget.removeLabel));
     });
   }
 

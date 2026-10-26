@@ -77,8 +77,8 @@ class _QueuePanelState extends ConsumerState<QueuePanel> {
     final pickedNotifier = ref.read(queueSelectionProvider.notifier);
     void tapped(int i) {
       final keys = HardwareKeyboard.instance;
-      if (keys.isShiftPressed && picked.isNotEmpty) {
-        pickedNotifier.rangeTo(i);
+      if (keys.isShiftPressed) {
+        pickedNotifier.rangeTo(i, start: index);
       } else if (keys.isControlPressed || keys.isMetaPressed || keys.isShiftPressed || picked.isNotEmpty) {
         pickedNotifier.toggle(i);
       } else {

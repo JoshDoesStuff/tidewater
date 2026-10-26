@@ -28,6 +28,8 @@ class SongRow extends ConsumerWidget {
     this.onRemove,
     this.leading,
     this.siblings,
+    this.pickKey,
+    this.siblingKeys,
     this.draggable = true,
   });
 
@@ -45,6 +47,11 @@ class SongRow extends ConsumerWidget {
   /// The list this row is in, so Shift+click can pick a range.
   final List<Track>? siblings;
 
+  /// Tells this row from another with the same song (in a playlist), so picking one
+  /// picks only it; [siblingKeys] are the keys of [siblings]. Null: the song's id.
+  final String? pickKey;
+  final List<String>? siblingKeys;
+
   /// Whether it can be picked up and dropped on a playlist or the mini player.
   final bool draggable;
 
@@ -57,13 +64,13 @@ class SongRow extends ConsumerWidget {
         current && ref.watch(playbackProvider.select((s) => s.playing));
     final liked = ref.watch(likedProvider.select((s) => s.contains(track.id)));
     final player = ref.read(playbackProvider.notifier);
-    final picked = ref.watch(selectionProvider.select((s) => s.contains(track.id)));
+    final picked = ref.watch(selectionProvider.select((s) => s.contains(pickKey ?? track.id)));
     final picking = ref.watch(selectionProvider.select((s) => s.isNotEmpty));
     final selection = ref.read(selectionProvider.notifier);
     // A row inside the picked ones stands for all of them; any other stands alone.
     List<Track> group() {
       final s = ref.read(selectionProvider);
-      return s.contains(track.id) ? s.tracks : [track];
+      return s.contains(pickKey ?? track.id) ? s.tracks : [track];
     }
 
     void menu(Offset at) => showTrackMenu(
@@ -76,9 +83,9 @@ class SongRow extends ConsumerWidget {
     void tapped() {
       final keys = HardwareKeyboard.instance;
       if (keys.isShiftPressed && siblings != null && picking) {
-        selection.rangeTo(track, siblings!);
+        selection.rangeTo(track, siblings!, key: pickKey, withinKeys: siblingKeys);
       } else if (keys.isControlPressed || keys.isMetaPressed || keys.isShiftPressed || picking) {
-        selection.toggle(track);
+        selection.toggle(track, key: pickKey);
       } else {
         current ? player.toggle() : onPlay();
       }
