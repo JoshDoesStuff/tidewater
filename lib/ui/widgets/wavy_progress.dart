@@ -422,7 +422,9 @@ Path wavePath({
   required double wavelength,
   required double phase,
 }) {
-  double y(double x) => centerY + amplitude * math.sin(2 * math.pi * (x - start) / wavelength - phase);
+  // Phase adds, so the ripples travel left, away from the handle: the squiggle
+  // looks like it pours out of the playhead rather than in from the far left.
+  double y(double x) => centerY + amplitude * math.sin(2 * math.pi * (x - start) / wavelength + phase);
   final step = (wavelength / 20).clamp(.75, 2.0);
   final path = Path()..moveTo(start, y(start));
   for (var x = start + step; x < end; x += step) {
