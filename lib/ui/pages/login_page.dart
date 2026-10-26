@@ -12,8 +12,7 @@ import '../widgets/effects/ripple.dart';
 import '../widgets/animated_glyphs.dart';
 import '../widgets/expressive_buttons.dart';
 import '../widgets/pressable.dart';
-import '../widgets/shapes/morph_path.dart';
-import '../widgets/shapes/morph_shape.dart';
+import 'widgets/login_scene.dart';
 
 /// Server URL, user and password / API key. Shown whenever no server is
 /// saved. Errors are specific (bad address, unreachable, certificate, wrong
@@ -58,13 +57,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _submit({bool trustCertificate = false}) async {
     if (_busy) return;
     final secret = _secret.text;
-    if (_url.text.trim().isEmpty || secret.isEmpty || (!_useKey && _user.text.trim().isEmpty)) {
-      setState(() => _error = ApiException(
-            ApiErrorKind.badUrl,
-            _url.text.trim().isEmpty
-                ? 'Enter your server address.'
-                : (_useKey ? 'Enter your API key.' : 'Enter your username and password.'),
-          ));
+    if (_url.text.trim().isEmpty ||
+        secret.isEmpty ||
+        (!_useKey && _user.text.trim().isEmpty)) {
+      setState(
+        () => _error = ApiException(
+          ApiErrorKind.badUrl,
+          _url.text.trim().isEmpty
+              ? 'Enter your server address.'
+              : (_useKey
+                    ? 'Enter your API key.'
+                    : 'Enter your username and password.'),
+        ),
+      );
       return;
     }
     setState(() {
@@ -75,7 +80,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     try {
       final connection = await connect(
         url: _url.text,
-        credentials: _useKey ? ApiKeyCredentials(secret, username: user) : PasswordCredentials(user, secret),
+        credentials: _useKey
+            ? ApiKeyCredentials(secret, username: user)
+            : PasswordCredentials(user, secret),
         trustBadCertificate: trustCertificate,
         factory: ref.read(clientFactoryProvider),
       );
@@ -84,7 +91,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e);
     } catch (e) {
-      if (mounted) setState(() => _error = ApiException(ApiErrorKind.server, 'Something went wrong: $e'));
+      if (mounted) {
+        setState(
+          () => _error = ApiException(
+            ApiErrorKind.server,
+            'Something went wrong: $e',
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -97,134 +111,170 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final error = _error;
     return Material(
       color: scheme.surface,
-      child: Stack(
-        children: [
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 56, 24, 32),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: AutofillGroup(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Center(
-                        child: SizedBox.square(
-                          dimension: 88,
-                          child: MorphShape(
-                            params: ShapeKind.cookie.params,
-                            morph: 1,
-                            spin: Motion.reduced(context) ? 0 : .5,
-                            shadowAlpha: .2,
-                            child: ColoredBox(
-                              color: scheme.primaryContainer,
-                              child: Icon(Icons.waves_rounded, size: 40, color: scheme.onPrimaryContainer),
-                            ),
-                          ),
-                        ),
+      child: LayoutBuilder(
+        builder: (context, box) {
+          // Wide windows put the form on the left and the sun on the right.
+          final wide = box.maxWidth >= 900;
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: LoginScene(
+                  sunX: wide ? .7 : .5,
+                  horizon: wide ? .66 : .74,
+                ),
+              ),
+              Align(
+                alignment: wide ? const Alignment(-.5, 0) : Alignment.center,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 56, 24, 32),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 440),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainer.withValues(alpha: .86),
+                        borderRadius: BorderRadius.circular(36),
                       ),
-                      const SizedBox(height: 24),
-                      Semantics(
-                        header: true,
-                        child: Center(child: LetterReveal(text: 'Tidewater', style: text.displaySmall)),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Connect to your Navidrome server',
-                        textAlign: TextAlign.center,
-                        style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
-                      ),
-                      const SizedBox(height: 32),
-                      _Field(
-                        controller: _url,
-                        label: 'Server address',
-                        hint: 'music.example.com or http://192.168.1.5:4533',
-                        icon: Icons.dns_rounded,
-                        autofocus: _url.text.isEmpty,
-                        keyboard: TextInputType.url,
-                        onSubmitted: (_) => (_useKey ? _secretFocus : _userFocus).requestFocus(),
-                      ),
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: ExpressiveChipGroup(
-                          labels: const ['Password', 'API key'],
-                          selectedIndex: _useKey ? 1 : 0,
-                          onSelected: (i) => setState(() {
-                            _useKey = i == 1;
-                            _secret.clear();
-                            _error = null;
-                          }),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      if (!_useKey) ...[
-                        _Field(
-                          controller: _user,
-                          focusNode: _userFocus,
-                          label: 'Username',
-                          icon: Icons.person_rounded,
-                          autofocus: _url.text.isNotEmpty && _user.text.isEmpty,
-                          autofill: const [AutofillHints.username],
-                          onSubmitted: (_) => _secretFocus.requestFocus(),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                      _Field(
-                        controller: _secret,
-                        focusNode: _secretFocus,
-                        label: _useKey ? 'API key' : 'Password',
-                        icon: Icons.key_rounded,
-                        autofocus: _url.text.isNotEmpty && _user.text.isNotEmpty,
-                        obscure: !_showSecret,
-                        autofill: _useKey ? null : const [AutofillHints.password],
-                        trailing: ExpressiveIconButton(
-                          icon: _showSecret ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                          glyph: (context, color, hovered, pressed) => AnimatedGlyph(
-                            kind: _showSecret ? GlyphKind.eyeOff : GlyphKind.eye,
-                            size: 22,
-                            color: color,
-                            active: pressed,
-                          ),
-                          tooltip: _showSecret ? 'Hide' : 'Show',
-                          tone: ButtonTone.ghost,
-                          size: 40,
-                          iconSize: 20,
-                          onPressed: () => setState(() => _showSecret = !_showSecret),
-                        ),
-                        onSubmitted: (_) => _submit(),
-                      ),
-                      AnimatedSize(
-                        duration: Motion.of(context, Motion.medium),
-                        curve: Motion.curve(context, Motion.emphasized),
-                        alignment: Alignment.topCenter,
-                        child: error == null
-                            ? const SizedBox(width: double.infinity)
-                            : Padding(
-                                padding: const EdgeInsets.only(top: 16),
-                                child: _ErrorBox(
-                                  error: error,
-                                  onTrust: error.kind == ApiErrorKind.tls ? () => _submit(trustCertificate: true) : null,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(32, 36, 32, 28),
+                        child: AutofillGroup(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Semantics(
+                                header: true,
+                                child: Center(
+                                  child: LetterReveal(
+                                    text: 'Tidewater',
+                                    style: text.displaySmall,
+                                  ),
                                 ),
                               ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Connect to your Navidrome server',
+                                textAlign: TextAlign.center,
+                                style: text.bodyLarge?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+                              _Field(
+                                controller: _url,
+                                label: 'Server address',
+                                hint: 'music.example.com or http://192.168.1.5:4533',
+                                icon: Icons.dns_rounded,
+                                autofocus: _url.text.isEmpty,
+                                keyboard: TextInputType.url,
+                                onSubmitted: (_) =>
+                                    (_useKey ? _secretFocus : _userFocus)
+                                        .requestFocus(),
+                              ),
+                              const SizedBox(height: 12),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: ExpressiveChipGroup(
+                                  labels: const ['Password', 'API key'],
+                                  selectedIndex: _useKey ? 1 : 0,
+                                  onSelected: (i) => setState(() {
+                                    _useKey = i == 1;
+                                    _secret.clear();
+                                    _error = null;
+                                  }),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              if (!_useKey) ...[
+                                _Field(
+                                  controller: _user,
+                                  focusNode: _userFocus,
+                                  label: 'Username',
+                                  icon: Icons.person_rounded,
+                                  autofocus:
+                                      _url.text.isNotEmpty &&
+                                      _user.text.isEmpty,
+                                  autofill: const [AutofillHints.username],
+                                  onSubmitted: (_) =>
+                                      _secretFocus.requestFocus(),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              _Field(
+                                controller: _secret,
+                                focusNode: _secretFocus,
+                                label: _useKey ? 'API key' : 'Password',
+                                icon: Icons.key_rounded,
+                                autofocus:
+                                    _url.text.isNotEmpty &&
+                                    _user.text.isNotEmpty,
+                                obscure: !_showSecret,
+                                autofill: _useKey
+                                    ? null
+                                    : const [AutofillHints.password],
+                                trailing: ExpressiveIconButton(
+                                  icon: _showSecret
+                                      ? Icons.visibility_off_rounded
+                                      : Icons.visibility_rounded,
+                                  glyph: (context, color, hovered, pressed) =>
+                                      AnimatedGlyph(
+                                        kind: _showSecret
+                                            ? GlyphKind.eyeOff
+                                            : GlyphKind.eye,
+                                        size: 22,
+                                        color: color,
+                                        active: pressed,
+                                      ),
+                                  tooltip: _showSecret ? 'Hide' : 'Show',
+                                  tone: ButtonTone.ghost,
+                                  size: 40,
+                                  iconSize: 20,
+                                  onPressed: () => setState(
+                                    () => _showSecret = !_showSecret,
+                                  ),
+                                ),
+                                onSubmitted: (_) => _submit(),
+                              ),
+                              AnimatedSize(
+                                duration: Motion.of(context, Motion.medium),
+                                curve: Motion.curve(context, Motion.emphasized),
+                                alignment: Alignment.topCenter,
+                                child: error == null
+                                    ? const SizedBox(width: double.infinity)
+                                    : Padding(
+                                        padding: const EdgeInsets.only(top: 16),
+                                        child: _ErrorBox(
+                                          error: error,
+                                          onTrust:
+                                              error.kind == ApiErrorKind.tls
+                                              ? () => _submit(
+                                                  trustCertificate: true,
+                                                )
+                                              : null,
+                                        ),
+                                      ),
+                              ),
+                              const SizedBox(height: 24),
+                              _ConnectButton(busy: _busy, onTap: _submit),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Your password or key is stored in Windows\' secure credential storage on this PC.',
+                                textAlign: TextAlign.center,
+                                style: text.bodySmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 24),
-                      _ConnectButton(busy: _busy, onTap: _submit),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Your password or key is stored in Windows\' secure credential storage on this PC.',
-                        textAlign: TextAlign.center,
-                        style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-          const Positioned(left: 0, right: 0, top: 0, child: TitleBar()),
-        ],
+              const Positioned(left: 0, right: 0, top: 0, child: TitleBar()),
+            ],
+          );
+        },
       ),
     );
   }
@@ -261,9 +311,9 @@ class _Field extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     OutlineInputBorder border(Color c, [double w = 0]) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: w == 0 ? BorderSide.none : BorderSide(color: c, width: w),
-        );
+      borderRadius: BorderRadius.circular(28),
+      borderSide: w == 0 ? BorderSide.none : BorderSide(color: c, width: w),
+    );
     return TextField(
       controller: controller,
       focusNode: focusNode,
@@ -279,12 +329,22 @@ class _Field extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        hintStyle: TextStyle(color: scheme.onSurfaceVariant.withValues(alpha: .6)),
+        hintStyle: TextStyle(
+          color: scheme.onSurfaceVariant.withValues(alpha: .6),
+        ),
         filled: true,
         fillColor: scheme.surfaceContainerHigh,
         prefixIcon: Icon(icon, color: scheme.onSurfaceVariant),
-        suffixIcon: trailing == null ? null : Padding(padding: const EdgeInsets.only(right: 8), child: trailing),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+        suffixIcon: trailing == null
+            ? null
+            : Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: trailing,
+              ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 24,
+          vertical: 18,
+        ),
         border: border(scheme.surfaceContainerHigh),
         enabledBorder: border(scheme.surfaceContainerHigh),
         focusedBorder: border(scheme.primary, 2),
@@ -306,19 +366,27 @@ class _ErrorBox extends StatelessWidget {
       liveRegion: true,
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        decoration: BoxDecoration(color: scheme.errorContainer, borderRadius: BorderRadius.circular(20)),
+        decoration: BoxDecoration(
+          color: scheme.errorContainer,
+          borderRadius: BorderRadius.circular(20),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.error_outline_rounded, size: 20, color: scheme.onErrorContainer),
+                Icon(
+                  Icons.error_outline_rounded,
+                  size: 20,
+                  color: scheme.onErrorContainer,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     error.message,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onErrorContainer),
+                    style: Theme.of(context).textTheme.bodyMedium
+                        ?.copyWith(color: scheme.onErrorContainer),
                   ),
                 ),
               ],
@@ -331,17 +399,22 @@ class _ErrorBox extends StatelessWidget {
                   onTap: onTrust!,
                   semanticLabel: 'Trust this server and connect',
                   builder: (context, s) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
-                      color: s.hovered ? scheme.onErrorContainer.withValues(alpha: .16) : scheme.onErrorContainer.withValues(alpha: .08),
+                      color: s.hovered
+                          ? scheme.onErrorContainer.withValues(alpha: .16)
+                          : scheme.onErrorContainer.withValues(alpha: .08),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
                       'Trust this server',
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: scheme.onErrorContainer,
-                          ),
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onErrorContainer,
+                      ),
                     ),
                   ),
                 ),
@@ -385,14 +458,17 @@ class _ConnectButton extends StatelessWidget {
               child: busy
                   ? SizedBox.square(
                       dimension: 22,
-                      child: CircularProgressIndicator(strokeWidth: 3, color: scheme.onPrimary),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        color: scheme.onPrimary,
+                      ),
                     )
                   : Text(
                       'Connect',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: scheme.onPrimary,
-                          ),
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onPrimary,
+                      ),
                     ),
             ),
           ),
