@@ -53,6 +53,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   /// The three hero picks, kept until their lists change so the carousel
   /// doesn't reshuffle on every rebuild.
   String? _randomId, _recentId, _newId;
+  String? _randomListKey;
 
   void _showAll(LibraryTab tab, [LibrarySort? sort]) {
     ref.read(libraryTabProvider.notifier).set(tab);
@@ -94,12 +95,12 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
             if (random.value?.isNotEmpty ?? false) ...[
               SectionHeader(
-                title: 'Random albums',
-                trailing: _ShufflePicksButton(
-                  onPressed: () {
-                    _randomId = null;
-                    ref.invalidate(albumRowProvider(AlbumListType.random));
-                  },
+                title: 'Surprise me',
+                trailing: SectionPillButton(
+                  label: 'Shuffle picks',
+                  glyph: GlyphKind.shuffle,
+                  // A fresh set arrives from the server; the hero pick changes with it.
+                  onPressed: () => ref.invalidate(albumRowProvider(AlbumListType.random)),
                 ),
               ),
               // A new set of picks swaps in with a fade and rise, and its cards
@@ -131,7 +132,10 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
             ],
             if (frequent.value?.isNotEmpty ?? false) ...[
-              const SectionHeader(title: 'Most played', action: null),
+              SectionHeader(
+                title: 'Most played',
+                onAction: () => _showAll(LibraryTab.albums, LibrarySort.mostPlayed),
+              ),
               _CardRow<Album>(
                 value: frequent.whenData((l) => l.take(fit).toList()),
                 onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.frequent)),
@@ -181,6 +185,13 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     final fromRecent = choose(recent.value, _recentId, (id) => _recentId = id);
     final fromNew = choose(shown.value, _newId, (id) => _newId = id);
+    // A new random list (Shuffle picks) means a new hero pick from it, made when
+    // the list arrives, not from the old list at the moment of the press.
+    final randomKey = random.value?.map((a) => a.id).join(',');
+    if (randomKey != _randomListKey) {
+      _randomListKey = randomKey;
+      _randomId = null;
+    }
     final fromAll = choose(random.value, _randomId, (id) => _randomId = id);
     return (
       albums: [?fromAll, ?fromRecent, ?fromNew],
@@ -704,54 +715,6 @@ class _ContinueListening extends ConsumerWidget {
             ),
             ),
           ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// "Shuffle picks": a tonal pill whose shuffle icon plays on each press and
-/// whose arrows keep turning for a moment, so a reroll feels like something
-/// happened even before the new albums arrive.
-class _ShufflePicksButton extends StatelessWidget {
-  const _ShufflePicksButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Pressable(
-      onTap: onPressed,
-      semanticLabel: 'Shuffle picks',
-      builder: (context, s) => AnimatedScale(
-        scale: s.pressed ? .94 : 1,
-        duration: Motion.of(context, Motion.fast),
-        curve: Motion.curve(context, Motion.spring),
-        child: AnimatedContainer(
-          duration: Motion.of(context, Motion.medium),
-          curve: Motion.curve(context, Motion.spring),
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: s.hovered ? Color.lerp(scheme.secondaryContainer, scheme.onSecondaryContainer, .08) : scheme.secondaryContainer,
-            borderRadius: BorderRadius.circular(s.pressed ? 12 : 20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedGlyph(kind: GlyphKind.shuffle, size: 20, color: scheme.onSecondaryContainer, active: s.pressed),
-              const SizedBox(width: 8),
-              Text(
-                'Shuffle picks',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onSecondaryContainer,
-                    ),
-              ),
             ],
           ),
         ),

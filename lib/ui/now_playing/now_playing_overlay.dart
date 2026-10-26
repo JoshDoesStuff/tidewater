@@ -664,8 +664,11 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
           ),
         ),
         const SizedBox(height: 8),
+        // A fixed-height slot: a long title shrinks to fit inside it, so the rest
+        // of the column never moves between short and long titles.
         SizedBox(
           width: 580,
+          height: 62,
           child: FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,

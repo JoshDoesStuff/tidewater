@@ -384,10 +384,10 @@ void main() {
   });
 
   group('liked songs, playlists and continue listening', () {
-    testWidgets('Home has a Random albums row after Recently added, and no Liked row', (tester) async {
+    testWidgets('Home has a Surprise me row after Recently added, and no Liked row', (tester) async {
       await pumpApp(tester);
       final added = tester.getTopLeft(find.text('Recently added')).dy;
-      final fresh = tester.getTopLeft(find.text('Random albums')).dy;
+      final fresh = tester.getTopLeft(find.text('Surprise me')).dy;
       expect(fresh, greaterThan(added));
       expect(find.text('Liked songs'), findsNothing);
       await disposeApp(tester);
