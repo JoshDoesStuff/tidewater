@@ -528,7 +528,7 @@ class _HeroCard extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.fade,
                       softWrap: false,
-                      style: text.titleLarge?.copyWith(color: AppTheme.onArt.withValues(alpha: _labelOpacity)),
+                      style: AppTheme.content(text.titleLarge)?.copyWith(color: AppTheme.onArt.withValues(alpha: _labelOpacity)),
                     ),
                     Text(
                       subtitle,

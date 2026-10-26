@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 
 /// The only place colors are chosen. Everything else reads
@@ -58,8 +59,16 @@ abstract final class AppTheme {
         fontVariations: [FontVariation('ROND', 100), FontVariation('wdth', wdth)],
       );
 
+  /// For text that is the user's music (track, album, artist names), which is
+  /// often Japanese or Chinese: the platform's own font, which has those
+  /// glyphs and matches the fallback, instead of Google Sans Flex.
+  static TextStyle? content(TextStyle? s) => s?.copyWith(
+        fontFamily: Typography.material2021(platform: defaultTargetPlatform).black.bodyLarge?.fontFamily,
+        fontVariations: const [],
+      );
+
   static ThemeData fromScheme(ColorScheme scheme) {
-    final base = ThemeData(colorScheme: scheme, useMaterial3: true, fontFamily: fontFamily);
+    final base = ThemeData(colorScheme: scheme, useMaterial3: true);
     final t = base.textTheme;
     final text = t
         .copyWith(
@@ -69,11 +78,6 @@ abstract final class AppTheme {
           headlineSmall: _round(t.headlineSmall, wdth: 112, weight: FontWeight.w700),
           // Section headings.
           titleLarge: _round(t.titleLarge, wdth: 110, size: 22, weight: FontWeight.w700),
-          titleMedium: _round(t.titleMedium, wdth: 106, weight: FontWeight.w600),
-          // Buttons, chips, eyebrows: round, normal width.
-          labelLarge: _round(t.labelLarge, wdth: 104),
-          labelMedium: _round(t.labelMedium, wdth: 104),
-          labelSmall: _round(t.labelSmall, wdth: 104),
         )
         .apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
     return base.copyWith(

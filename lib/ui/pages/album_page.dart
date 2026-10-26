@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/destinations.dart';
 import '../../app/providers/library_providers.dart';
 import '../../app/providers/playback_providers.dart';
+import '../../app/theme/app_theme.dart';
 import '../../app/theme/motion.dart';
 import '../../core/models/album.dart';
 import '../../core/models/track.dart';
@@ -156,12 +157,12 @@ class _AlbumBody extends ConsumerWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
-          child: LetterReveal(text: album.title, style: text.displaySmall, delay: const Duration(milliseconds: 100)),
+          child: LetterReveal(text: album.title, style: AppTheme.content(text.displaySmall), delay: const Duration(milliseconds: 100)),
         ),
         const SizedBox(height: 6),
         LinkText(
           text: album.artist,
-          style: text.titleLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w500, color: scheme.onSurfaceVariant),
+          style: AppTheme.content(text.titleLarge)?.copyWith(fontSize: 20, fontWeight: FontWeight.w500, color: scheme.onSurfaceVariant),
           onTap: album.artistId == null ? null : () => context.push('/artist/${album.artistId}'),
         ),
         const SizedBox(height: 6),

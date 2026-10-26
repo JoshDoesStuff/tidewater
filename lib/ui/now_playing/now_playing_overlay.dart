@@ -11,6 +11,7 @@ import '../../app/providers/playback_providers.dart';
 import '../../app/providers/settings_providers.dart';
 import '../../app/providers/ui_providers.dart';
 import '../../core/playback/play_queue.dart' show LoopMode;
+import '../../app/theme/app_theme.dart';
 import '../../app/theme/motion.dart';
 import '../../core/models/track.dart';
 import '../shell/shell_keys.dart';
@@ -494,7 +495,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
-                    style: text.headlineMedium?.copyWith(fontSize: 32, fontWeight: FontWeight.w700, letterSpacing: -.5),
+                    style: AppTheme.content(text.headlineMedium)?.copyWith(fontSize: 32, fontWeight: FontWeight.w700, letterSpacing: -.5),
                   ),
                   Text(
                     track.artist,
@@ -705,7 +706,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
           LinkText(
             text: track.artist,
             onTap: track.artistId == null ? null : () => _goTo(context, '/artist/${track.artistId}'),
-            style: text.titleLarge?.copyWith(fontSize: 24, fontWeight: FontWeight.w500, color: scheme.onSurfaceVariant),
+            style: AppTheme.content(text.titleLarge)?.copyWith(fontSize: 24, fontWeight: FontWeight.w500, color: scheme.onSurfaceVariant),
           ),
         ),
         const SizedBox(height: 16),
