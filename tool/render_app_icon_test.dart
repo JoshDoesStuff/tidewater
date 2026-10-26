@@ -78,11 +78,7 @@ Future<Uint8List> _banner() async {
   const w = 1280, h = 640;
   final recorder = ui.PictureRecorder();
   final canvas = ui.Canvas(recorder);
-  canvas.drawRect(ui.Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()), ui.Paint()..color = const ui.Color(0xFF0B2A57));
-  canvas.save();
-  canvas.translate(96, 80);
-  paintIcon(canvas, 480, IconDesign.record);
-  canvas.restore();
+  paintBanner(canvas, w.toDouble(), h.toDouble());
   ui.Paragraph text(String s, double size, ui.FontWeight weight, int color, double width) {
     final b = ui.ParagraphBuilder(ui.ParagraphStyle(fontFamily: 'Roboto', fontSize: size, fontWeight: weight))
       ..pushStyle(ui.TextStyle(color: ui.Color(color), fontFamily: 'Roboto', fontSize: size, fontWeight: weight, letterSpacing: size > 60 ? -2 : 0))
@@ -90,8 +86,10 @@ Future<Uint8List> _banner() async {
     return b.build()..layout(ui.ParagraphConstraints(width: width));
   }
 
-  canvas.drawParagraph(text('Tidewater', 132, ui.FontWeight.bold, 0xFFF4FBFF, 620), const ui.Offset(640, 224));
-  canvas.drawParagraph(text('A Navidrome client for Windows', 38, ui.FontWeight.normal, 0xFF8FCFFF, 640), const ui.Offset(644, 380));
+  final title = text('Tidewater', 118, ui.FontWeight.bold, 0xFFF4FBFF, 700);
+  canvas.drawParagraph(title, ui.Offset((w - title.longestLine) / 2 + 50, 150));
+  final tag = text('A Navidrome client for Windows', 34, ui.FontWeight.normal, 0xFFD7F2FF, 700);
+  canvas.drawParagraph(tag, ui.Offset((w - tag.longestLine) / 2 + 50, 300));
   final image = await recorder.endRecording().toImage(w, h);
   final data = await image.toByteData(format: ui.ImageByteFormat.png);
   image.dispose();

@@ -145,20 +145,28 @@ const _hull = 0xFFFF7E5F;
 
 double _surfaceAt(double x) => _waterLevel + _tideAmp * math.sin(2 * math.pi * x / _tideLength + _tidePhase);
 
-({
+typedef _BoatShapes = ({
   List<(double, double)> hull,
   List<(double, double)> flag,
   (double, double) mastTop,
   (double, double) mastBase,
-}) _boat() {
+});
+
+/// The icon's boat: on the wave under [_boatX], leaning a bit more than its slope.
+_BoatShapes _boat() {
   final slope = _tideAmp * 2 * math.pi / _tideLength * math.cos(2 * math.pi * _boatX / _tideLength + _tidePhase);
   final tilt = math.atan(slope).clamp(-.17, .17) - .14; // the wave's slope plus a lean for character
-  final by = _surfaceAt(_boatX) - 2; // hull bottom, level with the surface line
+  return _boatAt(x: _boatX, by: _surfaceAt(_boatX) - 2, tilt: tilt, scale: _boatScale);
+}
+
+/// A boat whose hull bottom is at ([x], [by]), turned by [tilt] radians, [scale] times
+/// the base drawing.
+_BoatShapes _boatAt({required double x, required double by, required double tilt, required double scale}) {
   (double, double) p(double dx, double dy) {
-    final lx = dx * _boatScale;
-    final ly = (dy - 10) * _boatScale; // measured up from the hull's bottom
+    final lx = dx * scale;
+    final ly = (dy - 10) * scale; // measured up from the hull's bottom
     return (
-      _boatX + math.cos(tilt) * lx - math.sin(tilt) * ly,
+      x + math.cos(tilt) * lx - math.sin(tilt) * ly,
       by + math.sin(tilt) * lx + math.cos(tilt) * ly,
     );
   }
@@ -192,17 +200,17 @@ String _boatSvg() {
 ''';
 }
 
-void _paintBoat(ui.Canvas canvas) {
-  final b = _boat();
+void _paintBoat(ui.Canvas canvas, [_BoatShapes? shapes, double strokeScale = 1]) {
+  final b = shapes ?? _boat();
   void shape(List<(double, double)> pts, int color) {
     canvas.drawPath(_path(pts, close: true), _fill(color));
-    canvas.drawPath(_path(pts, close: true), _stroke(color, 5));
+    canvas.drawPath(_path(pts, close: true), _stroke(color, 5 * strokeScale));
   }
 
   canvas.drawLine(
     ui.Offset(b.mastTop.$1, b.mastTop.$2),
     ui.Offset(b.mastBase.$1, b.mastBase.$2),
-    _stroke(_sail, 6),
+    _stroke(_sail, 6 * strokeScale),
   );
   shape(b.flag, _sail);
   shape(b.hull, _hull);
@@ -303,4 +311,49 @@ void paintIcon(ui.Canvas canvas, double size, IconDesign design, {bool boat = tr
       _paintRecord(canvas, boat: boat, simple: simple);
   }
   canvas.restore();
+}
+
+// --- banner ------------------------------------------------------------------
+
+/// The wide scene for the GitHub social preview: one tide across the whole width,
+/// the record sinking on the left, the boat on a wave on the right. The caller adds
+/// the name in the middle.
+void paintBanner(ui.Canvas canvas, double w, double h) {
+  canvas.drawRect(ui.Rect.fromLTWH(0, 0, w, h), _fill(_recBg));
+  const level = 410.0;
+  const length = 380.0;
+  const amp = 26.0;
+  // A trough under the record's middle, like the icon.
+  const phase = 1.5708 - 2 * math.pi * 230 / length;
+  double surface(double x) => level + amp * math.sin(2 * math.pi * x / length + phase);
+  List<(double, double)> tide({double drop = 0, double a = amp, double ph = 0}) => [
+        for (var x = -8.0; x <= w + 8; x += 8) (x, level + drop + a * math.sin(2 * math.pi * x / length + phase + ph)),
+      ];
+
+  // Record: the icon's record at 0.8 scale.
+  const k = .64;
+  const c = ui.Offset(212, 322);
+  canvas.drawCircle(c, _outer * k, _stroke(_recLine, 30 * k));
+  for (final (i, g) in _grooves.indexed) {
+    canvas.drawCircle(c, g.$1 * k, _stroke(i == 0 ? _recGroove1 : _recGroove2, g.$2 * k));
+  }
+  canvas.drawArc(ui.Rect.fromCircle(center: c, radius: _shineR * k), _shineFrom, _shineTo - _shineFrom, false, _stroke(_recShine, 16 * k));
+  canvas.drawPath(_path(_scallop(c.dx, c.dy, _labelR * k, 6, .085), close: true), _fill(_recLabel));
+  canvas.drawCircle(c, 18 * k, _fill(_recHole));
+
+  // Boat: a good size, on the slope of a wave near the right edge.
+  const bx = 1100.0;
+  final slope = amp * 2 * math.pi / length * math.cos(2 * math.pi * bx / length + phase);
+  final tilt = math.atan(slope).clamp(-.12, .12) - .08;
+  _paintBoat(canvas, _boatAt(x: bx, by: surface(bx) - 2, tilt: tilt, scale: 1.3), 1.3);
+
+  // Water across the full width, on top of the record's and the boat's bottoms.
+  canvas.drawPath(_path([...tide(), (w + 8, h + 8), (-8.0, h + 8)], close: true), _fill(_recWater));
+  canvas.drawPath(_path(tide(drop: 70, a: 20, ph: 1.6)), _stroke(_recWaterLine, 10));
+  canvas.drawPath(_path(tide(drop: 150, a: 16, ph: 3.1)), _stroke(_recWaterLine.withAlpha(0xFF), 8));
+  canvas.drawPath(_path(tide()), _stroke(_recSurface, 18));
+}
+
+extension on int {
+  int withAlpha(int a) => (a << 24) | (this & 0xFFFFFF);
 }
