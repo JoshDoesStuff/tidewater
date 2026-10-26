@@ -152,7 +152,7 @@ double _surfaceAt(double x) => _waterLevel + _tideAmp * math.sin(2 * math.pi * x
   (double, double) mastBase,
 }) _boat() {
   final slope = _tideAmp * 2 * math.pi / _tideLength * math.cos(2 * math.pi * _boatX / _tideLength + _tidePhase);
-  final tilt = math.atan(slope).clamp(-.17, .17) - .1; // the wave's slope plus a lean for character
+  final tilt = math.atan(slope).clamp(-.17, .17) - .14; // the wave's slope plus a lean for character
   final by = _surfaceAt(_boatX) - 2; // hull bottom, level with the surface line
   (double, double) p(double dx, double dy) {
     final lx = dx * _boatScale;
@@ -163,8 +163,19 @@ double _surfaceAt(double x) => _waterLevel + _tideAmp * math.sin(2 * math.pi * x
     );
   }
 
+  // The hull's ends are smooth curves (sampled), so each side reads as one bend
+  // instead of two straight edges meeting at a corner.
+  (double, double) curve((double, double) a, (double, double) c, (double, double) b, double t) =>
+      ((1 - t) * (1 - t) * a.$1 + 2 * (1 - t) * t * c.$1 + t * t * b.$1, (1 - t) * (1 - t) * a.$2 + 2 * (1 - t) * t * c.$2 + t * t * b.$2);
+  final hull = [
+    p(-52, -16),
+    p(52, -16),
+    for (var i = 1; i <= 8; i++) p(curve((52.0, -16.0), (47.0, 10.0), (28.0, 10.0), i / 8).$1, curve((52.0, -16.0), (47.0, 10.0), (28.0, 10.0), i / 8).$2),
+    for (var i = 1; i <= 8; i++) p(curve((-28.0, 10.0), (-47.0, 10.0), (-52.0, -16.0), i / 8).$1, curve((-28.0, 10.0), (-47.0, 10.0), (-52.0, -16.0), i / 8).$2),
+  ];
+
   return (
-    hull: [p(-52, -16), p(52, -16), p(46, -2), p(36, 10), p(-36, 10), p(-46, -2)],
+    hull: hull,
     flag: [p(3, -96), p(3, -64), p(46, -80)],
     mastTop: p(0, -98),
     mastBase: p(0, -16),
