@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tidewater/app/providers/cover_providers.dart';
+import 'package:tidewater/app/providers/list_cache_providers.dart';
+import 'package:tidewater/core/api/list_cache.dart';
 import 'package:tidewater/app/providers/lyrics_providers.dart';
 import 'package:tidewater/app/playback/system_media.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
@@ -36,6 +38,7 @@ Future<List<Override>> testOverrides({
   ClientFactory? factory,
   Future<Lyrics?> Function(Track track)? lrclib,
   SystemMediaControls? media,
+  ListStore? listStore,
 }) async {
   SharedPreferences.setMockInitialValues(prefs);
   final sharedPrefs = await SharedPreferences.getInstance();
@@ -46,6 +49,7 @@ Future<List<Override>> testOverrides({
     initialSessionProvider.overrideWithValue(signedIn ? testServer : null),
     clientFactoryProvider.overrideWithValue(factory ?? (_) => fake),
     coverCacheProvider.overrideWithValue(NoCovers()),
+    listStoreProvider.overrideWithValue(listStore ?? MemoryListStore()),
     lyricsFallbackProvider.overrideWithValue(lrclib ?? (_) async => null),
     systemMediaProvider.overrideWithValue(media ?? const NoSystemMedia()),
     // The simulated clock uses the real stopwatch, which fake time does not

@@ -12,6 +12,14 @@ class Artist {
         starred: j['starred'] != null,
       );
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'albumCount': albumCount,
+        if (coverArt != null) 'coverArt': coverArt,
+        if (starred) 'starred': true,
+      };
+
   final String id;
   final String name;
   final int albumCount;

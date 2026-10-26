@@ -20,6 +20,15 @@ class Playlist {
         coverArt: asString(j['coverArt']),
       );
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        if (owner != null) 'owner': owner,
+        'songCount': songCount,
+        'duration': duration.inSeconds,
+        if (coverArt != null) 'coverArt': coverArt,
+      };
+
   final String id;
   final String name;
   final String? owner;

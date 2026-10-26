@@ -7,6 +7,7 @@ import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/app/app.dart';
 import 'package:tidewater/app/providers/search_providers.dart';
 import 'package:tidewater/ui/pages/search_page.dart';
+import 'package:tidewater/ui/widgets/squiggle_loader.dart';
 
 import '../support/pump.dart';
 
@@ -21,6 +22,16 @@ void main() {
     await disposeApp(tester);
   });
 
+  testWidgets('clicking the search icon or the edge of the pill opens Search, not only the text', (tester) async {
+    final c = await pumpApp(tester);
+    final pill = tester.getRect(find.byType(TextField).first);
+    // Left of the text field: the icon area.
+    await tester.tapAt(Offset(pill.left - 30, pill.center.dy));
+    await advance(tester, const Duration(seconds: 1));
+    expect(c.read(routerProvider).state.uri.path, '/search');
+    await disposeApp(tester);
+  });
+
   testWidgets('typing searches after a short wait and lists songs, albums and artists', (tester) async {
     final c = await pumpApp(tester);
     c.read(routerProvider).go('/search');
@@ -29,7 +40,7 @@ void main() {
     await advance(tester, const Duration(milliseconds: 100));
     expect(find.text('Songs'), findsNothing, reason: 'still waiting for the pause after typing');
     expect(find.textContaining('No results'), findsNothing, reason: 'waiting is not an empty answer');
-    expect(find.byType(LinearProgressIndicator), findsOneWidget, reason: 'the searching line runs');
+    expect(tester.widget<SquiggleLoader>(find.byType(SquiggleLoader)).active, isTrue, reason: 'the searching squiggle runs');
     await advance(tester, const Duration(seconds: 1));
     expect(find.text('Albums'), findsOneWidget);
     expect(find.text('Songs'), findsOneWidget);
@@ -54,6 +65,29 @@ void main() {
     await tester.tap(find.text('zzzzzz'));
     await advance(tester, const Duration(seconds: 1));
     expect(c.read(searchQueryProvider), 'zzzzzz');
+    await disposeApp(tester);
+  });
+
+  testWidgets('typing drops down suggestions from the whole library; arrows and Enter pick one, Esc closes the list first', (tester) async {
+    final c = await pumpApp(tester);
+    c.read(routerProvider).go('/search');
+    await advance(tester, const Duration(seconds: 2));
+    await tester.enterText(find.byType(TextField), 'velv');
+    await advance(tester, const Duration(milliseconds: 100));
+    expect(find.byTooltip('Use this search'), findsWidgets);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await advance(tester, const Duration(milliseconds: 300));
+    expect(find.byTooltip('Use this search'), findsNothing, reason: 'the first Esc closes the list');
+    expect(c.read(searchQueryProvider), 'velv', reason: 'and keeps what was typed');
+
+    await tester.enterText(find.byType(TextField), 'velve');
+    await advance(tester, const Duration(milliseconds: 100));
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await advance(tester, const Duration(seconds: 1));
+    expect(c.read(searchQueryProvider), 'Velvet Static', reason: 'the highlighted suggestion became the search');
+    expect(c.read(recentSearchesProvider), ['Velvet Static']);
     await disposeApp(tester);
   });
 

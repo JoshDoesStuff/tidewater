@@ -8,6 +8,7 @@ import '../../core/models/artist.dart';
 import '../../core/models/playlist.dart';
 import '../../core/models/track.dart';
 import 'playback_providers.dart';
+import 'list_cache_providers.dart';
 import 'session_providers.dart';
 import 'settings_providers.dart' show sharedPreferencesProvider;
 
@@ -45,27 +46,68 @@ class LibraryAlbums {
 /// builds lazily, so thousands of albums cost memory for the metadata only.
 final libraryAlbumsProvider = StreamProvider.family<LibraryAlbums, LibrarySort>((ref, sort) async* {
   final api = ref.watch(apiProvider);
+  final store = ref.watch(listStoreProvider);
+  final name = 'albums_${sort.name}';
+  final cached = await store.read(name);
+  // With a saved copy the grid shows it at once and the fresh list is fetched
+  // quietly, then swapped in; without one the pages appear as they arrive.
+  final hasCache = cached != null && cached.isNotEmpty;
+  if (hasCache) yield LibraryAlbums(List.unmodifiable([for (final j in cached) Album.fromJson(j)]), complete: true);
   final all = <Album>[];
-  while (true) {
-    final size = all.isEmpty ? 120 : 500;
-    final page = await api.getAlbumList(
-      sort.type,
-      size: size,
-      offset: all.length,
-      // Newest year first.
-      fromYear: sort == LibrarySort.year ? 9999 : null,
-      toYear: sort == LibrarySort.year ? 0 : null,
-    );
-    all.addAll(page);
-    final done = page.length < size;
-    yield LibraryAlbums(List.unmodifiable(all), complete: done);
-    if (done) return;
+  try {
+    while (true) {
+      final size = all.isEmpty ? 120 : 500;
+      final page = await api.getAlbumList(
+        sort.type,
+        size: size,
+        offset: all.length,
+        // Newest year first.
+        fromYear: sort == LibrarySort.year ? 9999 : null,
+        toYear: sort == LibrarySort.year ? 0 : null,
+      );
+      all.addAll(page);
+      final done = page.length < size;
+      if (!hasCache) yield LibraryAlbums(List.unmodifiable(all), complete: done);
+      if (done) break;
+    }
+  } catch (_) {
+    if (hasCache) return; // offline or the server is down: keep what was saved
+    rethrow;
+  }
+  if (hasCache) yield LibraryAlbums(List.unmodifiable(all), complete: true);
+  unawaited(store.write(name, [for (final a in all) a.toJson()]));
+});
+
+/// Every artist: the saved list first, then the server's.
+final artistsProvider = StreamProvider<List<Artist>>((ref) async* {
+  final api = ref.watch(apiProvider);
+  final store = ref.watch(listStoreProvider);
+  final cached = await store.read('artists');
+  final hasCache = cached != null && cached.isNotEmpty;
+  if (hasCache) yield [for (final j in cached) Artist.fromJson(j)];
+  try {
+    final fresh = await api.getArtists();
+    yield fresh;
+    unawaited(store.write('artists', [for (final a in fresh) a.toJson()]));
+  } catch (_) {
+    if (!hasCache) rethrow;
   }
 });
 
-final artistsProvider = FutureProvider<List<Artist>>((ref) => ref.watch(apiProvider).getArtists());
-
-final playlistsProvider = FutureProvider<List<Playlist>>((ref) => ref.watch(apiProvider).getPlaylists());
+final playlistsProvider = StreamProvider<List<Playlist>>((ref) async* {
+  final api = ref.watch(apiProvider);
+  final store = ref.watch(listStoreProvider);
+  final cached = await store.read('playlists');
+  final hasCache = cached != null && cached.isNotEmpty;
+  if (hasCache) yield [for (final j in cached) Playlist.fromJson(j)];
+  try {
+    final fresh = await api.getPlaylists();
+    yield fresh;
+    unawaited(store.write('playlists', [for (final p in fresh) p.toJson()]));
+  } catch (_) {
+    if (!hasCache) rethrow;
+  }
+});
 
 /// A value the UI picks and other screens can set (Home's "Show all" opens
 /// the Library on the right tab and sort).
@@ -109,10 +151,10 @@ enum LibraryTab {
   final String label;
 }
 
-/// Which Library tab is showing. Always opens on Albums; it is remembered while
-/// the app runs (remembering it between launches waits for the list cache, M8).
+/// Which Library tab is showing, remembered between launches (the saved lists
+/// make the Songs and Playlists tabs open at once).
 final libraryTabProvider = NotifierProvider<PickNotifier<LibraryTab>, LibraryTab>(
-  () => PickNotifier<LibraryTab>(LibraryTab.albums),
+  () => SavedPickNotifier('library_tab', LibraryTab.values, LibraryTab.albums),
 );
 
 final librarySortProvider =
@@ -169,15 +211,26 @@ class LibrarySongs {
 /// server's order; [sortedSongsProvider] orders them for the list.
 final libraryAllSongsProvider = StreamProvider<LibrarySongs>((ref) async* {
   final api = ref.watch(apiProvider);
+  final store = ref.watch(listStoreProvider);
+  final cached = await store.read('songs');
+  final hasCache = cached != null && cached.isNotEmpty;
+  if (hasCache) yield LibrarySongs(List.unmodifiable([for (final j in cached) Track.fromJson(j)]), complete: true);
   final all = <Track>[];
-  while (true) {
-    final size = all.isEmpty ? 200 : 500;
-    final page = await api.getSongs(offset: all.length, size: size);
-    all.addAll(page);
-    final done = page.length < size;
-    yield LibrarySongs(List.unmodifiable(all), complete: done);
-    if (done) return;
+  try {
+    while (true) {
+      final size = all.isEmpty ? 200 : 500;
+      final page = await api.getSongs(offset: all.length, size: size);
+      all.addAll(page);
+      final done = page.length < size;
+      if (!hasCache) yield LibrarySongs(List.unmodifiable(all), complete: done);
+      if (done) break;
+    }
+  } catch (_) {
+    if (hasCache) return;
+    rethrow;
   }
+  if (hasCache) yield LibrarySongs(List.unmodifiable(all), complete: true);
+  unawaited(store.write('songs', [for (final t in all) t.toJson()]));
 });
 
 /// The loaded songs in the chosen order (keeps loading/error state).

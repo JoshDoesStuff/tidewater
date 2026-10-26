@@ -89,56 +89,71 @@ class _SearchPillState extends State<SearchPill> {
         return Align(
           alignment: Alignment.centerLeft,
           child: MouseRegion(
-            cursor: widget.launcher ? SystemMouseCursors.click : MouseCursor.defer,
+            cursor: widget.launcher
+                ? SystemMouseCursors.click
+                : MouseCursor.defer,
             onEnter: (_) => setState(() => _hovered = true),
             onExit: (_) => setState(() => _hovered = false),
-            child: AnimatedContainer(
-              duration: Motion.of(context, Motion.slow),
-              curve: Motion.curve(context, Motion.spring),
-              width: target.clamp(0.0, box.maxWidth),
-              height: 56,
-              padding: const EdgeInsets.only(left: 24, right: 12),
-              decoration: BoxDecoration(
-                color: _hovered || _focus.hasFocus ? scheme.surfaceContainerHighest : scheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: Row(
-                children: [
-                  AnimatedGlyph(
-                    kind: GlyphKind.search,
-                    size: 24,
-                    color: scheme.onSurfaceVariant,
-                    hovered: _hovered || _focus.hasFocus,
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextField(
-                      focusNode: _focus,
-                      controller: widget.controller,
-                      autofocus: widget.autofocus,
-                      readOnly: widget.launcher,
-                      onTap: widget.launcher ? () => context.go('/search') : null,
-                      onChanged: widget.onChanged,
-                      onSubmitted: widget.onSubmitted,
-                      textInputAction: TextInputAction.search,
-                      style: Theme.of(context).textTheme.bodyLarge,
-                      decoration: InputDecoration.collapsed(
-                        hintText: 'Search your library',
-                        hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+            // The whole pill is the target, not just the text: a click on the icon or
+            // the padding opens it (on Home) or focuses the field.
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: widget.launcher
+                  ? () => context.go('/search')
+                  : _focus.requestFocus,
+              child: AnimatedContainer(
+                duration: Motion.of(context, Motion.slow),
+                curve: Motion.curve(context, Motion.spring),
+                width: target.clamp(0.0, box.maxWidth),
+                height: 56,
+                padding: const EdgeInsets.only(left: 24, right: 12),
+                decoration: BoxDecoration(
+                  color: _hovered || _focus.hasFocus
+                      ? scheme.surfaceContainerHighest
+                      : scheme.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(28),
+                ),
+                child: Row(
+                  children: [
+                    AnimatedGlyph(
+                      kind: GlyphKind.search,
+                      size: 24,
+                      color: scheme.onSurfaceVariant,
+                      hovered: _hovered || _focus.hasFocus,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextField(
+                        focusNode: _focus,
+                        controller: widget.controller,
+                        autofocus: widget.autofocus,
+                        readOnly: widget.launcher,
+                        onTap: widget.launcher
+                            ? () => context.go('/search')
+                            : null,
+                        onChanged: widget.onChanged,
+                        onSubmitted: widget.onSubmitted,
+                        textInputAction: TextInputAction.search,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                        decoration: InputDecoration.collapsed(
+                          hintText: 'Search your library',
+                          hintStyle: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(color: scheme.onSurfaceVariant),
+                        ),
                       ),
                     ),
-                  ),
-                  if (hasText && widget.onClear != null)
-                    ExpressiveIconButton(
-                      icon: Icons.close_rounded,
-                      glyph: glyphFor(GlyphKind.close, size: 22),
-                      size: 40,
-                      iconSize: 20,
-                      tone: ButtonTone.ghost,
-                      tooltip: 'Clear',
-                      onPressed: widget.onClear,
-                    ),
-                ],
+                    if (hasText && widget.onClear != null)
+                      ExpressiveIconButton(
+                        icon: Icons.close_rounded,
+                        glyph: glyphFor(GlyphKind.close, size: 22),
+                        size: 40,
+                        iconSize: 20,
+                        tone: ButtonTone.ghost,
+                        tooltip: 'Clear',
+                        onPressed: widget.onClear,
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -151,11 +166,19 @@ class _SearchPillState extends State<SearchPill> {
 class _Avatar extends ConsumerWidget {
   const _Avatar();
 
-  Future<void> _openMenu(BuildContext context, WidgetRef ref, ServerConfig? server) async {
+  Future<void> _openMenu(
+    BuildContext context,
+    WidgetRef ref,
+    ServerConfig? server,
+  ) async {
     final scheme = Theme.of(context).colorScheme;
     final box = context.findRenderObject()! as RenderBox;
-    final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
-    final topLeft = box.localToGlobal(Offset(0, box.size.height + 6), ancestor: overlay);
+    final overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final topLeft = box.localToGlobal(
+      Offset(0, box.size.height + 6),
+      ancestor: overlay,
+    );
     final position = RelativeRect.fromRect(
       Rect.fromLTWH(topLeft.dx, topLeft.dy, box.size.width, 0),
       Offset.zero & overlay.size,
@@ -176,11 +199,21 @@ class _Avatar extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                server?.username.isNotEmpty == true ? server!.username : 'Signed in',
-                style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: scheme.onSurface),
+                server?.username.isNotEmpty == true
+                    ? server!.username
+                    : 'Signed in',
+                style: text.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface,
+                ),
               ),
               if (server != null)
-                Text(server.baseUrl.host, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                Text(
+                  server.baseUrl.host,
+                  style: text.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
             ],
           ),
         ),
@@ -234,8 +267,16 @@ class _Avatar extends ConsumerWidget {
             color: scheme.tertiaryContainer,
             child: Center(
               child: initial == null
-                  ? Icon(Icons.person_rounded, size: 24, color: scheme.onTertiaryContainer)
-                  : _Initial(key: const Key('account-avatar'), letter: initial, color: scheme.onTertiaryContainer),
+                  ? Icon(
+                      Icons.person_rounded,
+                      size: 24,
+                      color: scheme.onTertiaryContainer,
+                    )
+                  : _Initial(
+                      key: const Key('account-avatar'),
+                      letter: initial,
+                      color: scheme.onTertiaryContainer,
+                    ),
             ),
           ),
         ),
@@ -260,11 +301,11 @@ class _Initial extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = Theme.of(context).textTheme.titleLarge?.copyWith(
-          fontSize: _fontSize,
-          fontWeight: FontWeight.w700,
-          height: 1,
-          color: color,
-        );
+      fontSize: _fontSize,
+      fontWeight: FontWeight.w700,
+      height: 1,
+      color: color,
+    );
     return CustomPaint(
       size: const Size.square(48),
       painter: _InitialPainter(letter, style ?? TextStyle(color: color)),
@@ -284,13 +325,19 @@ class _InitialPainter extends CustomPainter {
       text: TextSpan(text: letter, style: style),
       textDirection: TextDirection.ltr,
     )..layout();
-    final baseline = painter.computeDistanceToActualBaseline(TextBaseline.alphabetic);
+    final baseline = painter.computeDistanceToActualBaseline(
+      TextBaseline.alphabetic,
+    );
     painter.paint(
       canvas,
-      Offset((size.width - painter.width) / 2, size.height / 2 + _Initial._capHeight / 2 - baseline),
+      Offset(
+        (size.width - painter.width) / 2,
+        size.height / 2 + _Initial._capHeight / 2 - baseline,
+      ),
     );
   }
 
   @override
-  bool shouldRepaint(_InitialPainter old) => old.letter != letter || old.style != style;
+  bool shouldRepaint(_InitialPainter old) =>
+      old.letter != letter || old.style != style;
 }

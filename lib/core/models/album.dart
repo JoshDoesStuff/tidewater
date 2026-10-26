@@ -33,6 +33,23 @@ class Album {
         starred: j['starred'] != null,
       );
 
+  /// Back to the shape the server sends, so [Album.fromJson] reads it again
+  /// (the list cache).
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': title,
+        'artist': artist,
+        if (artistId != null) 'artistId': artistId,
+        if (coverArt != null) 'coverArt': coverArt,
+        if (year != null) 'year': year,
+        if (genre != null) 'genre': genre,
+        'songCount': songCount,
+        'duration': duration.inSeconds,
+        if (created != null) 'created': created!.toUtc().toIso8601String(),
+        'playCount': playCount,
+        if (starred) 'starred': true,
+      };
+
   final String id;
   final String title;
   final String artist;
