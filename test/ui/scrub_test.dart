@@ -3,8 +3,8 @@ import 'package:tidewater/app/providers/playback_providers.dart';
 import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/ui/widgets/wavy_progress.dart';
 
-import 'support/fake_library.dart';
-import 'support/pump.dart';
+import '../support/fake_library.dart';
+import '../support/pump.dart';
 
 void main() {
   Future<void> playPaused(WidgetTester tester, dynamic c) async {

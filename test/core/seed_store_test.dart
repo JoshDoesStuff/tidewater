@@ -7,8 +7,8 @@ import 'package:tidewater/app/providers/seed_store.dart';
 import 'package:tidewater/core/api/cover_cache.dart';
 import 'package:tidewater/core/color/cover_seed.dart';
 
-import 'support/pump.dart';
-import 'support/test_app.dart';
+import '../support/pump.dart';
+import '../support/test_app.dart';
 
 Future<SharedPreferences> prefs([Map<String, Object> initial = const {}]) async {
   SharedPreferences.setMockInitialValues(initial);

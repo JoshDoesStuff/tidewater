@@ -7,8 +7,8 @@ import 'package:tidewater/app/providers/settings_providers.dart' show queueSideP
 import 'package:tidewater/app/providers/ui_providers.dart';
 import 'package:tidewater/core/playback/play_queue.dart';
 
-import 'support/fake_library.dart';
-import 'support/pump.dart';
+import '../support/fake_library.dart';
+import '../support/pump.dart';
 
 Future<ProviderContainer> openNowPlaying(WidgetTester tester) async {
   final c = await pumpApp(tester);

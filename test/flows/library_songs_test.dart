@@ -11,8 +11,8 @@ import 'package:tidewater/ui/pages/widgets/album_card.dart';
 import 'package:tidewater/ui/widgets/expressive_buttons.dart';
 import 'package:tidewater/ui/widgets/shapes/morph_shape.dart';
 
-import 'support/fake_library.dart';
-import 'support/pump.dart';
+import '../support/fake_library.dart';
+import '../support/pump.dart';
 
 Future<ProviderContainer> openSongs(WidgetTester tester, {FakeLibraryApi? api}) async {
   final c = await pumpApp(tester, api: api);

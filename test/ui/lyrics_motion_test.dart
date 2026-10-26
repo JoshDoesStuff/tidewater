@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/providers/lyrics_providers.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
-import 'support/placeholder_lyrics.dart';
+import '../support/placeholder_lyrics.dart';
 import 'package:tidewater/ui/now_playing/lyrics_list.dart';
 import 'package:tidewater/ui/now_playing/lyrics_motion.dart';
 

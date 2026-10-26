@@ -8,8 +8,8 @@ import 'package:tidewater/core/api/api_exception.dart';
 import 'package:tidewater/ui/widgets/effects/eq_bars.dart';
 import 'package:tidewater/ui/widgets/expressive_buttons.dart';
 
-import 'support/fake_library.dart';
-import 'support/pump.dart';
+import '../support/fake_library.dart';
+import '../support/pump.dart';
 
 Future<ProviderContainer> openAlbum(WidgetTester tester, String id, {FakeLibraryApi? api}) async {
   final c = await pumpApp(tester, api: api);

@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/core/playback/queue_engine.dart';
 import 'package:tidewater/core/playback/simulated_engine.dart';
 
-import 'support/fake_library.dart';
+import '../support/fake_library.dart';
 
 void main() {
   test('a track is "buffering" from the skip until its position really moves', () async {

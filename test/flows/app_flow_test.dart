@@ -19,9 +19,9 @@ import 'package:tidewater/ui/widgets/expressive_buttons.dart';
 import 'package:tidewater/ui/widgets/heart_button.dart';
 import 'package:tidewater/ui/widgets/effects/particle_burst.dart';
 
-import 'support/fake_library.dart';
-import 'support/pump.dart';
-import 'support/test_app.dart';
+import '../support/fake_library.dart';
+import '../support/pump.dart';
+import '../support/test_app.dart';
 
 const _unreachable = ApiException(ApiErrorKind.unreachable, 'down');
 

@@ -4,8 +4,8 @@ import 'package:tidewater/app/providers/playback_providers.dart';
 import 'package:tidewater/app/providers/ui_providers.dart';
 import 'package:tidewater/ui/widgets/animated_glyphs.dart' show VolumeGlyph;
 
-import 'support/fake_library.dart';
-import 'support/pump.dart';
+import '../support/fake_library.dart';
+import '../support/pump.dart';
 
 void main() {
   testWidgets('the speaker mutes and brings the volume back to where it was', (tester) async {

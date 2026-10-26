@@ -9,7 +9,7 @@ import 'package:tidewater/core/api/opensubsonic_client.dart';
 import 'package:tidewater/core/api/server_config.dart';
 import 'dart:convert';
 
-import 'support/stub_adapter.dart';
+import '../support/stub_adapter.dart';
 
 final _base = Uri.parse('https://music.example.com');
 

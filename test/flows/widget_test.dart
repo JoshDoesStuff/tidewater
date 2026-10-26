@@ -20,8 +20,8 @@ import 'package:tidewater/ui/widgets/effects/letter_reveal.dart';
 import 'package:tidewater/ui/widgets/shapes/morph_path.dart';
 import 'package:tidewater/ui/widgets/wavy_progress.dart';
 
-import 'support/fake_library.dart';
-import 'support/test_app.dart';
+import '../support/fake_library.dart';
+import '../support/test_app.dart';
 
 /// Pumps the app and returns its provider container. Always call [_dispose]
 /// at the end of a test that plays audio so the simulated clock stops.

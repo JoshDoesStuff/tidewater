@@ -134,6 +134,11 @@ pages that don't exist yet.
 | 7 | Motion polish pass | 🟡 (most of the demo list is in; QA pass outstanding) |
 | 8 | Search, playlists, offline cache, settings, real visualizer | ⬜ (Settings partly ✅) |
 | 9 | Settings overhaul | ⬜ |
+| 10 | Website (after all the Windows builds are ready) | ⬜ |
+| 11 | Linux | ⬜ |
+| 12 | Android | ⬜ |
+| 13 | macOS | ⬜ |
+| 14 | iOS | ⬜ |
 
 ## What is simulated or stubbed today
 
@@ -290,6 +295,54 @@ Settings today is one flat column of switches that grew a row at a time. Redo it
 - About: version, the credits and licences (currently the Credits card), links.
 - Add a search box that filters the settings.
 - Every preference stays persisted through `sharedPreferencesProvider`, with tests that each one survives a restart.
+
+## M10 — Website
+
+Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Windows release).
+
+- A one-page site on GitHub Pages (Settings → Pages, served from `docs/` or a `site/` folder): the banner, a short pitch,
+  real screenshots, a download button that links to the latest GitHub Release, and a link back to the repo.
+- Needs a packaged Windows build first (installer or zip on GitHub Releases) with release notes.
+- Screenshots and a short screen recording once the UI has settled. Keep the credits and licenses reachable from it.
+- Optional later: a custom domain, and a changelog page generated from the release notes.
+
+## M11 — Linux
+
+- Flutter's Linux desktop target. Replace the Windows-only pieces: the custom frameless window (`window_manager` works
+  on Linux too, check the resize edges and rounded corners), media keys and now-playing via MPRIS instead of SMTC
+  (`audio_service` or an MPRIS package; ask before adding), `media_kit` Linux libs instead of the Windows ones.
+- Packaging: an AppImage first, then Flatpak or a .deb; test on GNOME and KDE, X11 and Wayland, with fractional scaling.
+- Secure storage needs libsecret on Linux; check the fallback when no keyring is running.
+- Icons: add the `.png` set and a `.desktop` file; reuse `tool/branding`.
+
+## M12 — Android
+
+- Responsive shell for phones (see `docs/mockups/tidewater-mobile-prototype.html`): bottom navigation bar in portrait,
+  side rail in landscape, mini player above it, queue as a bottom sheet, touch replacements for hover, Ctrl+click and
+  keyboard shortcuts (long-press, swipe, back gesture).
+- Now Playing needs its own portrait and landscape layouts; the desktop 1280 x 800 canvas does not carry over.
+- Background playback with a media notification and lock-screen controls, audio focus and headset buttons
+  (`audio_service` + `audio_session`; ask before adding), and `media_kit` Android libs.
+- Permissions (notifications), battery use of the visualizer and idle mode, soft keyboard on login, Material You edge
+  to edge insets. Build and test with the Android SDK from Windows; publish as an APK on Releases, Play Store later.
+
+## M13 — macOS
+
+- Flutter's macOS target. Replace the Windows pieces: native traffic-light window controls or a custom title bar,
+  media keys and Now Playing through the system media center, `media_kit` macOS libs.
+- Menu bar (App, File, View, Window), standard shortcuts (Cmd instead of Ctrl), trackpad gestures, Retina assets and a
+  proper `.icns` icon.
+- Needs a Mac and Xcode to build; code signing and notarization with an Apple developer account to distribute outside
+  the App Store. Packaging as a `.dmg`.
+
+## M14 — iOS
+
+- Reuses the phone layouts from M12; adds Cupertino-friendly touches only where Material feels wrong (back swipe,
+  safe areas, haptics).
+- Background audio capability and lock-screen controls, `media_kit` iOS libs, App Transport Security for servers on
+  plain HTTP or self-signed certificates.
+- Needs a Mac, Xcode and an Apple developer account (a free one installs for 7 days at a time); TestFlight for
+  testing and the App Store for release, with App Review's rules on streaming clients in mind.
 
 ## Cross-cutting
 

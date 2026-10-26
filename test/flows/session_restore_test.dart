@@ -9,9 +9,9 @@ import 'package:tidewater/core/models/track.dart';
 import 'package:tidewater/core/playback/play_queue.dart';
 import 'package:tidewater/core/playback/saved_session.dart';
 
-import 'support/fake_library.dart';
-import 'support/pump.dart';
-import 'support/test_app.dart';
+import '../support/fake_library.dart';
+import '../support/pump.dart';
+import '../support/test_app.dart';
 
 SavedSession _saved({String? server, List<Track>? tracks, int index = 1, Duration? position}) => SavedSession(
       server: server ?? serverKeyOf(testServer),

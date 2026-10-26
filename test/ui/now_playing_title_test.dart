@@ -3,7 +3,7 @@ import 'package:tidewater/app/providers/playback_providers.dart';
 import 'package:tidewater/app/providers/ui_providers.dart';
 import 'package:tidewater/core/models/track.dart';
 
-import 'support/pump.dart';
+import '../support/pump.dart';
 
 Track _track(String id, String title) => Track(
       id: id,

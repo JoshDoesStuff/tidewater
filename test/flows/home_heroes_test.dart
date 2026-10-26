@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/core/api/library_api.dart';
 
-import 'support/fake_library.dart';
-import 'support/pump.dart';
+import '../support/fake_library.dart';
+import '../support/pump.dart';
 
 void main() {
   testWidgets('Jump back in copes with its hero cards arriving one list at a time', (tester) async {

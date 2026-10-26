@@ -4,7 +4,7 @@ import 'package:tidewater/core/api/connect.dart';
 import 'package:tidewater/core/api/library_api.dart';
 import 'package:tidewater/core/api/server_config.dart';
 
-import 'support/fake_library.dart';
+import '../support/fake_library.dart';
 
 /// Answers `ping` per scheme from a script, and records which servers were tried.
 class _ScriptedApi extends FakeLibraryApi {

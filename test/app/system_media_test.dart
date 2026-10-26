@@ -2,9 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/playback/system_media.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
 
-import 'support/fake_library.dart';
-import 'support/pump.dart';
-import 'support/recording_media.dart';
+import '../support/fake_library.dart';
+import '../support/pump.dart';
+import '../support/recording_media.dart';
 
 void main() {
   testWidgets('tells Windows what is playing, and whether it is playing', (tester) async {

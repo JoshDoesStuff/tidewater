@@ -2,8 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
 import 'package:tidewater/app/providers/ui_providers.dart';
 
-import 'support/fake_library.dart';
-import 'support/pump.dart';
+import '../support/fake_library.dart';
+import '../support/pump.dart';
 
 void main() {
   testWidgets('walking through the main screens with accessibility on raises no semantics errors', (tester) async {

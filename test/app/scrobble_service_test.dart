@@ -5,8 +5,8 @@ import 'package:tidewater/app/providers/playback_providers.dart';
 import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/core/api/api_exception.dart';
 
-import 'support/fake_library.dart';
-import 'support/pump.dart';
+import '../support/fake_library.dart';
+import '../support/pump.dart';
 
 /// Pretends the track has been playing up to [seconds] (the simulated clock
 /// does not run under fake time), in 250 ms steps.

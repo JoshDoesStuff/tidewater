@@ -14,9 +14,9 @@ import 'package:tidewater/core/lyrics/lrclib.dart';
 import 'package:tidewater/core/lyrics/lyrics.dart';
 import 'package:tidewater/core/lyrics/structured_lyrics.dart';
 
-import 'support/fake_library.dart';
-import 'support/pump.dart';
-import 'support/stub_adapter.dart';
+import '../support/fake_library.dart';
+import '../support/pump.dart';
+import '../support/stub_adapter.dart';
 
 OpenSubsonicClient _client(StubAdapter adapter) => OpenSubsonicClient(
       ServerConfig(baseUrl: Uri.parse('https://music.example.com'), credentials: const PasswordCredentials('u', 'p')),
