@@ -136,7 +136,7 @@ The desktop is often locked, so screen capture of the real app returns the lock 
   `tool/probes/e2e_main.dart` + `tool/probes/e2e_check.ps1` (the whole app), `tool/probes/session_probe_main.dart` (secure storage),
   `tool/probes/server_check.dart` (the API). Run app-style tools with `Start-Process flutter.bat ... -RedirectStandardOutput`
   and `WaitForExit`; `flutter run` needs `--no-pub` and the cargo PATH.
-- **libmpv/media_kit quirks** are listed in the M3 wrap-up in `milestones.md` (same folder); the ones that bite: its `completed` fires
+- **libmpv/media_kit quirks** are listed in the M3 section of `milestones.md` (same folder); the ones that bite: its `completed` fires
   per file, its `playing` blinks at every track change, positions can be negative, and it skips a failing file itself.
   Never trust one event to mean one thing; check what is actually happening (is audio advancing?).
 - **Windows media overlay**: cover must be an `https://` URL; `file://` is silently ignored. The overlay counts time by

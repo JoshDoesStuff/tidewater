@@ -1,56 +1,143 @@
 # Tidewater milestones
 
-Where the project stands and what each remaining milestone must cover. Companion to `CLAUDE.md` (which stays the
-source of truth for design and behavior); this file is the working plan.
+Where the project stands and what each milestone covers. Companion to `CLAUDE.md` (which stays the source of truth
+for design and behavior) and `dev-notes.md` (how to verify, lessons learned); this file is the working plan.
 
-Legend: ✅ done · 🟡 done against **fake/simulated** data, needs the real thing · ⬜ not started
+Legend: ✅ done · 🟡 in progress or done against **fake/simulated** data · ⬜ not started
 
-## Milestone 1 wrap-up (done)
+## Status at a glance
+
+The original plan was shell → server → playback → color/shapes → Now Playing → polish. We deliberately built
+**demo parity first** with a simulated player, so the look and behavior came early; the later milestones are mostly
+*replacing the fakes* and adding the pages that don't exist yet.
+
+**The Windows app**
+
+| # | Milestone | Status |
+|---|-----------|--------|
+| 1 | Shell: window chrome, theme + motion tokens, rail, header, mini player, FAB | ✅ |
+| 2 | Server: login, OpenSubsonic client, real library, cover cache | ✅ |
+| 3 | Playback: real engine, queue, SMTC, scrobbling, album and artist pages | ✅ (gaps listed in M3) |
+| 4 | Dynamic color + shapes | ✅ |
+| 5 | Animated icons (sidebar, buttons, transport) | ✅ |
+| 6 | Now Playing polish | 🟡 (real audio, lyrics and queue; the visualizer is still simulated) |
+| 7 | Motion polish pass | 🟡 (most of the demo list is in; QA pass outstanding) |
+| 8 | Search, playlists, offline cache, settings, real visualizer | ⬜ (Settings partly ✅) |
+| 9 | Settings overhaul | ⬜ |
+
+**Release and other platforms**
+
+| # | Milestone | Status |
+|---|-----------|--------|
+| 10 | Website (after all the Windows builds are ready) | ⬜ |
+| 11 | Linux | ⬜ |
+| 12 | Android | ⬜ |
+| 13 | macOS | ⬜ |
+| 14 | iOS | ⬜ |
+
+## Next up: M6
+
+The open items, in the order I'd take them (details in the M6 section): window-size checks (720 × 520 minimum and
+ultrawide), the hero flight at different mini player widths, idle mode with real playback, `Space` activating a focused
+button plus visible focus styling, and the fast-skip freeze.
+
+## Stand-ins and gaps today
+
+Each is a known, deliberate stand-in. Replace them as the milestones land.
+
+| Stand-in | Where | Replaced in |
+|----------|-------|-------------|
+| `SimulatedVisualizerSource` (time-based, not from audio) | `core/playback/visualizer_source.dart` | M8 |
+| `SimulatedEngine` is still the engine in tests, previews and the perf tools (the app itself uses libmpv) | `core/playback/simulated_engine.dart` | stays (test double) |
+| No-op controls: sidebar menu button, header search field, cast button | various | M8 (menu button is the sidebar toggle) |
+| Library has no Genres tab (Songs has its own sort and cards/list view; the genre filter is a popup with search, Ctrl+click for several) | `library_page.dart` | M8 |
+| Radio is a placeholder page (Artists, Liked and Lists are real; playlists open a playlist page) | `placeholder_page.dart` | M8 |
+| The quality tag shows the file's own format from the server, not the engine's decoded format | `now_playing_overlay.dart` | M8 (with transcoding) |
+| Lists (albums, songs, artists, playlists, liked) are fetched on every launch, not cached | providers | M8 |
+
+---
+
+## M1 — Shell (done)
 
 Window chrome, theme + motion tokens, rail, header, mini player, FAB, Home and Library, delivered, then taken well
 past the original "static" scope to demo parity with a simulated player (recolor, morph shapes, card behaviors,
 Now Playing with lyrics/volume/idle/visualizers, Settings). Quality at wrap-up: `flutter analyze` clean, 44 tests
 passing, `flutter build windows --release` succeeds, zero console errors on launch, no frame over 33 ms in the
-profile scenarios (`tool/perf/perf_main.dart`). Working notes for future sessions: `dev-notes.md` (this folder).
+profile scenarios (`tool/perf/perf_main.dart`).
 
-## Milestone 4 wrap-up (done)
+## M2 — Server (done)
 
-Most of M4 had already landed with the earlier milestones (scheme from real cover pixels, animated recolor,
-`MorphShape`, card behaviors, wavy progress); what was left is done:
+The app runs on a real Navidrome/OpenSubsonic server: login (password or API key, secrets in Windows secure
+storage), a dio client written from scratch (`core/api/`), cover art with a disk cache, scheme colors from real cover
+pixels, and Home and Library built from server data with loading, error and empty states. At wrap-up playback was
+still simulated (clock only), but it already played real tracks from real queues. Quality: `flutter analyze` clean,
+112 tests passing, Windows build and launch clean.
 
-- **Light theme reviewed** (`flutter test tool/probes/render_shots_test.dart --dart-define=TW_LIGHT=true` renders every main
-  screen to `build/shots-light`): Home, Library, Now Playing (cover halo, lyrics card, volume, visualizer mountains),
-  idle mode and login all read well; the contrast test already checks 4.5:1 for accent and body text in both
-  brightnesses, including gray and black-and-white art. No fixes were needed. Known soft spot: tonal buttons (previous/next,
-  FAB) and the progress track are pale on a pale background, which is how Material's light roles work.
-- **Recolor cost**: the fade now moves in 40 steps (~50 Hz) and builds one `ThemeData` per step (`ColorSchemeTween`,
-  `ThemeMemo`). Before, a 180 Hz display rebuilt the whole themed tree and a fresh `ThemeData` 144 times per recolor
-  (build p90 4.7 ms, almost the entire 5.6 ms budget); now 2.1 ms, and track skips measure 5.6 ms p90 total.
-- **Extracted colors are remembered** (`SeedStore`, in `shared_preferences`, up to 4000 covers, keyed by server and
-  cover id): a cover is decoded and quantized once ever, so the next launch (and a restored queue) themes instantly
-  with no cover download. Failed covers fall back to a color from the album id and are *not* remembered.
-- Now Playing shows no lyrics button and no lyrics card for a track without lyrics (suggestion from the user).
+Checked against a live server: Navidrome 0.64.2 (the public demo) via `tool/probes/server_check.dart` (auth, artists,
+playlists, paging, album detail with quality info, covers at 300/800, search, random songs) and 40 real covers via
+`tool/probes/real_covers_test.dart` (0 contrast failures in dark and light; black/white/gray art gets a neutral
+scheme). `flutter_secure_storage` round-trips on this machine (`tool/probes/session_probe_main.dart`). Also checked
+against the user's own server (Navidrome 0.64.2, 518 albums, 313 artists): all albums load in two pages in about
+0.6 s, 119 covers gave 0 contrast failures. Still untested: a library with many thousands of albums.
 
-Left for M7: the visual QA of the tonal-button contrast in light, and reduced-motion review of the stepped recolor
-(it already respects `disableAnimations` by being instant).
+What was built, and the decisions that were not in the plan:
 
-## Milestone 3 wrap-up (done)
+- **Login** (`ui/pages/login_page.dart`, `core/api/connect.dart`): server address, then password or API key. An
+  address without a scheme is tried as https then http. Errors are specific (bad address, unreachable, certificate,
+  wrong credentials, no API-key support); a rejected certificate offers **Trust this server** (accepts that host's
+  certificate only, saved with the session). The saved server is trusted at launch without a ping, so starting
+  offline opens the app and its lists show offline states.
+- **Secrets**: password/API key in `flutter_secure_storage`; URL, user name, auth mode in `shared_preferences`
+  (`app/session/prefs_session_store.dart`). Signing out drops the secret and remembers URL + user to prefill.
+- **Client** (`core/api/opensubsonic_client.dart`): token auth with a fresh salt per request, or `apiKey`. Added
+  `getRandomSongs` (Shuffle all) to the endpoint list. Fixtures are in `test/fixtures/`.
+- **Everything keyed by id**: `Album`/`Track`/`Artist`/`Playlist` carry server ids; the engine takes a queue
+  (`playQueue`), cards call `playAlbum` / `playPlaylist` / `playArtist`. Shapes come from the album id
+  (`ShapeKind.forKey`), so an album keeps its shape everywhere.
+- **Covers** (`core/api/cover_cache.dart`, `ui/widgets/cover_art.dart`): sizes snap to 150/300/800, files are
+  `<cache>/<server hash>/<id>_<size>.img`, concurrent requests share one download, the placeholder gradient (hue from
+  the album id) shows until the image fades in. The cache is trimmed to 500 MB (least recently used first) when the
+  session starts.
+- **Scheme from the cover** (`core/color/cover_seed.dart`, `app/providers/scheme_providers.dart`): Celebi quantizer
+  + `Score` on a 112 px decode, run on another isolate. Art with no color (black, white, gray) gives a *muted*
+  seed → `DynamicSchemeVariant.neutral`, instead of a random hue. The app only recolors once the new seed is known
+  (never default → placeholder → real). Cover failures fall back to a hue from the album id.
+- **Home** (as built then; reworked since): greeting from the local hour, hero cards, rows for Recently added / Most
+  played.
+- **Library**: Albums load page by page (120, then 500 at a time) until the server runs out; the grid is lazy. Sorts
+  are server-side (recently added, name, artist, most played, recently played, year newest-first, verified descending
+  on a real server). The genre filter is client-side over what is loaded. The A–Z rail only shows for alphabetical
+  sorts and skips articles ("The Beatles" files under B).
+- **Mini player is hidden until something is queued** (decision; the old "resting first track" is gone). It rises
+  in the first time it appears. Failed play requests show a toast (`ui/shell/toast_layer.dart`).
+- **Account menu**: avatar shows the user's initial; menu offers sign out / switch server (stops playback first).
+
+Known gaps:
+
+- Not tested against a library with thousands of albums. Things to watch: Library paging time, memory of the
+  metadata list, `getArtists` size, cover cache growth.
+- API-key login is unit-tested but not tried against a server that advertises `apiKeyAuthentication` (the demo does
+  not).
+- Home rows refresh only when invalidated (Retry) or on restart (scrobbling now invalidates `recent`/`frequent`).
+
+## M3 — Playback (done)
 
 The app plays music for real. Audio comes from libmpv (`media_kit`) behind the `AudioBackend` interface; a
 `QueueEngine` owns the queue, shuffle and repeat and keeps a two-item window (current + next) loaded so tracks join
 gaplessly. Plays are reported to the server (now playing, then a counted play after half the track or 4 minutes),
 the Windows media overlay and media keys work (`smtc_windows`), the last queue and position come back at launch,
 hearts are real (`star`/`unstar`), lyrics come from the server (optionally lrclib.net), and there are album and artist
-pages and a queue panel (drag to reorder, remove, jump). Quality at wrap-up: `flutter analyze` clean, 228 tests
-passing, release build bundles `libmpv-2.dll` and `smtc_windows.dll` and starts.
+pages and a queue panel (drag to reorder, remove, jump). Also built: play next, add to queue, repeat off/all/one,
+volume/mute/seek. Quality at wrap-up: `flutter analyze` clean, 228 tests passing, release build bundles
+`libmpv-2.dll` and `smtc_windows.dll` and starts.
 
 Verified with the real thing, not just fakes (all against the user's own server):
 
-- `tool/probes/engine_probe_main.dart` (audible, quiet): play, pause, seek, **gapless hand-over** at the end of a track,
-  next/previous, play next, shuffle, repeat-one, a missing track being reported and skipped, position reported 16
-  times a second with at most an 89 ms gap.
-- `tool/probes/e2e_main.dart` + `tool/probes/e2e_check.ps1`: Windows shows the playing track with its cover, and its media-key
-  Pause/Play/Next/Previous drive the real engine.
+- `tool/probes/engine_probe_main.dart` (audible, quiet): play, pause, seek, **gapless hand-over** at the end of a
+  track, next/previous, play next, shuffle, repeat-one, a missing track being reported and skipped, position reported
+  16 times a second with at most an 89 ms gap.
+- `tool/probes/e2e_main.dart` + `tool/probes/e2e_check.ps1`: Windows shows the playing track with its cover, and its
+  media-key Pause/Play/Next/Previous drive the real engine.
 - `tool/perf/perf_real_main.dart` (profile, 180 Hz laptop panel, real covers/lyrics/engine): see "Performance" below.
 
 Decisions and discoveries that were not in the plan:
@@ -71,9 +158,9 @@ Decisions and discoveries that were not in the plan:
 - Shuffle keeps the playing track first and shuffles the rest; turning it off restores the original order around
   the playing track. A shuffled lap that repeats is reshuffled.
 - A restored queue is paused, shows no color wash, and is only restored for the server and user it was saved for.
-- New settings: *Count plays on the server*, *Look up missing lyrics online* (lrclib.net; sends artist, title,
-  album and length, so it is opt-out and visible).
-- New keys: `M` mute (anywhere), `Q` queue (in Now Playing). Clicking the speaker also mutes.
+- Settings added: *Count plays on the server*, *Look up missing lyrics online* (lrclib.net; sends artist, title,
+  album and length, so it is visible and can be switched off).
+- Keys added: `M` mute (anywhere), `Q` queue (in Now Playing). Clicking the speaker also mutes.
 
 Performance, measured on real data at 180 Hz (frame budget 5.6 ms; use `tool/perf/run_perf_real.ps1`):
 
@@ -89,7 +176,7 @@ Performance, measured on real data at 180 Hz (frame budget 5.6 ms; use `tool/per
 - Measurements on this machine are noisy when another app is using the GPU (frame times 1.5-3x worse for no
   reason). Compare against the `startup` phase of the same run and repeat before trusting a regression.
 
-Known gaps / follow-ups:
+Known gaps (moved to M6 or M8 where noted):
 
 - The visualizer is still simulated (M8). The Now Playing quality tag shows the file's own format from the server, not
   what the engine decodes (matters once transcoding is used; there is no transcoding setting yet).
@@ -97,119 +184,28 @@ Known gaps / follow-ups:
 - Failed counted plays are retried for as long as the app runs, not across restarts.
 - Hearts only exist for tracks; there is no starring of albums/artists from the UI yet.
 - No ReplayGain, crossfade or audio-device choice (M8). No sleep timer.
-- `Space` can still also activate a focused button (M6 item).
-- Playlists have cards that play but no playlist page (M8).
+- `Space` can still also activate a focused button (M6).
 
-## Milestone 2 wrap-up (done)
+## M4 — Dynamic color + shapes (done)
 
-The app now runs on a real Navidrome/OpenSubsonic server: login (password or API key, secrets in Windows secure
-storage), a dio client written from scratch (`core/api/`), cover art with a disk cache, scheme colors from real
-cover pixels, and a Home and Library built from server data with loading, error and empty states. Playback is
-**still simulated** (clock only), but it now plays real tracks from real queues.
+Most of M4 had already landed with the earlier milestones (scheme from real cover pixels, animated recolor,
+`MorphShape`, card behaviors, wavy progress); what was left is done:
 
-Checked against a live server: Navidrome 0.64.2 (the public demo) via `tool/probes/server_check.dart` (auth, artists,
-playlists, paging, album detail with quality info, covers at 300/800, search, random songs) and 40 real covers via
-`tool/probes/real_covers_test.dart` (0 contrast failures in dark and light; black/white/gray art gets a neutral scheme).
-`flutter_secure_storage` round-trips on this machine (`tool/probes/session_probe_main.dart`). Quality at wrap-up:
-`flutter analyze` clean, 112 tests passing, Windows build and launch clean. **Also checked against the user's own server (Navidrome 0.64.2, 518 albums, 313 artists):** all albums load in two pages in about 0.6 s,
-119 covers gave 0 contrast failures. Still untested: a library with many thousands of albums.
+- **Light theme reviewed** (`flutter test tool/probes/render_shots_test.dart --dart-define=TW_LIGHT=true` renders every
+  main screen to `build/shots-light`): Home, Library, Now Playing (cover halo, lyrics card, volume, visualizer
+  mountains), idle mode and login all read well; the contrast test already checks 4.5:1 for accent and body text in
+  both brightnesses, including gray and black-and-white art. No fixes were needed. Known soft spot: tonal buttons
+  (previous/next, FAB) and the progress track are pale on a pale background, which is how Material's light roles work.
+- **Recolor cost**: the fade now moves in 40 steps (~50 Hz) and builds one `ThemeData` per step (`ColorSchemeTween`,
+  `ThemeMemo`). Before, a 180 Hz display rebuilt the whole themed tree and a fresh `ThemeData` 144 times per recolor
+  (build p90 4.7 ms, almost the entire 5.6 ms budget); now 2.1 ms, and track skips measure 5.6 ms p90 total.
+- **Extracted colors are remembered** (`SeedStore`, in `shared_preferences`, up to 4000 covers, keyed by server and
+  cover id): a cover is decoded and quantized once ever, so the next launch (and a restored queue) themes instantly
+  with no cover download. Failed covers fall back to a color from the album id and are *not* remembered.
+- Now Playing shows no lyrics button and no lyrics card for a track without lyrics.
 
-Next up was **M3 (Playback)**, below.
-
-## Where we are
-
-The original plan was shell → server → playback → color/shapes → Now Playing → polish. We deliberately built
-**demo parity first** with a simulated player, so milestones 1, 4 and 6 are largely done in look and behavior,
-but everything they sit on is fake. The remaining milestones are mostly *replacing the fakes* and adding the
-pages that don't exist yet.
-
-| # | Milestone | Status |
-|---|-----------|--------|
-| 1 | Shell | ✅ |
-| 2 | Server (login, OpenSubsonic, real library, cover cache) | ✅ (search/artist pages come later) |
-| 3 | Playback (real engine, queue, SMTC, scrobbling, album page) | ✅ (gaps listed in the M3 section) |
-| 4 | Dynamic color + shapes | ✅ |
-| 5 | Animated icons (sidebar, buttons, transport) | ✅ |
-| 6 | Now Playing | 🟡 (real audio, lyrics and queue; the visualizer is still simulated) |
-| 7 | Motion polish pass | 🟡 (most of the demo list is in; QA pass outstanding) |
-| 8 | Search, playlists, offline cache, settings, real visualizer | ⬜ (Settings partly ✅) |
-| 9 | Settings overhaul | ⬜ |
-| 10 | Website (after all the Windows builds are ready) | ⬜ |
-| 11 | Linux | ⬜ |
-| 12 | Android | ⬜ |
-| 13 | macOS | ⬜ |
-| 14 | iOS | ⬜ |
-
-## What is simulated or stubbed today
-
-Replace these as the milestones below land. Each is a known, deliberate stand-in.
-
-| Stand-in | Where | Replaced in |
-|----------|-------|-------------|
-| `SimulatedVisualizerSource` (time-based, not from audio) | `core/playback/visualizer_source.dart` | M8 |
-| `SimulatedEngine` is still the engine in tests, previews and the perf tools (the app itself uses libmpv) | `core/playback/simulated_engine.dart` | stays (test double) |
-| No-op controls: menu button, search field, cast button | various | M8 |
-| Library has no Genres tab (Songs, with its own sort and cards/list view, shipped after M4; the genre filter is a popup box with search, Ctrl+click for several) | `library_page.dart` | M8 |
-| Only the Radio rail page is a placeholder (Artists, Liked and Lists are real pages; playlists open a playlist page) | `placeholder_page.dart` | M8 |
-| The quality tag shows the file's own format from the server, not the engine's decoded format | `now_playing_overlay.dart` | M8 (with transcoding) |
-
-(Replaced in M3: the simulated player, placeholder lyrics, in-memory hearts, the queue button, the album and artist
-pages.)
-
-(Replaced in M2: fake library, gradient-seeded scheme, list-index coupling, hard-coded Home/Library text, the
-account initial, sort, genre filter, "Show all", the A–Z rail.)
-
-## M2 — Server (done)
-
-What was built, and the decisions that were not in the plan:
-
-- **Login** (`ui/pages/login_page.dart`, `core/api/connect.dart`): server address, then password or API key. An
-  address without a scheme is tried as https then http. Errors are specific (bad address, unreachable, certificate,
-  wrong credentials, no API-key support); a rejected certificate offers **Trust this server** (accepts that host's
-  certificate only, saved with the session). The saved server is trusted at launch without a ping, so starting
-  offline opens the app and its lists show offline states.
-- **Secrets**: password/API key in `flutter_secure_storage`; URL, user name, auth mode in `shared_preferences`
-  (`app/session/prefs_session_store.dart`). Signing out drops the secret and remembers URL + user to prefill.
-- **Client** (`core/api/opensubsonic_client.dart`): token auth with a fresh salt per request, or `apiKey`. Added
-  `getRandomSongs` (Shuffle all) to the endpoint list. Fixtures are in `test/fixtures/`.
-- **Everything keyed by id**: `Album`/`Track`/`Artist`/`Playlist` carry server ids; the engine takes a queue
-  (`playQueue`), cards call `playAlbum` / `playPlaylist` / `playArtist`. Shapes come from the album id
-  (`ShapeKind.forKey`), so an album keeps its shape everywhere.
-- **Covers** (`core/api/cover_cache.dart`, `ui/widgets/cover_art.dart`): sizes snap to 150/300/800, files are
-  `<cache>/<server hash>/<id>_<size>.img`, concurrent requests share one download, the placeholder gradient (hue from
-  the album id) shows until the image fades in. The cache is trimmed to 500 MB (least recently used first) when the session starts.
-- **Scheme from the cover** (`core/color/cover_seed.dart`, `app/providers/scheme_providers.dart`): Celebi quantizer
-  + `Score` on a 112 px decode, run on another isolate. Art with no color (black, white, gray) gives a *muted*
-  seed → `DynamicSchemeVariant.neutral`, instead of a random hue. The app only recolors once the new seed is known
-  (never default → placeholder → real). Cover failures fall back to a hue from the album id.
-- **Home**: greeting from the local hour; heroes = recently played topped up with newest; Quick picks = most played;
-  rows for Recently added / Most played; chips switch All / Albums / Artists / Playlists.
-- **Library**: Albums, Artists, Playlists tabs. Albums load page by page (120, then 500 at a time) until the server
-  runs out; the grid is lazy. Sorts are server-side (recently added, name, artist, most played, recently played,
-  year newest-first, verified descending on a real server). Genre filter is client-side over what is loaded. The A–Z
-  rail only shows for alphabetical sorts and the Artists tab and skips articles ("The Beatles" files under B).
-- **Mini player is hidden until something is queued** (decision; the old "resting first track" is gone). It rises
-  in the first time it appears. Failed play requests show a toast (`ui/shell/toast_layer.dart`).
-- **Account menu**: avatar shows the user's initial; menu offers sign out / switch server (stops playback first).
-
-Known gaps / follow-ups:
-
-- Not tested against a library with thousands of albums yet. Things to watch: Library paging time, memory of the
-  metadata list, `getArtists` size, cover cache growth.
-- API-key login is unit-tested but not tried against a server that advertises `apiKeyAuthentication` (the demo does
-  not).
-- Pull-to-refresh / automatic refresh of Home after playing: Home rows refresh only when invalidated (Retry) or on
-  restart. Invalidate `recent`/`frequent` when scrobbling lands (M3).
-- Library "Songs" and "Genres" tabs, and the Home chips beyond filtering rows, are M8.
-
-## M3 — Playback (done; see the wrap-up above)
-
-Built: libmpv engine behind `AudioBackend`, queue (play next, add to queue, reorder, remove, shuffle, repeat
-off/all/one), gapless, volume/mute/seek, scrobbling, SMTC and media keys, album and artist pages, lyrics (server +
-lrclib), hearts, restore on launch, queue panel. Not done (moved to M8 or noted above): transcoding/format choice,
-ReplayGain, crossfade, device choice, saving the position on window close.
-
-## M4 — Dynamic color + shapes (done; see the wrap-up above)
+Left for M7: the visual QA of the tonal-button contrast in light, and a reduced-motion review of the stepped recolor
+(it already respects `disableAnimations` by being instant).
 
 ## M5 — Animated icons (done)
 
@@ -228,27 +224,29 @@ Every icon that moves does so with its own one-shot animation; rest state is the
   and has a heart, the Now Playing lyrics button grows in and out with the controls centered under the progress bar,
   and the progress bar got its buffering squiggle, retract/squiggle-back transitions, a handle that shrinks into the
   end dot, click-to-squiggle seeking and an optional live scrub (see `wavy_progress.dart`).
+- **Also done around it:** the app icon and banner (`tool/branding`), rounded window corners, a frameless window with
+  our own caption buttons, the Home rework (Continue listening, Surprise me), and the repo, license and security
+  setup.
 - **Left alone on purpose:** the play arrows on cards and rows (they already pop in), the heart buttons (they have the
   like pop and burst), login-page field icons (decorative).
 
-## M6 — Now Playing (remaining)
+## M6 — Now Playing polish (in progress)
 
 Built: overlay with hero flight, lyrics list, lyrics toggle, volume slider, idle mode, visualizer styles + picker,
-heart burst, track-change choreography, `V`/`L`/`Esc`/`Space`/`N`/`P`.
+heart burst, track-change choreography, queue panel (docked or popup), `V`/`L`/`Esc`/`Space`/`N`/`P`/`Q`/`M`.
+Done recently: the buffering squiggle (the bar holds and a squiggle sweeps until the track really starts; it no longer
+runs ahead of the sound).
 
-- Queue panel behind the top-bar queue button; cast button is a no-op.
-- Check layout at the window minimum (720×520) and at ultrawide: the design is a 1280×800 canvas scaled to fit.
-- Verify the hero flight when the mini player is at different widths / the rail is compact.
+Still to do:
+
+- Check the layout at the window minimum (720 × 520) and at ultrawide: the design is a 1280 × 800 canvas scaled to fit.
+- Verify the hero flight when the mini player is at different widths and the rail is compact.
 - Idle mode edge cases with real playback: buffering, track end, pause/resume, window deactivation.
-- Keyboard focus handling: global `Space` shouldn't also activate a focused button; add visible focus styling.
-- DONE (squiggle sweeps the bar until the track really starts; the bar no longer runs ahead of the sound). Buffering state on the wavy progress bar (mini player, Now Playing and the idle-mode line): while the engine is
-  loading or stalled, an animated squiggle runs across the bar instead of a static position. Needs a `buffering`
-  flag in the engine's state stream (media_kit exposes `player.stream.buffering`), shown in `PlaybackState`, with
-  reduced motion falling back to a pulsing bar. Belongs here because it is part of the progress bar and idle mode
-  edge cases above.
+- Keyboard focus: global `Space` shouldn't also activate a focused button; add visible focus styling.
 - Skipping fast between songs sometimes freezes mid-transition (reported). Reproduce with real playback first
-  (rapid Next presses); likely a race between `open` calls in the engine/queue, so cancel or ignore stale loads
-  and make the buffering animation the visible fallback while the latest track loads.
+  (rapid Next presses); likely a race between `open` calls in the engine/queue, so cancel or ignore stale loads and
+  let the buffering animation be the visible fallback while the latest track loads.
+- Cast button is a no-op.
 
 ## M7 — Motion polish pass
 
@@ -264,23 +262,29 @@ Most of the demo list is in. Remaining and review items:
   letter motion).
 - Consider fading the Aurora behind pages when paused for a long time (idle GPU use).
 
-## M8 — Search, playlists, offline, settings, real visualizer
+## M8 — Search, playlists, offline, real visualizer
 
 - Search page (`search3`): artists/albums/songs, recent searches, keyboard-first; wire the header search pill.
 - Playlists: list, detail, create/edit, add-to-playlist from context menus, reorder.
 - Radio page (placeholder). Library Genres tab.
 - Offline cache: download albums/playlists, cache management (size, clear), offline mode.
-- Remember the last Library tab between launches (it always opens on Albums for now, because the Songs and Playlists  tabs load slowly); do it together with the list cache below, when every tab opens instantly.
-- Remember whether each track has lyrics (disk cache keyed by track id, with the lyrics themselves), so the lyrics  button and the centered controls settle the moment a track starts: skipping to a track known to have lyrics grows  the button in at once, and one known to have none folds it away in step with the skip, not after the lookup.
-- Cache the list data on disk (songs, albums, artists, playlists, liked songs; Home rows) so the Library and the Songs
-  tab open instantly and refresh in the background. Today only covers, extracted colors and the saved queue persist.
-- Settings expansion: server/account, cache, scrobbling toggle, ReplayGain, audio output device, crossfade/gapless,
-  visualizer frame cap, startup page. (Done: reduce motion, dark/light, visualizer style, track change speed.)
+- **List cache**: cache the list data on disk (songs, albums, artists, playlists, liked songs; Home rows) so the
+  Library and the Songs tab open instantly and refresh in the background. Today only covers, extracted colors and the
+  saved queue persist. With it:
+  - remember the last Library tab between launches (it always opens on Albums for now, because the Songs and
+    Playlists tabs load slowly);
+  - remember whether each track has lyrics (disk cache keyed by track id, with the lyrics themselves), so the lyrics
+    button and the centered controls settle the moment a track starts: skipping to a track known to have lyrics grows
+    the button in at once, and one known to have none folds it away in step with the skip, not after the lookup.
+- Settings additions that depend on new features: ReplayGain, audio output device, crossfade/gapless, visualizer
+  frame cap, startup page. (The Settings page itself is reorganized in M9.)
 - **Real visualizer**: replace `SimulatedVisualizerSource` with FFT data (options: decode a parallel stream with
   FFmpeg, `flutter_soloud`, or a native audio tap). Same `VisualizerSource` interface; keep the 64-band,
   fast-attack/slow-decay smoothing. Say so in the UI until it ships.
 - Context menus (right click), drag and drop, multi-select.
-- Sidebar menu button (the hamburger at the top of the rail, a no-op today): make it collapse and expand the rail by  hand at any window size (icon-only vs labeled), remembered between launches; the narrow-window auto-collapse stays.
+- **Sidebar menu button** (the hamburger at the top of the rail, a no-op today): make it collapse and expand the rail
+  by hand at any window size (icon-only vs labeled), remembered between launches; the narrow-window auto-collapse
+  stays.
 
 ## M9 — Settings overhaul
 
@@ -292,7 +296,7 @@ Settings today is one flat column of switches that grew a row at a time. Redo it
   (side panel or popup), motion settings, visualizer style, Home layout options.
 - Account: server address, signed-in user, sign out, and a "forget cached covers" button with the cache size.
 - Playback: scrobbling, lyrics lookup, crossfade and ReplayGain when they exist (M8).
-- About: version, the credits and licences (currently the Credits card), links.
+- About: version, the credits and licenses (currently the Credits card), links.
 - Add a search box that filters the settings.
 - Every preference stays persisted through `sharedPreferencesProvider`, with tests that each one survives a restart.
 
@@ -300,18 +304,19 @@ Settings today is one flat column of switches that grew a row at a time. Redo it
 
 Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Windows release).
 
-- A one-page site on GitHub Pages (Settings → Pages, served from `docs/` or a `site/` folder): the banner, a short pitch,
-  real screenshots, a download button that links to the latest GitHub Release, and a link back to the repo.
+- A one-page site on GitHub Pages (Settings → Pages, served from `docs/` or a `site/` folder): the banner, a short
+  pitch, real screenshots, a download button that links to the latest GitHub Release, and a link back to the repo.
 - Needs a packaged Windows build first (installer or zip on GitHub Releases) with release notes.
 - Screenshots and a short screen recording once the UI has settled. Keep the credits and licenses reachable from it.
 - Optional later: a custom domain, and a changelog page generated from the release notes.
 
 ## M11 — Linux
 
-- Flutter's Linux desktop target. Replace the Windows-only pieces: the custom frameless window (`window_manager` works
-  on Linux too, check the resize edges and rounded corners), media keys and now-playing via MPRIS instead of SMTC
-  (`audio_service` or an MPRIS package; ask before adding), `media_kit` Linux libs instead of the Windows ones.
-- Packaging: an AppImage first, then Flatpak or a .deb; test on GNOME and KDE, X11 and Wayland, with fractional scaling.
+- Flutter's Linux desktop target. Replace the Windows-only pieces: the custom frameless window (`window_manager`
+  works on Linux too; check the resize edges and rounded corners), media keys and now-playing via MPRIS instead of
+  SMTC (`audio_service` or an MPRIS package; ask before adding), `media_kit` Linux libs instead of the Windows ones.
+- Packaging: an AppImage first, then Flatpak or a .deb; test on GNOME and KDE, X11 and Wayland, with fractional
+  scaling.
 - Secure storage needs libsecret on Linux; check the fallback when no keyring is running.
 - Icons: add the `.png` set and a `.desktop` file; reuse `tool/branding`.
 
@@ -320,11 +325,11 @@ Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Wi
 - Responsive shell for phones (see `docs/mockups/tidewater-mobile-prototype.html`): bottom navigation bar in portrait,
   side rail in landscape, mini player above it, queue as a bottom sheet, touch replacements for hover, Ctrl+click and
   keyboard shortcuts (long-press, swipe, back gesture).
-- Now Playing needs its own portrait and landscape layouts; the desktop 1280 x 800 canvas does not carry over.
+- Now Playing needs its own portrait and landscape layouts; the desktop 1280 × 800 canvas does not carry over.
 - Background playback with a media notification and lock-screen controls, audio focus and headset buttons
   (`audio_service` + `audio_session`; ask before adding), and `media_kit` Android libs.
-- Permissions (notifications), battery use of the visualizer and idle mode, soft keyboard on login, Material You edge
-  to edge insets. Build and test with the Android SDK from Windows; publish as an APK on Releases, Play Store later.
+- Permissions (notifications), battery use of the visualizer and idle mode, soft keyboard on login, edge-to-edge
+  insets. Build and test with the Android SDK from Windows; publish as an APK on Releases, Play Store later.
 
 ## M13 — macOS
 
@@ -344,6 +349,8 @@ Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Wi
 - Needs a Mac, Xcode and an Apple developer account (a free one installs for 7 days at a time); TestFlight for
   testing and the App Store for release, with App Review's rules on streaming clients in mind.
 
+---
+
 ## Cross-cutting
 
 **Quality gates (every milestone):** `flutter analyze` clean, `flutter test` passing, ≤ 5-line summary, small
@@ -351,32 +358,40 @@ reviewable commits, ask before adding packages not listed in `CLAUDE.md`.
 
 **Performance:** measure in `--profile`, never debug (debug is several times slower and makes animations look
 janky). The real displays are a **180 Hz laptop panel and a 144 Hz external monitor**, so the frame budget is
-5.5-7 ms, not 16.7. Measure with real data: `tool/perf/run_perf_real.ps1` (real server, covers, engine, lyrics; it reads
-the display's refresh rate and prints budgets for it) found problems the fake-data `tool/perf/perf_main.dart` hid (first-time
-cover decodes, a gradient under every cover). Baseline at 180 Hz after M3: Now Playing steady build 0.6 / raster 2.7 /
-total 4.2 ms median (p99 6.3), idle mode 4.6 (p99 8), lyric changes 4.6 (p99 8.8), skips and queue never above 10 ms.
-Budget: no frames > 33 ms in any scenario, and steady states under the display's frame time.
+5.5-7 ms, not 16.7. Measure with real data: `tool/perf/run_perf_real.ps1` (real server, covers, engine, lyrics; it
+reads the display's refresh rate and prints budgets for it) found problems the fake-data `tool/perf/perf_main.dart`
+hid (first-time cover decodes, a gradient under every cover). Baseline at 180 Hz after M3: Now Playing steady build
+0.6 / raster 2.7 / total 4.2 ms median (p99 6.3), idle mode 4.6 (p99 8), lyric changes 4.6 (p99 8.8), skips and queue
+never above 10 ms. Budget: no frames > 33 ms in any scenario, and steady states under the display's frame time.
 
 **Accessibility:**
 - Animated text must be hidden from semantics behind one stable label (per-letter nodes caused hundreds of
-  `AXTree` errors per launch; fixed for letter animations and decorative layers).
+  `AXTree` errors per launch; fixed for letter animations and decorative layers). Closed panels (queue, visualizer
+  picker) are excluded from the tree too.
 - Audit the rest for per-frame semantics churn (cards under tilt, hero carousel resizing).
 - Keyboard navigation and visible focus for every control; Narrator pass; check contrast in light theme.
 
-**Windows / packaging:**
-- `flutter build windows --release` check, app icon, window title, installer (MSIX), single-instance.
-- Roboto Flex packaging (variable weight/width) if licensing allows; fall back to Roboto.
-- Rounded window corners when maximized/snapped; high-DPI (125–200 %) pass; multi-monitor.
-- Confirm Impeller/GL behavior on other GPUs.
+**Windows and packaging:**
+- `flutter build windows --release` check, window title, installer (MSIX or similar), single-instance.
+- Done: app icon (multi-size `.ico`, bold simplified frames for the taskbar), rounded corners through DWM, window icons
+  set at the window's DPI. Still to check: rounded corners when maximized or snapped, high-DPI (125–200 %) pass,
+  multi-monitor, Impeller/GL behavior on other GPUs.
+- Headline font: the app uses the default Roboto; Roboto Flex / Google Sans Flex (variable weight, width, roundness)
+  for expressive headlines if packaging allows (the banner already uses Google Sans Flex).
 
-**Testing & tooling:**
-- `test/` — unit + widget tests (keep adding with each feature).
-- `tool/probes/render_shots_test.dart` — offscreen screenshots of the main screens to `build/shots/` (works with the
+**Testing and tooling:**
+- `test/` is sorted into `core/` (API, queue, engine, color), `app/` (providers, services, theme), `ui/` (widgets
+  and pages) and `flows/` (whole-app tests against a fake server), with shared helpers in `test/support/` and
+  fixtures in `test/fixtures/`. Keep adding tests with each feature.
+- `tool/` is sorted into `branding/` (icon and banner: `flutter test tool/branding/render_app_icon_test.dart`),
+  `perf/` and `probes/`.
+- `tool/probes/render_shots_test.dart`: offscreen screenshots of the main screens to `build/shots/` (works with the
   desktop locked): `flutter test tool/probes/render_shots_test.dart`.
-- `tool/perf/perf_main.dart` — per-phase frame build/raster times through the heavy scenarios:
+- `tool/perf/perf_main.dart`: per-phase frame build/raster times through the heavy scenarios:
   `flutter run -d windows --profile -t tool/perf/perf_main.dart`.
-- `tool/probes/letter_probe_main.dart` — pixel-level measurement of how smoothly the engine renders animated letters
-  (jitter in px, plus a landing/start "pop" metric): `flutter run -d windows --profile -t tool/probes/letter_probe_main.dart`.
+- `tool/probes/letter_probe_main.dart`: pixel-level measurement of how smoothly the engine renders animated letters
+  (jitter in px, plus a landing/start "pop" metric):
+  `flutter run -d windows --profile -t tool/probes/letter_probe_main.dart`.
   Lessons learned, all measured in the real engine (Impeller/GL):
   - Don't round animated transforms to whole pixels: ~10× *more* jitter.
   - Use `PreciseCubic` (`app/theme/precise_cubic.dart`) for easings, not Flutter's `Cubic`: its 0.001 bisection
@@ -400,6 +415,5 @@ Budget: no frames > 33 ms in any scenario, and steady states under the display's
 ## Open decisions
 
 - Keep `go_router` page transitions as fade + 14 px rise, or move to shared-axis for deeper pages (album/artist)?
-- Menu button (top of rail): expand/collapse the rail with labels, or open a drawer?
 - Where do "Daily Mix" style generated playlists come from on a Navidrome server (smart playlists vs. none)?
 - Real "Radio" source: Navidrome internet radio stations only, or also similar-artist radio?
