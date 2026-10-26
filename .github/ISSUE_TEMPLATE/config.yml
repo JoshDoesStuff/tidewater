@@ -1,7 +1,4 @@
 # Free-form issues are allowed while the project is small (set to false to require the forms).
-# Security problems go to private reporting.
+# GitHub adds its own "Report a security vulnerability" entry when private vulnerability
+# reporting is on, so there is no contact link for it here.
 blank_issues_enabled: true
-contact_links:
-  - name: Report a security vulnerability
-    url: https://github.com/JoshDoesStuff/tidewater/security/advisories/new
-    about: Please report security problems privately, not as a public issue.
