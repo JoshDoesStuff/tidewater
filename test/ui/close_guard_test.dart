@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/ui/shell/close_guard.dart';
 import 'package:tidewater/ui/widgets/squiggle_loader.dart';
@@ -9,12 +10,14 @@ GlobalKey<State<CloseGuard>> key = GlobalKey();
 
 Future<void> _pump(WidgetTester tester, {required Future<void> Function() save, required void Function() closed}) {
   return tester.pumpWidget(
-    MaterialApp(
-      home: CloseGuard(
-        key: key,
-        save: save,
-        onClosed: () async => closed(),
-        child: const Scaffold(body: Text('app')),
+    ProviderScope(
+      child: MaterialApp(
+        home: CloseGuard(
+          key: key,
+          save: save,
+          onClosed: () async => closed(),
+          child: const Scaffold(body: Text('app')),
+        ),
       ),
     ),
   );

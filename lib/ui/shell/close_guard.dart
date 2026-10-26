@@ -1,8 +1,12 @@
 import 'dart:async';
 
+import 'dart:io' show exit;
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../app/providers/playback_providers.dart';
 import '../../app/providers/session_persistence.dart';
 import '../../app/theme/motion.dart';
 import '../widgets/squiggle_loader.dart';
@@ -15,7 +19,7 @@ import '../widgets/squiggle_loader.dart';
 /// It waits two seconds at most, then closes whatever happened. If saving takes
 /// longer than a blink, a "Wrapping up" screen covers the window so a slow
 /// server does not look like a frozen app.
-class CloseGuard extends StatefulWidget {
+class CloseGuard extends ConsumerStatefulWidget {
   const CloseGuard({super.key, required this.child, this.save, this.onClosed});
 
   final Widget child;
@@ -23,7 +27,8 @@ class CloseGuard extends StatefulWidget {
   /// What to send before closing (the queue and position); the real one by default.
   final Future<void> Function()? save;
 
-  /// What closes the window; the real one by default. (Tests replace both.)
+  /// What closes the window once the save is done; the real one by default
+  /// (pause, hide the window, then end the process). Tests replace both.)
   final Future<void> Function()? onClosed;
 
   /// How long a save may take before the "wrapping up" screen appears.
@@ -33,10 +38,10 @@ class CloseGuard extends StatefulWidget {
   static const giveUpAfter = Duration(seconds: 2);
 
   @override
-  State<CloseGuard> createState() => _CloseGuardState();
+  ConsumerState<CloseGuard> createState() => _CloseGuardState();
 }
 
-class _CloseGuardState extends State<CloseGuard> with WindowListener {
+class _CloseGuardState extends ConsumerState<CloseGuard> with WindowListener {
   bool _closing = false;
   bool _showWrapUp = false;
 
@@ -68,7 +73,21 @@ class _CloseGuardState extends State<CloseGuard> with WindowListener {
       // Closing matters more than saving.
     }
     slow.cancel();
-    await (widget.onClosed ?? windowManager.destroy)();
+    await (widget.onClosed ?? _finish)();
+  }
+
+  /// The save is done: stop the sound and make the window disappear at once, then
+  /// let the process wind down out of sight. Shutting the player down (it closes its
+  /// connection to the server) can take several seconds, and that must never be
+  /// seen as a frozen window or heard as music from a window that is gone.
+  Future<void> _finish() async {
+    try {
+      await ref.read(playbackProvider.notifier).pauseNow().timeout(const Duration(milliseconds: 500));
+    } catch (_) {}
+    try {
+      await windowManager.hide();
+    } catch (_) {}
+    exit(0);
   }
 
   @override

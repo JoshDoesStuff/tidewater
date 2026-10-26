@@ -130,6 +130,9 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// Play/pause. With nothing queued there is nothing to start.
   Future<void> toggle() => state.playing ? _engine.pause() : _engine.play();
 
+  /// Pauses without toggling (closing the app: it must not start anything).
+  Future<void> pauseNow() => _engine.pause();
+
   Future<void> next() => _engine.next();
 
   /// Stops and forgets the queue (signing out).
