@@ -140,6 +140,10 @@ class _Credits extends StatelessWidget {
       'Home icon',
       'Lucide (https://lucide.dev) icon, animation from Lucide Animated (https://lucide-animated.com) by pqoqubbw, MIT License. Translated into code by Claude.',
     ),
+    (
+      'App font',
+      'Google Sans Flex (https://github.com/googlefonts/googlesans-flex), SIL Open Font License 1.1',
+    ),
   ];
 
   @override

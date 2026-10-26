@@ -21,19 +21,43 @@ abstract final class AppTheme {
   static ThemeData build(Brightness brightness, {Color seedColor = seed, bool muted = false}) =>
       fromScheme(scheme(brightness, seedColor: seedColor, muted: muted));
 
+  static const fontFamily = 'GoogleSansFlex';
+
+  /// A style with the font's roundness axis fully on and the given width:
+  /// Material 3 Expressive uses variable width and roundness for emphasis.
+  static TextStyle? _round(
+    TextStyle? s, {
+    required double wdth,
+    double? size,
+    FontWeight? weight,
+    double? tracking,
+    double? height,
+  }) =>
+      s?.copyWith(
+        fontFamily: fontFamily,
+        fontSize: size,
+        fontWeight: weight,
+        letterSpacing: tracking,
+        height: height,
+        fontVariations: [FontVariation('ROND', 100), FontVariation('wdth', wdth)],
+      );
+
   static ThemeData fromScheme(ColorScheme scheme) {
-    final base = ThemeData(colorScheme: scheme, useMaterial3: true);
-    final text = base.textTheme
+    final base = ThemeData(colorScheme: scheme, useMaterial3: true, fontFamily: fontFamily);
+    final t = base.textTheme;
+    final text = t
         .copyWith(
-          // Page titles ("Good evening", "Library").
-          displaySmall: base.textTheme.displaySmall?.copyWith(
-            fontSize: 44,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -.5,
-            height: 1.1,
-          ),
+          // Page titles ("Good evening", "Library"): heavy, wide and round.
+          displaySmall: _round(t.displaySmall, wdth: 118, size: 44, weight: FontWeight.w700, tracking: -.5, height: 1.1),
+          headlineMedium: _round(t.headlineMedium, wdth: 114, weight: FontWeight.w700),
+          headlineSmall: _round(t.headlineSmall, wdth: 112, weight: FontWeight.w700),
           // Section headings.
-          titleLarge: base.textTheme.titleLarge?.copyWith(fontSize: 22, fontWeight: FontWeight.w700),
+          titleLarge: _round(t.titleLarge, wdth: 110, size: 22, weight: FontWeight.w700),
+          titleMedium: _round(t.titleMedium, wdth: 106, weight: FontWeight.w600),
+          // Buttons, chips, eyebrows: round, normal width.
+          labelLarge: _round(t.labelLarge, wdth: 104),
+          labelMedium: _round(t.labelMedium, wdth: 104),
+          labelSmall: _round(t.labelSmall, wdth: 104),
         )
         .apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
     return base.copyWith(
