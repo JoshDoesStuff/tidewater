@@ -1,9 +1,11 @@
 import '../widgets/name_text.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers/playback_providers.dart';
+import '../../app/providers/selection.dart';
 import '../../app/providers/ui_providers.dart';
 import '../../app/theme/motion.dart';
 import '../../core/models/track.dart';
@@ -54,7 +56,10 @@ class _QueuePanelState extends ConsumerState<QueuePanel> {
 
   @override
   Widget build(BuildContext context) {
+    // Positions change when the queue does, so the picked rows are let go.
+    ref.listen(playbackProvider.select((s) => s.queue.length), (_, _) => ref.read(queueSelectionProvider.notifier).clear());
     ref.listen(queueOpenProvider, (_, open) {
+      if (!open) ref.read(queueSelectionProvider.notifier).clear();
       if (open) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _revealCurrent());
       }
@@ -68,6 +73,19 @@ class _QueuePanelState extends ConsumerState<QueuePanel> {
     final shuffle = ref.watch(playbackProvider.select((s) => s.shuffle));
     final repeat = ref.watch(playbackProvider.select((s) => s.repeat));
     final player = ref.read(playbackProvider.notifier);
+    final picked = ref.watch(queueSelectionProvider);
+    final pickedNotifier = ref.read(queueSelectionProvider.notifier);
+    void tapped(int i) {
+      final keys = HardwareKeyboard.instance;
+      if (keys.isShiftPressed && picked.isNotEmpty) {
+        pickedNotifier.rangeTo(i);
+      } else if (keys.isControlPressed || keys.isMetaPressed || keys.isShiftPressed || picked.isNotEmpty) {
+        pickedNotifier.toggle(i);
+      } else {
+        i == index ? player.toggle() : player.playIndex(i);
+      }
+    }
+
     final remaining = queue
         .skip(index + 1)
         .fold<Duration>(Duration.zero, (a, t) => a + t.duration);
@@ -177,6 +195,20 @@ class _QueuePanelState extends ConsumerState<QueuePanel> {
                         ],
                       ),
                     ),
+                    if (picked.isNotEmpty)
+                      _PickBar(
+                        count: picked.length,
+                        onClear: pickedNotifier.clear,
+                        onRemove: () async {
+                          // From the back, so the positions still to go do not move.
+                          final gone = picked.toList()..sort((a, b) => b.compareTo(a));
+                          pickedNotifier.clear();
+                          for (final i in gone) {
+                            await player.removeAt(i);
+                          }
+                          ref.read(toastProvider.notifier).show(gone.length == 1 ? 'Removed 1 song from the queue.' : 'Removed ${gone.length} songs from the queue.');
+                        },
+                      ),
                     Expanded(
                       child: queue.isEmpty
                           ? Center(
@@ -207,15 +239,14 @@ class _QueuePanelState extends ConsumerState<QueuePanel> {
                                   context,
                                   ref,
                                   at: at,
-                                  tracks: [queue[i]],
+                                  tracks: picked.contains(i) ? [for (final k in (picked.toList()..sort())) queue[k]] : [queue[i]],
                                 ),
+                                picked: picked.contains(i),
                                 index: i,
                                 track: queue[i],
                                 current: i == index,
                                 playing: playing,
-                                onPlay: () => i == index
-                                    ? player.toggle()
-                                    : player.playIndex(i),
+                                onPlay: () => tapped(i),
                                 onRemove: () => player.removeAt(i),
                               ),
                             ),
@@ -291,8 +322,10 @@ class _QueueRow extends StatelessWidget {
     required this.playing,
     required this.onPlay,
     required this.onRemove,
+    required this.picked,
   });
 
+  final bool picked;
   final int index;
   final Track track;
   final bool current;
@@ -310,13 +343,15 @@ class _QueueRow extends StatelessWidget {
     return Pressable(
       onTap: onPlay,
       semanticLabel:
-          '${track.title}, ${track.artist}${current ? ', playing' : ''}',
+          '${track.title}, ${track.artist}${current ? ', playing' : ''}${picked ? ', selected' : ''}',
       builder: (context, s) => AnimatedContainer(
         duration: Motion.of(context, Motion.fast),
         margin: const EdgeInsets.symmetric(vertical: 2),
         padding: const EdgeInsets.only(left: 6, right: 4),
         decoration: BoxDecoration(
-          color: current
+          color: picked
+              ? scheme.secondaryContainer
+              : current
               ? scheme.primaryContainer.withValues(alpha: .6)
               : (s.hovered
                     ? scheme.surfaceContainerHighest
@@ -351,11 +386,11 @@ class _QueueRow extends StatelessWidget {
                       seedKey: track.albumId,
                       resolution: 150,
                     ),
-                    if (current)
+                    if (picked || current)
                       ColoredBox(
-                        color: scheme.scrim.withValues(alpha: .45),
+                        color: picked ? scheme.primary.withValues(alpha: .9) : scheme.scrim.withValues(alpha: .45),
                         child: Center(
-                          child: MiniEq(
+                          child: picked ? Icon(Icons.check_rounded, size: 22, color: scheme.onPrimary) : MiniEq(
                             animating: playing,
                             color: Colors.white,
                             size: 16,
@@ -415,6 +450,37 @@ class _QueueRow extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Shown above the queue while rows are picked: how many, and take them out.
+class _PickBar extends StatelessWidget {
+  const _PickBar({required this.count, required this.onRemove, required this.onClear});
+
+  final int count;
+  final VoidCallback onRemove;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+      padding: const EdgeInsets.only(left: 16, right: 4),
+      decoration: BoxDecoration(color: scheme.secondaryContainer, borderRadius: BorderRadius.circular(22)),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              count == 1 ? '1 selected' : '$count selected',
+              style: TextStyle(color: scheme.onSecondaryContainer, fontWeight: FontWeight.w700),
+            ),
+          ),
+          IconButton(tooltip: 'Remove from queue', onPressed: onRemove, icon: const Icon(Icons.playlist_remove_rounded)),
+          IconButton(tooltip: 'Clear selection', onPressed: onClear, icon: const Icon(Icons.close_rounded)),
+        ],
       ),
     );
   }

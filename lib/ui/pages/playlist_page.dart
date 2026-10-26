@@ -10,6 +10,7 @@ import '../../app/theme/motion.dart';
 import '../../core/models/playlist.dart';
 import '../../core/models/track.dart';
 import '../widgets/art_tile.dart';
+import '../widgets/selection_scope.dart';
 import '../widgets/async_states.dart';
 import '../widgets/effects/letter_reveal.dart';
 import '../widgets/animated_glyphs.dart';
@@ -100,6 +101,17 @@ class _BodyState extends ConsumerState<_Body> {
     final next = [..._tracks]..removeAt(index);
     setState(() => _local = next);
     if (!await ref.read(playlistActionsProvider).removeAt(_playlist, index) && mounted) {
+      setState(() => _local = null);
+    }
+  }
+
+  /// Takes every picked song out (a song that is in the list twice goes both times).
+  Future<void> _removeMany(List<Track> picked) async {
+    final ids = {for (final t in picked) t.id};
+    final indexes = [for (final (i, t) in _tracks.indexed) if (ids.contains(t.id)) i];
+    if (indexes.isEmpty) return;
+    setState(() => _local = [for (final (i, t) in _tracks.indexed) if (!indexes.contains(i)) t]);
+    if (!await ref.read(playlistActionsProvider).removeAll(_playlist, indexes) && mounted) {
       setState(() => _local = null);
     }
   }
@@ -220,6 +232,12 @@ class _BodyState extends ConsumerState<_Body> {
     return CustomScrollView(
       scrollCacheExtent: const ScrollCacheExtent.pixels(700),
       slivers: [
+        SelectionScope(
+          tracks: tracks,
+          remove: editable ? _removeMany : null,
+          removeLabel: 'Remove from playlist',
+          child: const SliverToBoxAdapter(),
+        ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(24, 36, 32, 28),
           sliver: SliverToBoxAdapter(child: header),

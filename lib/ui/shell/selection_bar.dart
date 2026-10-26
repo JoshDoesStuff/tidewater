@@ -17,6 +17,7 @@ class SelectionBar extends ConsumerWidget {
     final selection = ref.watch(selectionProvider);
     final scheme = Theme.of(context).colorScheme;
     final shown = selection.isNotEmpty;
+    final scope = ref.watch(selectionScopeProvider);
     // Keeps the last picked songs on screen while the bar fades out.
     return AnimatedSlide(
       duration: Motion.of(context, Motion.medium),
@@ -57,6 +58,12 @@ class SelectionBar extends ConsumerWidget {
                     ref.read(selectionProvider.notifier).clear();
                   }),
                   _Action(Icons.favorite_border_rounded, 'Like', () => _like(ref, selection)),
+                  if (scope?.remove != null)
+                    _Action(Icons.playlist_remove_rounded, scope!.removeLabel, () async {
+                      final picked = selection.tracks;
+                      ref.read(selectionProvider.notifier).clear();
+                      await scope.remove!(picked);
+                    }),
                 ],
               ),
             ),

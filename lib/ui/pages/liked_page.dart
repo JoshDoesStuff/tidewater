@@ -7,6 +7,7 @@ import '../../app/providers/playback_providers.dart';
 import '../../app/providers/settings_providers.dart';
 import '../../core/models/track.dart';
 import '../widgets/async_states.dart';
+import '../widgets/selection_scope.dart';
 import '../widgets/effects/letter_reveal.dart';
 import '../widgets/effects/stagger_in.dart';
 import 'page_frame.dart';
@@ -155,6 +156,7 @@ class LikedPage extends ConsumerWidget {
       ];
     }
     return [
+      SelectionScope(tracks: songs, child: const SliverToBoxAdapter()),
       SliverPadding(
         padding: _pad,
         sliver: SliverFixedExtentList(

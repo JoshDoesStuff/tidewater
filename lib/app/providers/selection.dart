@@ -46,6 +46,9 @@ class SelectionNotifier extends Notifier<TrackSelection> {
     );
   }
 
+  void selectAll(List<Track> tracks) =>
+      state = TrackSelection(tracks: List.of(tracks), anchor: tracks.isEmpty ? null : tracks.last.id);
+
   void clear() {
     if (state.isNotEmpty) state = const TrackSelection();
   }
@@ -56,3 +59,67 @@ extension on List<Track> {
 }
 
 final selectionProvider = NotifierProvider<SelectionNotifier, TrackSelection>(SelectionNotifier.new);
+
+/// What Ctrl+A picks on the current page, and what "Remove" does there (a playlist
+/// can take songs out; most pages cannot). Pages register theirs with `SelectionScope`.
+class SelectionScopeData {
+  const SelectionScopeData({required this.tracks, this.remove, this.removeLabel = 'Remove'});
+
+  final List<Track> tracks;
+  final Future<void> Function(List<Track> picked)? remove;
+  final String removeLabel;
+}
+
+class SelectionScopeNotifier extends Notifier<SelectionScopeData?> {
+  Object? _owner;
+
+  @override
+  SelectionScopeData? build() => null;
+
+  void set(Object owner, SelectionScopeData data) {
+    if (!ref.mounted) return;
+    _owner = owner;
+    state = data;
+  }
+
+  /// Only the page that set the scope can take it away (a new page may already have its own).
+  void release(Object owner) {
+    if (!ref.mounted) return;
+    if (_owner == owner) {
+      _owner = null;
+      state = null;
+    }
+  }
+}
+
+final selectionScopeProvider = NotifierProvider<SelectionScopeNotifier, SelectionScopeData?>(SelectionScopeNotifier.new);
+
+/// The rows picked in the queue panel, by position (a song can be queued twice).
+class QueueSelectionNotifier extends Notifier<Set<int>> {
+  int? anchor;
+
+  @override
+  Set<int> build() => const {};
+
+  void toggle(int i) {
+    anchor = i;
+    state = state.contains(i) ? ({...state}..remove(i)) : {...state, i};
+  }
+
+  void rangeTo(int i) {
+    final from = anchor;
+    if (from == null) return toggle(i);
+    final lo = from < i ? from : i;
+    final hi = from < i ? i : from;
+    state = {...state, for (var k = lo; k <= hi; k++) k};
+  }
+
+  void selectAll(int count) => state = {for (var k = 0; k < count; k++) k};
+
+  void clear() {
+    anchor = null;
+    if (state.isNotEmpty) state = const {};
+  }
+}
+
+final queueSelectionProvider = NotifierProvider<QueueSelectionNotifier, Set<int>>(QueueSelectionNotifier.new);

@@ -122,6 +122,21 @@ class _AppShellState extends ConsumerState<AppShell> {
     final npOpen = ref.read(nowPlayingOpenProvider);
     final key = event.logicalKey;
     final ctrl = HardwareKeyboard.instance.isControlPressed;
+    if (ctrl && key == LogicalKeyboardKey.keyA) {
+      if (npOpen) {
+        if (!ref.read(queueOpenProvider)) return false;
+        ref.read(queueSelectionProvider.notifier).selectAll(ref.read(playbackProvider).queue.length);
+        return true;
+      }
+      final scope = ref.read(selectionScopeProvider);
+      if (scope == null || scope.tracks.isEmpty) return false;
+      ref.read(selectionProvider.notifier).selectAll(scope.tracks);
+      return true;
+    }
+    if (key == LogicalKeyboardKey.escape && npOpen && ref.read(queueSelectionProvider).isNotEmpty) {
+      ref.read(queueSelectionProvider.notifier).clear();
+      return true;
+    }
     if (key == LogicalKeyboardKey.escape && !npOpen && ref.read(selectionProvider).isNotEmpty) {
       ref.read(selectionProvider.notifier).clear();
       return true;

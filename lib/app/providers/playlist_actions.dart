@@ -86,6 +86,18 @@ class PlaylistActions {
     return ok;
   }
 
+  Future<bool> removeAll(Playlist playlist, List<int> indexes) async {
+    final ok = await _try(
+      () => _ref.read(apiProvider).updatePlaylist(playlist.id, removeIndexes: indexes),
+      failure: 'Couldn\'t remove the songs',
+    );
+    if (ok) {
+      _reload(playlist.id);
+      _say(indexes.length == 1 ? 'Removed 1 song from "${playlist.name}".' : 'Removed ${indexes.length} songs from "${playlist.name}".');
+    }
+    return ok;
+  }
+
   /// Puts the songs in [order] (the server has no "move", so this replaces them all).
   Future<bool> reorder(Playlist playlist, List<Track> order) async {
     final ok = await _try(

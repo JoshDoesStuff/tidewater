@@ -144,4 +144,58 @@ void main() {
     await advance(tester, const Duration(seconds: 6));
     await disposeApp(tester);
   });
+
+  testWidgets('Ctrl+A picks every song on the page', (tester) async {
+    final c = await pumpApp(tester);
+    c.read(routerProvider).go('/album/a1');
+    await advance(tester, const Duration(seconds: 2));
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await advance(tester, const Duration(milliseconds: 300));
+    expect(c.read(selectionProvider).length, first.length);
+    await advance(tester, const Duration(seconds: 6));
+    await disposeApp(tester);
+  });
+
+  testWidgets('in your own playlist the bar can remove several picked songs at once', (tester) async {
+    final api = FakeLibraryApi();
+    final c = await pumpApp(tester, api: api);
+    c.read(routerProvider).go('/playlist/pl-1'); // two songs
+    await advance(tester, const Duration(seconds: 2));
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await advance(tester, const Duration(milliseconds: 300));
+    await tester.tap(find.byTooltip('Remove from playlist'));
+    await advance(tester, const Duration(seconds: 1));
+    expect(api.playlistSongs['pl-1'], isEmpty);
+    expect(c.read(toastProvider)?.message, 'Removed 2 songs from "Late Night Drive".');
+    expect(c.read(selectionProvider).isEmpty, isTrue);
+    await advance(tester, const Duration(seconds: 6));
+    await disposeApp(tester);
+  });
+
+  testWidgets('the queue picks rows too, and removes them together', (tester) async {
+    final c = await pumpApp(tester);
+    final player = c.read(playbackProvider.notifier);
+    await player.playTracks(fakeTracks.take(5).toList());
+    await advance(tester, const Duration(seconds: 1));
+    c.read(nowPlayingOpenProvider.notifier).set(true);
+    c.read(queueOpenProvider.notifier).set(true);
+    await advance(tester, const Duration(seconds: 1));
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.tap(find.text(fakeTracks[3].title).last);
+    await tester.tap(find.text(fakeTracks[4].title).last);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await advance(tester, const Duration(milliseconds: 300));
+    expect(c.read(queueSelectionProvider), {3, 4});
+    await tester.tap(find.byTooltip('Remove from queue').first);
+    await advance(tester, const Duration(seconds: 1));
+    expect(c.read(playbackProvider).queue.length, 3);
+    expect(c.read(toastProvider)?.message, 'Removed 2 songs from the queue.');
+    await player.toggle();
+    await advance(tester, const Duration(seconds: 6));
+    await disposeApp(tester);
+  });
 }

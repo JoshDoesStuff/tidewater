@@ -1,4 +1,5 @@
 import '../widgets/name_text.dart';
+import '../widgets/selection_scope.dart';
 
 import 'dart:math' as math;
 
@@ -304,7 +305,7 @@ class _AlbumBody extends ConsumerWidget {
                 color: scheme.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(32),
               ),
-              child: Column(children: rows),
+              child: Column(children: [SelectionScope(tracks: tracks, child: const SizedBox.shrink()), ...rows]),
             ),
           ],
         );

@@ -6,6 +6,7 @@ import '../../app/providers/playback_providers.dart';
 import '../../app/providers/search_providers.dart';
 import '../../core/models/search_results.dart';
 import '../widgets/async_states.dart';
+import '../widgets/selection_scope.dart';
 import '../widgets/effects/stagger_in.dart';
 import '../widgets/pressable.dart';
 import '../widgets/squiggle_loader.dart';
@@ -216,6 +217,7 @@ class _Results extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        SelectionScope(tracks: results.tracks, child: const SizedBox.shrink()),
         if (results.artists.isNotEmpty) ...[
           const SectionHeader(title: 'Artists', action: null),
           Wrap(

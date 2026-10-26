@@ -46,8 +46,10 @@ class _ToastLayerState extends ConsumerState<ToastLayer> {
     final toast = _shown;
     if (toast == null) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
-    final bg = toast.error ? scheme.errorContainer : scheme.inverseSurface;
-    final fg = toast.error ? scheme.onErrorContainer : scheme.onInverseSurface;
+    // In the album's colors, like the rest of the app: not a fixed light or dark pill.
+    final bg = toast.error ? scheme.errorContainer : scheme.secondaryContainer;
+    final fg = toast.error ? scheme.onErrorContainer : scheme.onSecondaryContainer;
+    final accent = toast.error ? scheme.error : scheme.primary;
     return Align(
       alignment: Alignment.bottomCenter,
       child: Padding(
@@ -66,13 +68,26 @@ class _ToastLayerState extends ConsumerState<ToastLayer> {
                 child: ExcludeSemantics(
                   child: Container(
                     constraints: const BoxConstraints(maxWidth: 520),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 22, 12),
                     decoration: BoxDecoration(
                       color: bg,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: accent.withValues(alpha: .35)),
                       boxShadow: [BoxShadow(color: scheme.shadow.withValues(alpha: .3), blurRadius: 18, offset: const Offset(0, 6))],
                     ),
-                    child: Text(toast.message, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: fg)),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(toast.error ? Icons.error_rounded : Icons.check_circle_rounded, size: 20, color: accent),
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: Text(
+                            toast.message,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: fg, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

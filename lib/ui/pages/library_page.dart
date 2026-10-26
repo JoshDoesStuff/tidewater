@@ -10,6 +10,7 @@ import '../../core/models/album.dart';
 import '../../core/models/playlist.dart';
 import '../../core/models/track.dart';
 import '../widgets/async_states.dart';
+import '../widgets/selection_scope.dart';
 import '../widgets/effects/letter_reveal.dart';
 import '../widgets/effects/stagger_in.dart';
 import '../widgets/animated_glyphs.dart';
@@ -405,6 +406,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
         _rowExtent = SongRow.height;
         _rowGap = 0;
         return [
+          SelectionScope(tracks: list, child: const SliverToBoxAdapter()),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(
               24,
