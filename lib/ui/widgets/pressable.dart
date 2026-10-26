@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -61,6 +63,9 @@ class _PressableState extends State<Pressable> {
           },
           shortcuts: const {
             SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+            // Space is the global play/pause key; it must not also press a focused
+            // button (Flutter would otherwise map it to ActivateIntent).
+            SingleActivator(LogicalKeyboardKey.space): DoNothingIntent(),
           },
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -68,10 +73,39 @@ class _PressableState extends State<Pressable> {
             onTapUp: (_) => _set(pressed: false),
             onTapCancel: () => _set(pressed: false),
             onTap: widget.onTap,
-            child: widget.builder(context, (hovered: _hovered, pressed: _pressed, focused: _focused)),
+            // A ring around the control while it has keyboard focus (not mouse focus).
+            child: CustomPaint(
+              foregroundPainter: _focused ? _FocusRing(Theme.of(context).colorScheme.primary) : null,
+              child: widget.builder(context, (hovered: _hovered, pressed: _pressed, focused: _focused)),
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+/// A rounded outline just outside the control: pill-shaped for wide controls,
+/// circular for square ones.
+class _FocusRing extends CustomPainter {
+  _FocusRing(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const gap = 3.0;
+    final rect = Offset.zero & size;
+    final radius = math.min(size.shortestSide / 2, 28.0) + gap;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect.inflate(gap), Radius.circular(radius)),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5
+        ..color = color,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_FocusRing old) => old.color != color;
 }

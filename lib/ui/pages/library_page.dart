@@ -756,8 +756,10 @@ class AlphaRail extends StatelessWidget {
       for (final l in _letters)
         if (firstIndexForLetter(titles, l) >= 0) l,
     };
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxHeight: 520),
+    // Shrinks to fit when the window is short instead of overflowing.
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.topCenter,
       child: Container(
         width: 22,
         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -766,7 +768,7 @@ class AlphaRail extends StatelessWidget {
           borderRadius: BorderRadius.circular(11),
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          mainAxisSize: MainAxisSize.min,
           children: [
             for (final l in shown)
               Pressable(

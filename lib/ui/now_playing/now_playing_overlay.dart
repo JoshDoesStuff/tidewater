@@ -158,7 +158,9 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
   }
 
   void _checkIdle() {
-    final playing = ref.read(playbackProvider).playing;
+    final state = ref.read(playbackProvider);
+    // Not while waiting for the audio to start: the controls should stay in reach.
+    final playing = state.playing && !state.buffering;
     final popup = ref.read(vizPopupOpenProvider) || ref.read(queueOpenProvider);
     _sinceInput += _idleTick;
     final should = playing && !popup && _sinceInput > _idleAfter;
@@ -313,6 +315,10 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
   @override
   Widget build(BuildContext context) {
     ref.listen(nowPlayingOpenProvider, (p, open) => open ? _open() : _close());
+    // Pausing brings the controls back at once, not at the next idle check.
+    ref.listen(playbackProvider.select((s) => s.playing), (_, now) {
+      if (!now && _visible) _wake();
+    });
     ref.listen(currentTrackIdProvider, (p, id) => _onTrack(ref.read(currentTrackProvider)));
     if (!_visible) return const SizedBox.shrink();
 

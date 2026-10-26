@@ -37,9 +37,7 @@ The original plan was shell → server → playback → color/shapes → Now Pla
 
 ## Next up: M6
 
-The open items, in the order I'd take them (details in the M6 section): window-size checks (720 × 520 minimum and
-ultrawide), the hero flight at different mini player widths, idle mode with real playback, `Space` activating a focused
-button plus visible focus styling, and the fast-skip freeze.
+Window-size checks, focus styling and the fast-skip freeze are done; what is left is the hero flight at different mini player widths, idle mode edge cases with real playback, and the cast button.
 
 ## Stand-ins and gaps today
 
@@ -184,7 +182,6 @@ Known gaps (moved to M6 or M8 where noted):
 - Failed counted plays are retried for as long as the app runs, not across restarts.
 - Hearts only exist for tracks; there is no starring of albums/artists from the UI yet.
 - No ReplayGain, crossfade or audio-device choice (M8). No sleep timer.
-- `Space` can still also activate a focused button (M6).
 
 ## M4 — Dynamic color + shapes (done)
 
@@ -237,15 +234,18 @@ heart burst, track-change choreography, queue panel (docked or popup), `V`/`L`/`
 Done recently: the buffering squiggle (the bar holds and a squiggle sweeps until the track really starts; it no longer
 runs ahead of the sound).
 
+Done in this pass:
+
+- Window sizes: a smoke test lays out every page, Now Playing and the queue at 720 x 520, 1024 x 640, ultrawide and a
+  tall narrow window. It caught an overflow of the Artists A-Z rail on short windows (now shrinks to fit).
+- `Space` no longer also presses a focused button; keyboard focus shows a ring.
+- Fast skipping: queued Next/Previous presses are coalesced so only the last track loads (no more freeze).
+- Idle mode: never starts while buffering, and pausing wakes it immediately.
+
 Still to do:
 
-- Check the layout at the window minimum (720 × 520) and at ultrawide: the design is a 1280 × 800 canvas scaled to fit.
-- Verify the hero flight when the mini player is at different widths and the rail is compact.
-- Idle mode edge cases with real playback: buffering, track end, pause/resume, window deactivation.
-- Keyboard focus: global `Space` shouldn't also activate a focused button; add visible focus styling.
-- Skipping fast between songs sometimes freezes mid-transition (reported). Reproduce with real playback first
-  (rapid Next presses); likely a race between `open` calls in the engine/queue, so cancel or ignore stale loads and
-  let the buffering animation be the visible fallback while the latest track loads.
+- Verify the hero flight by eye when the mini player is at different widths and the rail is compact.
+- Idle mode on real playback: track end and window deactivation.
 - Cast button is a no-op.
 
 ## M7 — Motion polish pass

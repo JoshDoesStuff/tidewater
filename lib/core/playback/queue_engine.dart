@@ -52,6 +52,11 @@ class QueueEngine implements PlaybackEngine {
 
   Future<void> _tail = Future.value();
 
+  /// Skips (next, previous, jump) waiting their turn. When more are queued behind
+  /// the one running, only the last one opens the backend: mashing Next used to
+  /// open every track in turn and the player looked frozen until they all loaded.
+  int _skipsPending = 0;
+
   /// Commands run one at a time, so a quick double skip cannot interleave.
   Future<void> _run(Future<void> Function() body) {
     final next = _tail.then((_) => body());
@@ -284,10 +289,24 @@ class QueueEngine implements PlaybackEngine {
       });
 
   @override
-  Future<void> playIndex(int index) => _run(() async {
-        if (!_queue.jumpTo(index)) return;
-        await _open(play: true);
-      });
+  Future<void> playIndex(int index) => _skip(() => _queue.jumpTo(index), play: () => true);
+
+  /// Runs a skip: moves the queue, and loads the track unless another skip is
+  /// already waiting (then the screen just shows this track and the last skip loads).
+  Future<void> _skip(bool Function() move, {required bool Function() play}) {
+    _skipsPending++;
+    return _run(() async {
+      _skipsPending--;
+      if (!move()) return;
+      if (_skipsPending > 0) {
+        _resumeAt = Duration.zero;
+        _emit();
+        _emitPosition(Duration.zero);
+        return;
+      }
+      await _open(play: play());
+    });
+  }
 
   @override
   Future<void> play() => _run(() async {
@@ -343,28 +362,36 @@ class QueueEngine implements PlaybackEngine {
       });
 
   @override
-  Future<void> next() => _run(() async {
-        // Pressing next always moves on, even with repeat-one or at the end.
-        if (!_queue.advance(LoopMode.all)) return;
-        await _open(play: _playing);
-      });
+  Future<void> next() =>
+      // Pressing next always moves on, even with repeat-one or at the end.
+      _skip(() => _queue.advance(LoopMode.all), play: () => _playing);
 
   @override
-  Future<void> previous() => _run(() async {
-        if (_queue.isEmpty) return;
-        // Like most players: restart the track first, go back only near its start.
-        if (position > const Duration(seconds: 3)) {
-          if (_opened) {
-            await _backend.seek(Duration.zero);
-          } else {
-            _resumeAt = Duration.zero;
-          }
-          _emitPosition(Duration.zero);
-          return;
+  Future<void> previous() {
+    _skipsPending++;
+    return _run(() async {
+      _skipsPending--;
+      if (_queue.isEmpty) return;
+      // Like most players: restart the track first, go back only near its start.
+      if (position > const Duration(seconds: 3) && _skipsPending == 0) {
+        if (_opened) {
+          await _backend.seek(Duration.zero);
+        } else {
+          _resumeAt = Duration.zero;
         }
-        _queue.retreat();
-        await _open(play: _playing);
-      });
+        _emitPosition(Duration.zero);
+        return;
+      }
+      _queue.retreat();
+      if (_skipsPending > 0) {
+        _resumeAt = Duration.zero;
+        _emit();
+        _emitPosition(Duration.zero);
+        return;
+      }
+      await _open(play: _playing);
+    });
+  }
 
   @override
   Future<void> setVolume(double volume) => _run(() async {
