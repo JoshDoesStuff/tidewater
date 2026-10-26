@@ -39,6 +39,18 @@ const _serverQueueMax = 10000;
 Future<void> flushSessionPersistence() => _flush?.call() ?? Future.value();
 Future<void> Function()? _flush;
 
+/// True from launch until the saved queue has been looked for (this PC, then the
+/// server), so Home can hold a place for "Continue listening" instead of having
+/// it pop in late.
+class QueueRestoringNotifier extends Notifier<bool> {
+  @override
+  bool build() => true;
+
+  void set(bool value) => state = value;
+}
+
+final queueRestoringProvider = NotifierProvider<QueueRestoringNotifier, bool>(QueueRestoringNotifier.new);
+
 /// Identifies the server and user a saved queue belongs to.
 String serverKeyOf(ServerConfig c) => '${c.baseUrl}|${c.username}';
 
@@ -213,7 +225,7 @@ final sessionPersistenceProvider = Provider<void>((ref) {
     persistTimer = Timer(const Duration(seconds: 2), () => unawaited(persist()));
   }
 
-  Future<void> restore() async {
+  Future<void> restoreQueue() async {
     final config = ref.read(sessionProvider);
     if (config == null) return;
     final s = ref.read(playbackProvider);
@@ -261,6 +273,14 @@ final sessionPersistenceProvider = Provider<void>((ref) {
     await player.restore(chosen);
   }
 
+  Future<void> restore() async {
+    try {
+      await restoreQueue();
+    } finally {
+      ref.read(queueRestoringProvider.notifier).set(false);
+    }
+  }
+
   // The volume applies even before anything is queued.
   final volume = prefs.getDouble(_volumeKey);
   if (volume != null) unawaited(player.setVolume(volume));
@@ -296,6 +316,7 @@ final sessionPersistenceProvider = Provider<void>((ref) {
       if (store != null) unawaited(store.write(_sessionFile, const []));
       serverHolds = null;
     } else if (prev == null) {
+      ref.read(queueRestoringProvider.notifier).set(true);
       unawaited(restore());
     }
   });

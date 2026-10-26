@@ -16,9 +16,10 @@ import '../widgets/squiggle_loader.dart';
 /// they are sent when you pause, but a window closed mid-song would otherwise
 /// lose up to 30 seconds of position. `main` turns on `setPreventClose`.
 ///
-/// It waits two seconds at most, then closes whatever happened. If saving takes
-/// longer than a blink, a "Wrapping up" screen covers the window so a slow
-/// server does not look like a frozen app.
+/// A "Wrapping up" screen covers the window from the first moment, so closing
+/// always shows what it is doing, and stays at least [minimumShow] so it is not a
+/// flash. It waits two seconds at most for the server, then closes whatever
+/// happened.
 class CloseGuard extends ConsumerStatefulWidget {
   const CloseGuard({super.key, required this.child, this.save, this.onClosed});
 
@@ -31,8 +32,8 @@ class CloseGuard extends ConsumerStatefulWidget {
   /// (pause, hide the window, then end the process). Tests replace both.)
   final Future<void> Function()? onClosed;
 
-  /// How long a save may take before the "wrapping up" screen appears.
-  static const showAfter = Duration(milliseconds: 250);
+  /// The least time the "wrapping up" screen stays up, even for a quick save.
+  static const minimumShow = Duration(milliseconds: 700);
 
   /// The longest the window waits for the server.
   static const giveUpAfter = Duration(seconds: 2);
@@ -64,15 +65,14 @@ class _CloseGuardState extends ConsumerState<CloseGuard> with WindowListener {
   Future<void> close() async {
     if (_closing) return; // a second click while waiting changes nothing
     _closing = true;
-    final slow = Timer(CloseGuard.showAfter, () {
-      if (mounted) setState(() => _showWrapUp = true);
-    });
+    setState(() => _showWrapUp = true);
+    final shown = Future<void>.delayed(CloseGuard.minimumShow);
     try {
       await (widget.save ?? flushSessionPersistence)().timeout(CloseGuard.giveUpAfter);
     } catch (_) {
       // Closing matters more than saving.
     }
-    slow.cancel();
+    await shown;
     await (widget.onClosed ?? _finish)();
   }
 

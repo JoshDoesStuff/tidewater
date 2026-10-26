@@ -162,6 +162,11 @@ class _BodyState extends ConsumerState<_Body> {
           '${tracks.length} song${tracks.length == 1 ? '' : 's'} · $length',
           style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
         ),
+        if (editable && tracks.length > 1)
+          Text(
+            'Drag a song by its handle to reorder.',
+            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant.withValues(alpha: .8)),
+          ),
         const SizedBox(height: 20),
         Wrap(
           spacing: 12,
@@ -251,10 +256,11 @@ class _BodyState extends ConsumerState<_Body> {
                   onRemove: () => _remove(i),
                   leading: ReorderableDragStartListener(
                     index: i,
+                    // A hundred of these (and their tooltips) in the accessibility tree made
+                    // Windows report tree errors; reordering has a hint in the header instead.
                     child: MouseRegion(
                       cursor: SystemMouseCursors.grab,
-                      child: Tooltip(
-                        message: 'Drag to reorder',
+                      child: ExcludeSemantics(
                         child: Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: Icon(Icons.drag_indicator_rounded, size: 20, color: scheme.onSurfaceVariant),

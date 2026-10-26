@@ -1,4 +1,5 @@
 import '../widgets/name_text.dart';
+
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -9,6 +10,8 @@ import 'package:go_router/go_router.dart';
 import '../../app/destinations.dart';
 import '../../app/providers/library_providers.dart';
 import '../../app/providers/playback_providers.dart';
+import '../../app/providers/session_persistence.dart';
+import '../../app/providers/ui_providers.dart';
 import '../../app/theme/app_theme.dart';
 import '../../app/theme/motion.dart';
 import '../../core/api/library_api.dart';
@@ -22,6 +25,7 @@ import '../widgets/effects/ripple.dart';
 import '../widgets/effects/stagger_in.dart';
 import '../widgets/pressable.dart';
 import '../widgets/shapes/morph_path.dart';
+import '../widgets/wavy_progress.dart';
 import 'page_frame.dart';
 import 'widgets/album_card.dart';
 import 'widgets/app_header.dart';
@@ -35,7 +39,6 @@ String greetingFor(DateTime now) {
   if (h >= 18 && h < 22) return 'Good evening';
   return 'Good night';
 }
-
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -64,7 +67,10 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   /// How many cards fit in one row at this window width.
   static int _fit(double width) =>
-      (((width - _pagePad + _cardGap) / (_cardSize + _cardGap)).floor()).clamp(1, 20);
+      (((width - _pagePad + _cardGap) / (_cardSize + _cardGap)).floor()).clamp(
+        1,
+        20,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -86,11 +92,14 @@ class _HomePageState extends ConsumerState<HomePage> {
             SectionHeader(
               title: 'Recently added',
               // "Show all" only when the row can't show everything on one line.
-              onAction: (newest.value?.length ?? 0) > fit ? () => _showAll(LibraryTab.albums, LibrarySort.recentlyAdded) : null,
+              onAction: (newest.value?.length ?? 0) > fit
+                  ? () => _showAll(LibraryTab.albums, LibrarySort.recentlyAdded)
+                  : null,
             ),
             _CardRow<Album>(
               value: shown,
-              onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.newest)),
+              onRetry: () =>
+                  ref.invalidate(albumRowProvider(AlbumListType.newest)),
               emptyTitle: 'No albums yet',
               emptyMessage: 'Add music to your Navidrome library and it will show up here.',
               card: (a) => AlbumCard(album: a, size: _cardSize),
@@ -102,7 +111,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   label: 'Shuffle picks',
                   glyph: GlyphKind.shuffle,
                   // A fresh set arrives from the server; the hero pick changes with it.
-                  onPressed: () => ref.invalidate(albumRowProvider(AlbumListType.random)),
+                  onPressed: () =>
+                      ref.invalidate(albumRowProvider(AlbumListType.random)),
                 ),
               ),
               // A new set of picks swaps in with a fade and rise, and its cards
@@ -114,21 +124,31 @@ class _HomePageState extends ConsumerState<HomePage> {
                 transitionBuilder: (child, animation) => FadeTransition(
                   opacity: animation,
                   child: SlideTransition(
-                    position: Tween(begin: const Offset(0, .06), end: Offset.zero).animate(animation),
+                    position: Tween(
+                      begin: const Offset(0, .06),
+                      end: Offset.zero,
+                    ).animate(animation),
                     child: child,
                   ),
                 ),
                 // The row on its way out stays out of the accessibility tree.
                 layoutBuilder: (current, previous) => Stack(
                   alignment: Alignment.topLeft,
-                  children: [for (final p in previous) ExcludeSemantics(child: p), ?current],
+                  children: [
+                    for (final p in previous) ExcludeSemantics(child: p),
+                    ?current,
+                  ],
                 ),
                 child: _CardRow<Album>(
                   key: ValueKey(random.value?.map((a) => a.id).join(',')),
                   value: random.whenData(
-                    (l) => [for (final a in l) if (!picked.contains(a.id)) a].take(fit).toList(),
+                    (l) => [
+                      for (final a in l)
+                        if (!picked.contains(a.id)) a,
+                    ].take(fit).toList(),
                   ),
-                  onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.random)),
+                  onRetry: () =>
+                      ref.invalidate(albumRowProvider(AlbumListType.random)),
                   emptyTitle: 'Nothing to suggest',
                   card: (a) => AlbumCard(album: a, size: _cardSize),
                 ),
@@ -137,18 +157,26 @@ class _HomePageState extends ConsumerState<HomePage> {
             if (frequent.value?.isNotEmpty ?? false) ...[
               SectionHeader(
                 title: 'Most played',
-                onAction: (frequent.value?.length ?? 0) > fit ? () => _showAll(LibraryTab.albums, LibrarySort.mostPlayed) : null,
+                onAction: (frequent.value?.length ?? 0) > fit
+                    ? () => _showAll(LibraryTab.albums, LibrarySort.mostPlayed)
+                    : null,
               ),
               _CardRow<Album>(
                 value: frequent.whenData((l) => l.take(fit).toList()),
-                onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.frequent)),
+                onRetry: () =>
+                    ref.invalidate(albumRowProvider(AlbumListType.frequent)),
                 emptyTitle: 'Nothing played yet',
                 card: (a) => AlbumCard(album: a, size: _cardSize),
               ),
             ],
           ];
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 36, 32, PageFrame.bottomClearance),
+            padding: const EdgeInsets.fromLTRB(
+              24,
+              36,
+              32,
+              PageFrame.bottomClearance,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -176,11 +204,20 @@ class _HomePageState extends ConsumerState<HomePage> {
     AsyncValue<List<Album>> random,
   ) {
     final taken = <String>{};
-    Album? choose(List<Album>? from, String? current, void Function(String?) set) {
-      final pool = [for (final a in from ?? const <Album>[]) if (!taken.contains(a.id)) a];
+    Album? choose(
+      List<Album>? from,
+      String? current,
+      void Function(String?) set,
+    ) {
+      final pool = [
+        for (final a in from ?? const <Album>[])
+          if (!taken.contains(a.id)) a,
+      ];
       if (pool.isEmpty) return null;
       final keep = pool.where((a) => a.id == current);
-      final a = keep.isNotEmpty ? keep.first : pool[_random.nextInt(pool.length)];
+      final a = keep.isNotEmpty
+          ? keep.first
+          : pool[_random.nextInt(pool.length)];
       set(a.id);
       taken.add(a.id);
       return a;
@@ -193,14 +230,21 @@ class _HomePageState extends ConsumerState<HomePage> {
     Album? fromAll = _randomHero;
     if (fromAll != null && taken.contains(fromAll.id)) fromAll = null;
     if (fromAll == null) {
-      final pool = [for (final a in random.value ?? const <Album>[]) if (!taken.contains(a.id)) a];
+      final pool = [
+        for (final a in random.value ?? const <Album>[])
+          if (!taken.contains(a.id)) a,
+      ];
       if (pool.isNotEmpty) fromAll = pool[_random.nextInt(pool.length)];
     }
     _randomHero = fromAll;
     if (fromAll != null) taken.add(fromAll.id);
     return (
       albums: [?fromAll, ?fromRecent, ?fromNew],
-      tags: [if (fromAll != null) 'Random', if (fromRecent != null) 'Recently played', if (fromNew != null) 'New'],
+      tags: [
+        if (fromAll != null) 'Random',
+        if (fromRecent != null) 'Recently played',
+        if (fromNew != null) 'New',
+      ],
     );
   }
 
@@ -213,7 +257,10 @@ class _HomePageState extends ConsumerState<HomePage> {
   ) {
     final Widget body;
     if (newest.hasError && !newest.hasValue) {
-      body = ErrorPanel(error: newest.error!, onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.newest)));
+      body = ErrorPanel(
+        error: newest.error!,
+        onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.newest)),
+      );
     } else if (!newest.hasValue) {
       body = const _CarouselSkeleton();
     } else if (newest.requireValue.isEmpty && (recent.value?.isEmpty ?? true)) {
@@ -227,17 +274,20 @@ class _HomePageState extends ConsumerState<HomePage> {
         heroes: picks.albums,
         tags: picks.tags,
         resume: ref.watch(currentTrackProvider) != null,
+        restoring: ref.watch(queueRestoringProvider),
       );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SectionHeader(title: 'Jump back in', action: null),
-        SizedBox(height: newest.hasValue && newest.requireValue.isEmpty ? null : 200, child: body),
+        SizedBox(
+          height: newest.hasValue && newest.requireValue.isEmpty ? null : 200,
+          child: body,
+        ),
       ],
     );
   }
-
 }
 
 /// Horizontal row of cards with loading, error and empty states.
@@ -286,7 +336,13 @@ class _CardRow<T> extends StatelessWidget {
       );
     }
     final items = value.requireValue;
-    if (items.isEmpty) return EmptyPanel(icon: Icons.inbox_rounded, title: emptyTitle, message: emptyMessage);
+    if (items.isEmpty) {
+      return EmptyPanel(
+        icon: Icons.inbox_rounded,
+        title: emptyTitle,
+        message: emptyMessage,
+      );
+    }
     // Callers trim the list to what fits, so the row never scrolls.
     return SizedBox(
       height: _rowHeight,
@@ -317,7 +373,8 @@ class _CarouselSkeleton extends StatelessWidget {
               const Expanded(child: SkeletonBox(height: 200, radius: 32)),
               if (i < 2 || showQuick) const SizedBox(width: 12),
             ],
-            if (showQuick) const SkeletonBox(width: 300, height: 200, radius: 32),
+            if (showQuick)
+              const SkeletonBox(width: 300, height: 200, radius: 32),
           ],
         );
       },
@@ -328,11 +385,20 @@ class _CarouselSkeleton extends StatelessWidget {
 /// Hero cards that spring wider on hover (the rest shrink) plus the Quick
 /// picks card. Weights animate on the spring curve.
 class _Carousel extends StatefulWidget {
-  const _Carousel({required this.heroes, required this.tags, required this.resume});
+  const _Carousel({
+    required this.heroes,
+    required this.tags,
+    required this.resume,
+    required this.restoring,
+  });
 
   final List<Album> heroes;
   final List<String> tags;
   final bool resume;
+
+  /// The saved queue is still being looked for: a placeholder holds the place of
+  /// "Continue listening" so the cards do not shift when it arrives.
+  final bool restoring;
 
   @override
   State<_Carousel> createState() => _CarouselState();
@@ -353,44 +419,83 @@ class _CarouselState extends State<_Carousel> {
     final n = widget.heroes.length;
     return LayoutBuilder(
       builder: (context, box) {
-        final showQuick = box.maxWidth >= 900 && widget.resume;
-        final gaps = 12.0 * (n - 1) + (showQuick ? 12 : 0);
-        final total = box.maxWidth - gaps - (showQuick ? _ContinueListening.width : 0);
-        return TweenAnimationBuilder<List<double>>(
-          tween: _WeightsTween(end: _weights),
+        final wantQuick =
+            box.maxWidth >= 900 && (widget.resume || widget.restoring);
+        // The slot opens and closes smoothly: the hero cards slide to make room, or
+        // spread out again if there turns out to be nothing to continue.
+        return TweenAnimationBuilder<double>(
+          tween: Tween(end: wantQuick ? 1.0 : 0.0),
           duration: Motion.of(context, Motion.slow),
-          curve: Motion.curve(context, Motion.spring),
-          builder: (context, animated, _) {
-            // The animated weights can be for a different number of cards than are
-            // showing (the heroes load one by one), so pad or trim them to fit.
-            final w = [for (var i = 0; i < n; i++) i < animated.length ? animated[i] : 1.0];
-            final sum = w.fold<double>(0, (a, b) => a + b);
-            return Row(
-              children: [
-                if (showQuick) ...[
-                  SizedBox(width: _ContinueListening.width, child: StaggerIn(index: 0, child: const _ContinueListening())),
-                  const SizedBox(width: 12),
-                ],
-                for (var i = 0; i < n; i++) ...[
-                  MouseRegion(
-                    onEnter: (_) => setState(() => _hover = i),
-                    onExit: (_) => setState(() => _hover = -1),
-                    child: SizedBox(
-                      width: (total * w[i] / sum).clamp(0.0, double.infinity),
-                      child: StaggerIn(
-                        index: i,
-                        child: _HeroCard(
-                          album: widget.heroes[i],
-                          tag: widget.tags[i],
-                          hovered: _hover == i,
-                          weight: w[i],
+          curve: Motion.curve(context, Motion.emphasized),
+          builder: (context, q, _) {
+            final showQuick = q > 0;
+            final gaps = 12.0 * (n - 1) + 12 * q;
+            final total = box.maxWidth - gaps - _ContinueListening.width * q;
+            return TweenAnimationBuilder<List<double>>(
+              tween: _WeightsTween(end: _weights),
+              duration: Motion.of(context, Motion.slow),
+              curve: Motion.curve(context, Motion.spring),
+              builder: (context, animated, _) {
+                // The animated weights can be for a different number of cards than are
+                // showing (the heroes load one by one), so pad or trim them to fit.
+                final w = [
+                  for (var i = 0; i < n; i++)
+                    i < animated.length ? animated[i] : 1.0,
+                ];
+                final sum = w.fold<double>(0, (a, b) => a + b);
+                return Row(
+                  children: [
+                    if (showQuick) ...[
+                      ClipRect(
+                        child: SizedBox(
+                          width: _ContinueListening.width * q,
+                          child: OverflowBox(
+                            alignment: Alignment.centerLeft,
+                            minWidth: _ContinueListening.width,
+                            maxWidth: _ContinueListening.width,
+                            child: Opacity(
+                              opacity: q,
+                              child: AnimatedSwitcher(
+                                duration: Motion.of(context, Motion.medium),
+                                child: widget.resume
+                                    ? const _ContinueListening(
+                                        key: ValueKey('continue'),
+                                      )
+                                    : const _ContinuePlaceholder(
+                                        key: ValueKey('continue-placeholder'),
+                                      ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  if (i < n - 1) const SizedBox(width: 12),
-                ],
-              ],
+                      SizedBox(width: 12 * q),
+                    ],
+                    for (var i = 0; i < n; i++) ...[
+                      MouseRegion(
+                        onEnter: (_) => setState(() => _hover = i),
+                        onExit: (_) => setState(() => _hover = -1),
+                        child: SizedBox(
+                          width: (total * w[i] / sum).clamp(
+                            0.0,
+                            double.infinity,
+                          ),
+                          child: StaggerIn(
+                            index: i,
+                            child: _HeroCard(
+                              album: widget.heroes[i],
+                              tag: widget.tags[i],
+                              hovered: _hover == i,
+                              weight: w[i],
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (i < n - 1) const SizedBox(width: 12),
+                    ],
+                  ],
+                );
+              },
             );
           },
         );
@@ -406,12 +511,21 @@ class _WeightsTween extends Tween<List<double>> {
   List<double> lerp(double t) {
     final a = begin ?? end!;
     final b = end!;
-    return [for (var i = 0; i < b.length; i++) (i < a.length ? a[i] : b[i]) + (b[i] - (i < a.length ? a[i] : b[i])) * t];
+    return [
+      for (var i = 0; i < b.length; i++)
+        (i < a.length ? a[i] : b[i]) +
+            (b[i] - (i < a.length ? a[i] : b[i])) * t,
+    ];
   }
 }
 
 class _HeroCard extends ConsumerWidget {
-  const _HeroCard({required this.album, required this.tag, required this.hovered, required this.weight});
+  const _HeroCard({
+    required this.album,
+    required this.tag,
+    required this.hovered,
+    required this.weight,
+  });
 
   final Album album;
 
@@ -442,19 +556,28 @@ class _HeroCard extends ConsumerWidget {
         duration: d,
         curve: c,
         clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(hovered ? 40 : 32)),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(hovered ? 40 : 32),
+        ),
         child: Ripple(
           color: AppTheme.onArt,
           child: Stack(
             fit: StackFit.expand,
             children: [
-              CoverArt(coverArt: album.coverArt, seedKey: album.id, resolution: 800),
+              CoverArt(
+                coverArt: album.coverArt,
+                seedKey: album.id,
+                resolution: 800,
+              ),
               DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: const Alignment(0, -.3),
                     end: Alignment.bottomCenter,
-                    colors: [scheme.scrim.withValues(alpha: 0), scheme.scrim.withValues(alpha: .62)],
+                    colors: [
+                      scheme.scrim.withValues(alpha: 0),
+                      scheme.scrim.withValues(alpha: .62),
+                    ],
                   ),
                 ),
               ),
@@ -464,7 +587,10 @@ class _HeroCard extends ConsumerWidget {
                   gradient: RadialGradient(
                     center: Alignment.bottomLeft,
                     radius: 1.1,
-                    colors: [scheme.primary.withValues(alpha: .28), scheme.primary.withValues(alpha: 0)],
+                    colors: [
+                      scheme.primary.withValues(alpha: .28),
+                      scheme.primary.withValues(alpha: 0),
+                    ],
                   ),
                 ),
               ),
@@ -476,44 +602,47 @@ class _HeroCard extends ConsumerWidget {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: Opacity(
-                  opacity: _labelOpacity,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: scheme.scrim.withValues(alpha: .38),
-                      borderRadius: BorderRadius.circular(hovered ? 10 : 14),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            switch (tag) {
-                              'New' => Icons.auto_awesome_rounded,
-                              'Random' => Icons.casino_rounded,
-                              _ => Icons.history_rounded,
-                            },
-                            size: 14,
-                            color: AppTheme.onArt,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            tag.toUpperCase(),
-                            maxLines: 1,
-                            softWrap: false,
-                            style: text.labelSmall?.copyWith(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.2,
+                    opacity: _labelOpacity,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: scheme.scrim.withValues(alpha: .38),
+                        borderRadius: BorderRadius.circular(hovered ? 10 : 14),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              switch (tag) {
+                                'New' => Icons.auto_awesome_rounded,
+                                'Random' => Icons.casino_rounded,
+                                _ => Icons.history_rounded,
+                              },
+                              size: 14,
                               color: AppTheme.onArt,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 6),
+                            Text(
+                              tag.toUpperCase(),
+                              maxLines: 1,
+                              softWrap: false,
+                              style: text.labelSmall?.copyWith(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
+                                color: AppTheme.onArt,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-                   ),
               ),
               Positioned(
                 left: 26,
@@ -529,7 +658,9 @@ class _HeroCard extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.fade,
                       softWrap: false,
-                      style: text.titleLarge?.copyWith(color: AppTheme.onArt.withValues(alpha: _labelOpacity)),
+                      style: text.titleLarge?.copyWith(
+                        color: AppTheme.onArt.withValues(alpha: _labelOpacity),
+                      ),
                     ),
                     Text(
                       subtitle,
@@ -538,7 +669,9 @@ class _HeroCard extends ConsumerWidget {
                       softWrap: false,
                       style: text.bodySmall?.copyWith(
                         fontSize: 13,
-                        color: AppTheme.onArt.withValues(alpha: .85 * _labelOpacity),
+                        color: AppTheme.onArt.withValues(
+                          alpha: .85 * _labelOpacity,
+                        ),
                       ),
                     ),
                   ],
@@ -567,7 +700,11 @@ class _HeroCard extends ConsumerWidget {
                         color: scheme.primary,
                         borderRadius: BorderRadius.circular(hovered ? 18 : 26),
                       ),
-                      child: Icon(Icons.play_arrow_rounded, size: 26, color: scheme.onPrimary),
+                      child: Icon(
+                        Icons.play_arrow_rounded,
+                        size: 26,
+                        color: scheme.onPrimary,
+                      ),
                     ),
                   ),
                 ),
@@ -584,7 +721,7 @@ class _HeroCard extends ConsumerWidget {
 /// title, how far along it is, and a button to resume or pause. Hovering
 /// lifts the card, tints it with the accent and springs the button bigger.
 class _ContinueListening extends ConsumerWidget {
-  const _ContinueListening();
+  const _ContinueListening({super.key});
 
   static const width = 300.0;
 
@@ -595,12 +732,12 @@ class _ContinueListening extends ConsumerWidget {
     final track = ref.watch(currentTrackProvider);
     final playing = ref.watch(playbackProvider.select((s) => s.playing));
     if (track == null) return const SizedBox.shrink();
-    final position = ref.watch(positionProvider);
     final d = Motion.of(context, Motion.medium);
     final spring = Motion.curve(context, Motion.spring);
     return Pressable(
-      onTap: () => ref.read(playbackProvider.notifier).toggle(),
-      semanticLabel: '${playing ? 'Pause' : 'Continue'} ${track.title}, ${track.artist}',
+      // The card opens Now Playing (its round button is the one that plays and pauses).
+      onTap: () => ref.read(nowPlayingOpenProvider.notifier).set(true),
+      semanticLabel: 'Open Now Playing: ${track.title}, ${track.artist}',
       builder: (context, s) => AnimatedScale(
         scale: s.pressed ? .97 : (s.hovered ? 1.03 : 1),
         duration: d,
@@ -610,7 +747,11 @@ class _ContinueListening extends ConsumerWidget {
           curve: Motion.standard,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: Color.lerp(scheme.surfaceContainerLow, scheme.primaryContainer, s.hovered ? .45 : 0),
+            color: Color.lerp(
+              scheme.surfaceContainerLow,
+              scheme.primaryContainer,
+              s.hovered ? .45 : 0,
+            ),
             borderRadius: BorderRadius.circular(s.hovered ? 40 : 32),
           ),
           child: Stack(
@@ -622,111 +763,154 @@ class _ContinueListening extends ConsumerWidget {
                 child: Opacity(
                   opacity: s.hovered ? .5 : .34,
                   child: ImageFiltered(
-                    imageFilter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22, tileMode: TileMode.clamp),
-                    child: CoverArt(coverArt: track.coverArt, seedKey: track.albumId, resolution: 150),
+                    imageFilter: ui.ImageFilter.blur(
+                      sigmaX: 22,
+                      sigmaY: 22,
+                      tileMode: TileMode.clamp,
+                    ),
+                    child: CoverArt(
+                      coverArt: track.coverArt,
+                      seedKey: track.albumId,
+                      resolution: 150,
+                    ),
                   ),
                 ),
               ),
               DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [scheme.surfaceContainerLow.withValues(alpha: .9), scheme.surfaceContainerLow.withValues(alpha: .2)],
+                    colors: [
+                      scheme.surfaceContainerLow.withValues(alpha: .9),
+                      scheme.surfaceContainerLow.withValues(alpha: .2),
+                    ],
                   ),
                 ),
               ),
-          Ripple(
-            color: scheme.onSurface,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(22, 16, 22, 16),
-              child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Continue listening',
-                  style: text.titleMedium?.copyWith(fontSize: 17, fontWeight: FontWeight.w700, height: 1.2),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    ArtTile(
-                      coverArt: track.coverArt,
-                      seedKey: track.albumId,
-                      resolution: 300,
-                      size: 64,
-                      params: ShapeKind.cookie.params,
-                      morph: 1,
-                      spin: (playing || s.hovered) && !Motion.reduced(context) ? .72 : 0,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              Ripple(
+                color: scheme.onSurface,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 16, 22, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Continue listening',
+                        style: text.titleMedium?.copyWith(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
                         children: [
-                          NameText(
-                            track.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: text.bodyMedium?.copyWith(fontSize: 15.5, fontWeight: FontWeight.w700, height: 1.25),
+                          ArtTile(
+                            coverArt: track.coverArt,
+                            seedKey: track.albumId,
+                            resolution: 300,
+                            size: 64,
+                            params: ShapeKind.cookie.params,
+                            morph: 1,
+                            spin:
+                                (playing || s.hovered) &&
+                                    !Motion.reduced(context)
+                                ? .72
+                                : 0,
                           ),
-                          const SizedBox(height: 2),
-                          NameText(
-                            track.artist,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: text.bodySmall?.copyWith(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                NameText(
+                                  track.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: text.bodyMedium?.copyWith(
+                                    fontSize: 15.5,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.25,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                NameText(
+                                  track.artist,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: text.bodySmall?.copyWith(
+                                    fontSize: 12.5,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ValueListenableBuilder<Duration>(
-                        valueListenable: position,
-                        builder: (context, p, _) {
-                          final total = track.duration.inMilliseconds;
-                          final done = total <= 0 ? 0.0 : (p.inMilliseconds / total).clamp(0.0, 1.0);
-                          return ClipRRect(
-                            borderRadius: BorderRadius.circular(3),
-                            child: LinearProgressIndicator(
-                              value: done,
-                              minHeight: 6,
-                              backgroundColor: scheme.surfaceContainerHighest,
-                              valueColor: AlwaysStoppedAnimation(scheme.primary),
+                      const Spacer(),
+                      Row(
+                        children: [
+                          // The app's own wavy progress bar (tap to seek).
+                          const Expanded(
+                            child: SizedBox(
+                              height: 28,
+                              child: WavyScrubber(
+                                amplitude: 3,
+                                wavelength: 18,
+                                strokeWidth: 4,
+                              ),
                             ),
-                          );
-                        },
+                          ),
+                          const SizedBox(width: 12),
+                          Pressable(
+                            onTap: () =>
+                                ref.read(playbackProvider.notifier).toggle(),
+                            semanticLabel: playing
+                                ? 'Pause'
+                                : 'Continue playing',
+                            builder: (context, b) {
+                              final big = s.hovered || b.hovered;
+                              return AnimatedContainer(
+                                duration: d,
+                                curve: spring,
+                                width: big ? 56 : 48,
+                                height: big ? 56 : 48,
+                                decoration: BoxDecoration(
+                                  color: scheme.primary,
+                                  borderRadius: BorderRadius.circular(
+                                    playing ? 16 : (big ? 28 : 24),
+                                  ),
+                                ),
+                                child: Icon(
+                                  playing
+                                      ? Icons.pause_rounded
+                                      : Icons.play_arrow_rounded,
+                                  size: big ? 28 : 25,
+                                  color: scheme.onPrimary,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    AnimatedContainer(
-                      duration: d,
-                      curve: spring,
-                      width: s.hovered ? 56 : 48,
-                      height: s.hovered ? 56 : 48,
-                      decoration: BoxDecoration(
-                        color: scheme.primary,
-                        borderRadius: BorderRadius.circular(playing ? 16 : (s.hovered ? 28 : 24)),
-                      ),
-                      child: Icon(
-                        playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                        size: s.hovered ? 28 : 25,
-                        color: scheme.onPrimary,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ],
-            ),
-            ),
-          ),
+              ),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+/// Holds the place of "Continue listening" while the saved queue is looked for
+/// (it can come from the server), so the cards do not jump when it arrives.
+class _ContinuePlaceholder extends StatelessWidget {
+  const _ContinuePlaceholder({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      const SizedBox.expand(child: SkeletonBox(radius: 32));
 }

@@ -26,7 +26,7 @@ void main() {
     expect(find.text('Private'), findsOneWidget, reason: 'new and existing playlists default to private');
     expect(find.byTooltip('Rename'), findsOneWidget);
     expect(find.byTooltip('Delete playlist'), findsOneWidget);
-    expect(find.byTooltip('Drag to reorder'), findsNWidgets(2));
+    expect(find.byIcon(Icons.drag_indicator_rounded), findsNWidgets(2));
     expect(find.textContaining('smart playlist'), findsNothing);
     await advance(tester, const Duration(seconds: 3));
     await disposeApp(tester);
@@ -99,7 +99,7 @@ void main() {
     final api = FakeLibraryApi();
     await _open(tester, api, 'pl-1');
     final before = api.playlistSongs['pl-1']!.map((t) => t.id).toList();
-    final handle = find.byTooltip('Drag to reorder').first;
+    final handle = find.byIcon(Icons.drag_indicator_rounded).first;
     final gesture = await tester.startGesture(tester.getCenter(handle));
     await tester.pump(const Duration(milliseconds: 100));
     await gesture.moveBy(const Offset(0, 40));
@@ -121,7 +121,7 @@ void main() {
     expect(find.textContaining('smart playlist'), findsOneWidget);
     expect(find.byTooltip('Rename'), findsNothing);
     expect(find.byTooltip('Delete playlist'), findsNothing);
-    expect(find.byTooltip('Drag to reorder'), findsNothing);
+    expect(find.byIcon(Icons.drag_indicator_rounded), findsNothing);
     expect(find.text('Private'), findsNothing);
     await advance(tester, const Duration(seconds: 3));
     await disposeApp(tester);

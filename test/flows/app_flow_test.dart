@@ -5,12 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/providers/library_providers.dart';
 import 'package:tidewater/app/app.dart' show routerProvider;
 import 'package:tidewater/app/providers/playback_providers.dart';
-import 'package:tidewater/app/providers/session_providers.dart';
 import 'package:tidewater/app/providers/ui_providers.dart';
+import 'package:tidewater/app/providers/session_providers.dart';
 import 'package:tidewater/core/api/api_exception.dart';
 import 'package:tidewater/core/api/server_config.dart';
 import 'package:tidewater/core/api/session_store.dart';
 import 'package:tidewater/core/models/album.dart';
+import 'package:tidewater/ui/widgets/pressable.dart';
 import 'package:tidewater/ui/pages/library_page.dart' show firstIndexForLetter;
 import 'package:tidewater/ui/pages/widgets/album_card.dart' show AlbumCard, MediaCard, PlaylistCard, TrackCard;
 import 'package:tidewater/ui/pages/widgets/song_row.dart';
@@ -402,14 +403,25 @@ void main() {
       await disposeApp(tester);
     });
 
-    testWidgets('Continue listening appears once a queue exists and toggles playback', (tester) async {
+    testWidgets('Continue listening appears once a queue exists; the card opens Now Playing and its round button plays and pauses', (tester) async {
       final container = await pumpApp(tester);
       expect(find.text('Continue listening'), findsNothing);
       await container.read(playbackProvider.notifier).playAlbum(fakeAlbums[0]);
       await advance(tester, const Duration(seconds: 1));
       expect(find.text('Continue listening'), findsOneWidget);
       expect(container.read(playbackProvider).playing, isTrue);
+
+      // Tapping the card opens Now Playing and leaves the music alone.
       await tester.tap(find.text('Continue listening'));
+      await advance(tester, const Duration(milliseconds: 600));
+      expect(container.read(nowPlayingOpenProvider), isTrue);
+      expect(container.read(playbackProvider).playing, isTrue);
+      container.read(nowPlayingOpenProvider.notifier).set(false);
+      await advance(tester, const Duration(seconds: 1));
+
+      // The round button at the card's corner pauses.
+      final card = find.ancestor(of: find.text('Continue listening'), matching: find.byType(Pressable)).first;
+      await tester.tapAt(tester.getBottomRight(card) - const Offset(40, 36));
       await advance(tester, const Duration(milliseconds: 500));
       expect(container.read(playbackProvider).playing, isFalse);
       await disposeApp(tester);

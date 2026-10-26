@@ -155,24 +155,8 @@ class SongRow extends ConsumerWidget {
                   ),
                 ),
                 AnimatedOpacity(
-                  opacity: s.hovered ? 1 : 0,
-                  duration: Motion.of(context, Motion.fast),
-                  child: Builder(
-                    builder: (menuContext) => IconButton(
-                      tooltip: 'More',
-                      iconSize: 20,
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () {
-                        final box =
-                            menuContext.findRenderObject()! as RenderBox;
-                        menu(box.localToGlobal(Offset(0, box.size.height)));
-                      },
-                      icon: const Icon(Icons.more_horiz_rounded),
-                    ),
-                  ),
-                ),
-                AnimatedOpacity(
                   opacity: liked || s.hovered || current ? 1 : 0,
+                  alwaysIncludeSemantics: true,
                   duration: Motion.of(context, Motion.fast),
                   child: HeartButton(
                     liked: liked,
@@ -186,6 +170,26 @@ class SongRow extends ConsumerWidget {
                     textAlign: TextAlign.right,
                     style: text.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                // The menu comes last, after the heart and the length. It only shows on
+                // hover, but keeps its place (and stays in the accessibility tree, so
+                // hovering never adds and removes nodes).
+                AnimatedOpacity(
+                  opacity: s.hovered ? 1 : 0,
+                  alwaysIncludeSemantics: true,
+                  duration: Motion.of(context, Motion.fast),
+                  child: Builder(
+                    builder: (menuContext) => IconButton(
+                      tooltip: 'More',
+                      iconSize: 20,
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        final box = menuContext.findRenderObject()! as RenderBox;
+                        menu(box.localToGlobal(Offset(0, box.size.height)));
+                      },
+                      icon: const Icon(Icons.more_horiz_rounded),
                     ),
                   ),
                 ),

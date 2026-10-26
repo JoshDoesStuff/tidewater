@@ -191,6 +191,9 @@ class FakeLibraryApi implements LibraryApi {
   /// What savePlayQueue stored (and getPlayQueue returns).
   ServerPlayQueue? serverQueue;
 
+  /// Holds getPlayQueue open until it is completed (a slow server at launch).
+  Completer<void>? queueGate;
+
   /// Makes only savePlayQueue and getPlayQueue fail (a server that cannot keep a queue).
   ApiException? queueFailWith;
   final queueSaves = <({List<String> ids, String? current, Duration position})>[];
@@ -210,10 +213,13 @@ class FakeLibraryApi implements LibraryApi {
   }
 
   @override
-  Future<ServerPlayQueue?> getPlayQueue() async => _ok('getPlayQueue', () {
-        if (queueFailWith != null) throw queueFailWith!;
-        return serverQueue;
-      });
+  Future<ServerPlayQueue?> getPlayQueue() async {
+    await queueGate?.future;
+    return _ok('getPlayQueue', () {
+      if (queueFailWith != null) throw queueFailWith!;
+      return serverQueue;
+    });
+  }
 
   /// The playlists on this fake server and their songs (change them to set a test up;
   /// createPlaylist, updatePlaylist and deletePlaylist change them too).

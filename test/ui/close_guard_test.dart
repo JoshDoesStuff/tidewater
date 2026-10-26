@@ -26,31 +26,32 @@ Future<void> _pump(WidgetTester tester, {required Future<void> Function() save, 
 Future<void> _close() => (key.currentState! as dynamic).close() as Future<void>;
 
 void main() {
-  testWidgets('a quick save closes the window without a flash of the wrapping up screen', (tester) async {
+  testWidgets('even a quick save shows "Wrapping up…" at once and keeps it up for a moment before closing', (tester) async {
     var closed = 0;
     await _pump(tester, save: () async {}, closed: () => closed++);
     final done = _close();
     await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('Wrapping up…'), findsOneWidget, reason: 'there from the first moment, not after a delay');
+    expect(find.byType(SquiggleLoader), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(closed, 0, reason: 'still showing: it stays for a short minimum');
+    await tester.pump(const Duration(milliseconds: 400));
     await done;
     expect(closed, 1);
-    expect(find.text('Wrapping up…'), findsNothing);
   });
 
-  testWidgets('a slow save shows "Wrapping up…" with a squiggle, then closes when it finishes', (tester) async {
+  testWidgets('a slow save keeps the screen up until it finishes, then closes', (tester) async {
     final gate = Completer<void>();
     var closed = 0;
     await _pump(tester, save: () => gate.future, closed: () => closed++);
     final done = _close();
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('Wrapping up…'), findsNothing, reason: 'not yet: it may finish in a blink');
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 1000));
     expect(find.text('Wrapping up…'), findsOneWidget);
     expect(find.text('Saving your queue and place to the server'), findsOneWidget);
-    expect(find.byType(SquiggleLoader), findsOneWidget);
     expect(closed, 0, reason: 'still waiting for the server');
 
     gate.complete();
+    await tester.pump(const Duration(milliseconds: 50));
     await done;
     expect(closed, 1);
   });
@@ -78,6 +79,7 @@ void main() {
     await _close();
     await tester.pump(const Duration(milliseconds: 50));
     gate.complete();
+    await tester.pump(const Duration(milliseconds: 800)); // the screen stays up for its minimum
     await first;
     expect(saves, 1);
     expect(closed, 1);
