@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../app/theme/motion.dart';
+
 /// The "now playing" badge on a card: a primary circle with three bouncing
 /// bars. The bars freeze when [animating] is false (paused).
 class EqBadge extends StatefulWidget {
@@ -18,17 +20,23 @@ class _EqBadgeState extends State<EqBadge> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800));
 
   @override
-  void initState() {
-    super.initState();
-    if (widget.animating) _c.repeat();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
   }
 
   @override
   void didUpdateWidget(EqBadge old) {
     super.didUpdateWidget(old);
-    if (widget.animating && !_c.isAnimating) {
+    _sync();
+  }
+
+  /// Bounces only while playing, and not at all with reduced motion.
+  void _sync() {
+    final run = widget.animating && !Motion.reduced(context);
+    if (run && !_c.isAnimating) {
       _c.repeat();
-    } else if (!widget.animating && _c.isAnimating) {
+    } else if (!run && _c.isAnimating) {
       _c.stop();
     }
   }
@@ -89,17 +97,22 @@ class _MiniEqState extends State<MiniEq> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100));
 
   @override
-  void initState() {
-    super.initState();
-    if (widget.animating) _c.repeat();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
   }
 
   @override
   void didUpdateWidget(MiniEq old) {
     super.didUpdateWidget(old);
-    if (widget.animating && !_c.isAnimating) {
+    _sync();
+  }
+
+  void _sync() {
+    final run = widget.animating && !Motion.reduced(context);
+    if (run && !_c.isAnimating) {
       _c.repeat();
-    } else if (!widget.animating && _c.isAnimating) {
+    } else if (!run && _c.isAnimating) {
       _c.stop();
     }
   }

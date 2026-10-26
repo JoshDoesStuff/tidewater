@@ -258,6 +258,12 @@ Still to do:
 
 Most of the demo list is in. Remaining and review items:
 
+Code audit (done): every behavior on the list has an implementation (page enter, cards with hover morph, play pop,
+tilt and ripple, the wash, mini player flight, FAB, play/pause morph, heart burst, track change, ambient + spotlight,
+visualizer styles + picker, lyrics list + toggle, volume slider, idle mode, keyboard). The reduced-motion audit found
+two loops that ignored it, the visualizer and the equalizer bars; both now hold still (test:
+`test/ui/reduced_motion_test.dart`). What is left needs eyes on the screen, below.
+
 - Walk `CLAUDE.md` "Behaviors" 1–16 against the demo side by side and tick each off (hover/press, ripples,
   stagger, letter reveals, wash, ambient, heart, track change).
 - Tune the track-change feel. Settings has a **Track change speed** slider (0.5×–3×); once you settle on a value,

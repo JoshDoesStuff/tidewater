@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import '../../../app/theme/motion.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers/playback_providers.dart';
@@ -46,12 +47,32 @@ class _VisualizerState extends ConsumerState<Visualizer>
   late final Ticker _ticker = createTicker(_onTick);
   Duration _lastPaint = Duration.zero;
   bool _visible = true;
+  bool _reduced = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _ticker.start();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reduced motion: one still frame instead of the drifting animation.
+    _reduced = Motion.reduced(context);
+    _sync();
+  }
+
+  void _sync() {
+    if (_visible && !_reduced) {
+      if (!_ticker.isActive) _ticker.start();
+    } else {
+      _ticker.stop();
+      if (_reduced) {
+        ref.read(visualizerSourceProvider).update(playing: ref.read(playbackProvider).playing);
+        _frame.value++;
+      }
+    }
   }
 
   @override
@@ -61,11 +82,7 @@ class _VisualizerState extends ConsumerState<Visualizer>
         state == AppLifecycleState.inactive;
     if (visible == _visible) return;
     _visible = visible;
-    if (visible) {
-      _ticker.start();
-    } else {
-      _ticker.stop();
-    }
+    _sync();
   }
 
   void _onTick(Duration elapsed) {
