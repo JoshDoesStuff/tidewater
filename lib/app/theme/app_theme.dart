@@ -10,6 +10,18 @@ abstract final class AppTheme {
   /// from it before any album colors exist ([seed] is the icon's coral).
   static const brandBlue = Color(0xFF1B57B8);
 
+  /// The flat Tidewater artwork (icon, banner, sign-in scene) uses these exact
+  /// colors rather than the album-driven scheme.
+  static const brandLine = Color(0xFFD7F2FF);
+  static const brandGroove1 = Color(0xFF86ADE6);
+  static const brandGroove2 = Color(0xFF5F8DD6);
+  static const brandShine = Color(0xFFB5CFF3);
+  static const brandWater = Color(0xFF3F9BEE);
+  static const brandWaterLine = Color(0xFF7CC4FF);
+  static const brandSurface = Color(0xFFE4F7FF);
+  static const brandHole = Color(0xFF123A72);
+  static const brandSail = Color(0xFFF4FBFF);
+
   /// Foreground for text/icons drawn directly on top of cover art or a scrim.
   /// Art is not themed, so this is deliberately fixed.
   static const onArt = Color(0xFFFFFFFF);

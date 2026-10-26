@@ -134,10 +134,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             children: [
               Positioned.fill(
                 child: LoginScene(
-                  sunX: wide ? .17 : .2,
+                  recordX: wide ? .17 : .2,
                   boatX: wide ? .83 : .8,
-                  horizon: wide ? .66 : .8,
-                  accent: AppTheme.seed,
+                  level: wide ? .64 : .8,
                 ),
               ),
               Align(

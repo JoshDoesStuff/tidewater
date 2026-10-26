@@ -1,40 +1,30 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show ValueListenable;
+import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../../../app/theme/app_theme.dart';
 import '../../../app/theme/motion.dart';
 
-/// The sign-in backdrop: a record for a sun low over the water, layers of
-/// slow waves and a small boat riding them. All colors come from the scheme.
+/// The sign-in backdrop, drawn like the Tidewater banner: a record sinking on
+/// the left, a tide across the whole width and a little boat on a wave on the
+/// right. The tide drifts, the label turns and the boat follows its wave.
 class LoginScene extends StatefulWidget {
-  const LoginScene({
-    super.key,
-    required this.sunX,
-    required this.boatX,
-    required this.horizon,
-    required this.accent,
-  });
+  const LoginScene({super.key, required this.recordX, required this.boatX, this.level = .64});
 
-  /// Where the sun sits across the window (0 to 1).
-  final double sunX;
-
-  /// Where the boat rides across the window (0 to 1).
+  /// Where the record and the boat sit across the window (0 to 1).
+  final double recordX;
   final double boatX;
 
-  /// The record label and the hull (the icon's coral).
-  final Color accent;
-
-  /// Where the water starts down the window (0 to 1).
-  final double horizon;
+  /// Where the water's surface is down the window (0 to 1).
+  final double level;
 
   @override
   State<LoginScene> createState() => _LoginSceneState();
 }
 
-class _LoginSceneState extends State<LoginScene>
-    with SingleTickerProviderStateMixin {
+class _LoginSceneState extends State<LoginScene> with SingleTickerProviderStateMixin {
   final _time = ValueNotifier<double>(0);
   Ticker? _ticker;
 
@@ -46,8 +36,7 @@ class _LoginSceneState extends State<LoginScene>
       _ticker = null;
       _time.value = 0;
     } else {
-      _ticker ??= createTicker((d) => _time.value = d.inMicroseconds / 1e6)
-        ..start();
+      _ticker ??= createTicker((d) => _time.value = d.inMicroseconds / 1e6)..start();
     }
   }
 
@@ -63,264 +52,146 @@ class _LoginSceneState extends State<LoginScene>
     return RepaintBoundary(
       child: CustomPaint(
         size: Size.infinite,
-        painter: _ScenePainter(
-          scheme: Theme.of(context).colorScheme,
-          time: _time,
-          sunX: widget.sunX,
-          boatX: widget.boatX,
-          accent: widget.accent,
-          horizon: widget.horizon,
-        ),
+        painter: _ScenePainter(time: _time, recordX: widget.recordX, boatX: widget.boatX, level: widget.level),
       ),
     );
   }
 }
 
-class _Wave {
-  const _Wave(
-    this.depth,
-    this.amp,
-    this.length,
-    this.speed,
-    this.phase,
-    this.tone,
-  );
-
-  /// 0 at the horizon, 1 at the bottom edge.
-  final double depth;
-  final double amp;
-  final double length;
-  final double speed;
-  final double phase;
-
-  /// How much of the sun color the layer keeps (far water is lighter).
-  final double tone;
-}
-
 class _ScenePainter extends CustomPainter {
-  _ScenePainter({
-    required this.scheme,
-    required this.time,
-    required this.sunX,
-    required this.boatX,
-    required this.horizon,
-    required this.accent,
-  }) : super(repaint: time);
+  _ScenePainter({required this.time, required this.recordX, required this.boatX, required this.level})
+      : super(repaint: time);
 
-  final ColorScheme scheme;
   final ValueListenable<double> time;
-  final double sunX;
+  final double recordX;
   final double boatX;
-  final Color accent;
-  final double horizon;
+  final double level;
 
-  static const _waves = [
-    _Wave(.02, 3, 220, .5, 0, .62),
-    _Wave(.16, 7, 420, .35, 1.7, .52),
-    _Wave(.42, 12, 640, .28, 3.1, .4),
-    _Wave(.72, 18, 860, .22, 4.4, .26),
-  ];
-
-  double _y(_Wave w, double x, double t, Size size) {
-    final top = size.height * horizon;
-    final base = top + (size.height - top) * w.depth;
-    final k = 2 * math.pi / w.length;
-    return base +
-        w.amp * math.sin(x * k + t * w.speed + w.phase) +
-        w.amp * .35 * math.sin(x * k * 2.3 - t * w.speed * 1.4);
-  }
+  // The banner's numbers (1280 x 640): a tide 380 long and 26 high, the record
+  // at .64 of the icon's size, the boat at 1.3.
+  static const _length = 380.0;
+  static const _amp = 26.0;
 
   @override
   void paint(Canvas canvas, Size size) {
     final t = time.value;
-    final hz = size.height * horizon;
-    final skyLow = Color.lerp(scheme.surface, scheme.primaryContainer, .5)!;
+    // Fit the banner's proportions to the window.
+    final s = math.min(size.height / 640, size.width / 1100);
+    final lvl = size.height * level;
+    final length = _length * s;
+    final amp = _amp * s;
+    final drift = t * .55;
+    double wave(double x, {double drop = 0, double a = 1, double ph = 0}) =>
+        lvl + drop * s + amp * a * math.sin(2 * math.pi * x / length + drift + ph);
 
-    // Sky.
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [scheme.surface, skyLow],
-        ).createShader(Rect.fromLTWH(0, 0, size.width, hz)),
-    );
+    canvas.drawRect(Offset.zero & size, Paint()..color = AppTheme.brandBlue);
 
-    // Sun: a record, rising a little over the horizon and turning slowly.
-    final r = math.min(size.width, size.height) * .24;
-    final sun = Offset(size.width * sunX, hz - r * .35);
-    canvas.drawCircle(
-      sun,
-      r * 2.6,
-      Paint()
-        ..shader = RadialGradient(
-          colors: [
-            scheme.primary.withValues(alpha: .28),
-            scheme.primary.withValues(alpha: 0),
-          ],
-        ).createShader(Rect.fromCircle(center: sun, radius: r * 2.6)),
-    );
-    _record(canvas, sun, r, t);
+    // The record, a little sunk, as in the icon.
+    _record(canvas, Offset(size.width * recordX, lvl - 88 * s), .64 * s, t);
 
-    // The far water, then the sun's glitter on it.
-    _layer(canvas, size, _waves[0], t);
-    _glitter(canvas, size, sun, r, t);
-    // The boat sits in the second swell, so that wave passes in front of its hull.
-    _boat(canvas, size, size.width * boatX, t);
-    _layer(canvas, size, _waves[1], t);
+    // The boat: on its wave, leaning with the slope, drawn before the water so
+    // the water covers the bottom of the hull.
+    final bx = size.width * boatX;
+    final slope = amp * 2 * math.pi / length * math.cos(2 * math.pi * bx / length + drift);
+    final tilt = math.atan(slope).clamp(-.12, .12) - .08;
+    _boat(canvas, bx, wave(bx) - 2 * s, tilt, 1.3 * s);
 
-    _layer(canvas, size, _waves[2], t);
-    _layer(canvas, size, _waves[3], t);
-  }
-
-  void _record(Canvas canvas, Offset c, double r, double t) {
-    canvas.drawCircle(c, r, Paint()..color = scheme.primaryContainer);
-    final groove = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = r * .035
-      ..color = scheme.onPrimaryContainer.withValues(alpha: .22);
-    for (final f in const [.9, .78, .66, .54]) {
-      canvas.drawCircle(c, r * f, groove);
+    Path line({double drop = 0, double a = 1, double ph = 0, bool fill = false}) {
+      final p = Path()..moveTo(-8, wave(-8, drop: drop, a: a, ph: ph));
+      for (var x = 0.0; x <= size.width + 8; x += 8) {
+        p.lineTo(x, wave(x, drop: drop, a: a, ph: ph));
+      }
+      if (fill) {
+        p
+          ..lineTo(size.width + 8, size.height + 8)
+          ..lineTo(-8, size.height + 8)
+          ..close();
+      }
+      return p;
     }
-    // A shine that stays put while the label turns.
-    final shine = Paint()
+
+    Paint stroke(Color color, double w) => Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = r * .06
+      ..strokeWidth = w
       ..strokeCap = StrokeCap.round
-      ..color = scheme.onPrimaryContainer.withValues(alpha: .3);
-    canvas.drawArc(
-      Rect.fromCircle(center: c, radius: r * .84),
-      3.5,
-      .7,
-      false,
-      shine,
-    );
-    canvas.drawArc(
-      Rect.fromCircle(center: c, radius: r * .84),
-      3.5 + math.pi,
-      .7,
-      false,
-      shine,
-    );
-    // Label with a notch so the turning shows.
-    canvas.save();
-    canvas.translate(c.dx, c.dy);
-    canvas.rotate(t * .25);
-    canvas.drawCircle(Offset.zero, r * .34, Paint()..color = accent);
-    canvas.drawCircle(
-      Offset(0, -r * .22),
-      r * .045,
-      Paint()..color = scheme.onPrimary.withValues(alpha: .7),
-    );
-    canvas.restore();
-    canvas.drawCircle(c, r * .05, Paint()..color = scheme.surface);
+      ..strokeJoin = StrokeJoin.round
+      ..color = color;
+
+    canvas.drawPath(line(fill: true), Paint()..color = AppTheme.brandWater);
+    canvas.drawPath(line(drop: 70, a: .77, ph: 1.6), stroke(AppTheme.brandWaterLine, 10 * s));
+    canvas.drawPath(line(drop: 150, a: .62, ph: 3.1), stroke(AppTheme.brandWaterLine, 8 * s));
+    canvas.drawPath(line(), stroke(AppTheme.brandSurface, 18 * s));
   }
 
-  void _layer(Canvas canvas, Size size, _Wave w, double t) {
-    final path = Path()..moveTo(0, size.height);
-    final crest = Path();
-    for (var x = 0.0; x <= size.width + 8; x += 8) {
-      final y = _y(w, x, t, size);
-      path.lineTo(x, y);
-      x == 0 ? crest.moveTo(x, y) : crest.lineTo(x, y);
+  /// The icon's record at [k] times its 1024 px drawing.
+  void _record(Canvas canvas, Offset c, double k, double t) {
+    Paint ring(Color color, double w) => Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w * k
+      ..strokeCap = StrokeCap.round
+      ..color = color;
+    canvas.drawCircle(c, 250 * k, ring(AppTheme.brandLine, 30));
+    canvas.drawCircle(c, 180 * k, ring(AppTheme.brandGroove1, 14));
+    canvas.drawCircle(c, 132 * k, ring(AppTheme.brandGroove2, 10));
+    canvas.drawArc(Rect.fromCircle(center: c, radius: 218 * k), 3.55, .6, false, ring(AppTheme.brandShine, 16));
+    // The scalloped label turns slowly.
+    final label = Path();
+    for (var i = 0; i < 240; i++) {
+      final a = 2 * math.pi * i / 240 - math.pi / 2;
+      final r = 88 * k * (1 + .085 * math.cos(6 * a));
+      final p = Offset(c.dx + r * math.cos(a + t * .3), c.dy + r * math.sin(a + t * .3));
+      i == 0 ? label.moveTo(p.dx, p.dy) : label.lineTo(p.dx, p.dy);
     }
-    path
-      ..lineTo(size.width + 8, size.height)
-      ..close();
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = Color.lerp(scheme.surface, scheme.primaryContainer, w.tone)!,
-    );
-    canvas.drawPath(
-      crest,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5
-        ..color = scheme.primary.withValues(alpha: .22 * (1 - w.depth * .6)),
-    );
+    canvas.drawPath(label..close(), Paint()..color = AppTheme.seed);
+    canvas.drawCircle(c, 18 * k, Paint()..color = AppTheme.brandHole);
   }
 
-  /// Short bright dashes under the sun that shimmer and thin out downward.
-  void _glitter(Canvas canvas, Size size, Offset sun, double r, double t) {
-    final hz = size.height * horizon;
-    final p = Paint()
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = 3;
-    for (var i = 0; i < 14; i++) {
-      final f = i / 14;
-      final y = hz + 10 + f * (size.height - hz) * .5;
-      final half = r * (.7 - f * .45) * (.6 + .4 * math.sin(t * 1.3 + i * 1.7));
-      final dx = 14 * math.sin(t * .6 + i);
-      p.color = scheme.primary.withValues(
-        alpha: (.5 * (1 - f)).clamp(0.0, 1.0),
-      );
-      canvas.drawLine(
-        Offset(sun.dx + dx - half, y),
-        Offset(sun.dx + dx + half, y),
-        p,
+  /// The icon's boat: a pennant flag, a mast and a shallow hull with curved
+  /// ends. ([x], [by]) is the bottom of the hull.
+  void _boat(Canvas canvas, double x, double by, double tilt, double scale) {
+    Offset p(double dx, double dy) {
+      final lx = dx * scale;
+      final ly = (dy - 10) * scale;
+      return Offset(
+        x + math.cos(tilt) * lx - math.sin(tilt) * ly,
+        by + math.sin(tilt) * lx + math.cos(tilt) * ly,
       );
     }
-  }
 
-  void _boat(Canvas canvas, Size size, double x, double t) {
-    final w = _waves[1];
-    final y = _y(w, x, t, size);
-    final slope = math.atan2(
-      _y(w, x + 24, t, size) - _y(w, x - 24, t, size),
-      48,
-    );
-    final s = math.min(size.width, size.height) / 900 * 1.25;
-    canvas.save();
-    canvas.translate(x, y + 2 * s);
-    canvas.rotate(slope * .8 + .04 * math.sin(t * .9));
-    canvas.scale(s);
+    Offset curve(Offset a, Offset c, Offset b, double t) => Offset(
+          (1 - t) * (1 - t) * a.dx + 2 * (1 - t) * t * c.dx + t * t * b.dx,
+          (1 - t) * (1 - t) * a.dy + 2 * (1 - t) * t * c.dy + t * t * b.dy,
+        );
+    Path poly(List<Offset> pts) {
+      final path = Path()..moveTo(pts.first.dx, pts.first.dy);
+      for (final o in pts.skip(1)) {
+        path.lineTo(o.dx, o.dy);
+      }
+      return path..close();
+    }
 
-    final sail = Paint()..color = scheme.onSurface;
-    final hull = Paint()..color = accent;
-    canvas.drawPath(
-      Path()
-        ..moveTo(3, -92)
-        ..lineTo(3, -16)
-        ..lineTo(48, -16)
-        ..close(),
-      sail,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(-3, -78)
-        ..lineTo(-3, -16)
-        ..lineTo(-34, -16)
-        ..close(),
-      Paint()..color = scheme.onSurface.withValues(alpha: .8),
-    );
-    canvas.drawLine(
-      const Offset(0, -98),
-      const Offset(0, -12),
-      Paint()
-        ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round
-        ..color = scheme.onSurfaceVariant,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(-44, -12)
-        ..lineTo(52, -12)
-        ..quadraticBezierTo(44, 14, 20, 18)
-        ..lineTo(-24, 18)
-        ..quadraticBezierTo(-40, 12, -44, -12)
-        ..close(),
-      hull,
-    );
-    canvas.restore();
+    Offset q(Offset o) => p(o.dx, o.dy);
+    final hull = poly([
+      p(-52, -16),
+      p(52, -16),
+      for (var i = 1; i <= 8; i++) q(curve(const Offset(52, -16), const Offset(47, 10), const Offset(28, 10), i / 8)),
+      for (var i = 1; i <= 8; i++) q(curve(const Offset(-28, 10), const Offset(-47, 10), const Offset(-52, -16), i / 8)),
+    ]);
+    final flag = poly([p(3, -96), p(3, -64), p(46, -80)]);
+
+    Paint edge(Color color, double w) => Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w * scale
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = color;
+    canvas.drawLine(p(0, -98), p(0, -16), edge(AppTheme.brandSail, 6));
+    canvas.drawPath(flag, Paint()..color = AppTheme.brandSail);
+    canvas.drawPath(flag, edge(AppTheme.brandSail, 5));
+    canvas.drawPath(hull, Paint()..color = AppTheme.seed);
+    canvas.drawPath(hull, edge(AppTheme.seed, 5));
   }
 
   @override
-  bool shouldRepaint(_ScenePainter old) =>
-      old.scheme != scheme ||
-      old.sunX != sunX ||
-      old.boatX != boatX ||
-      old.accent != accent ||
-      old.horizon != horizon;
+  bool shouldRepaint(_ScenePainter old) => old.recordX != recordX || old.boatX != boatX || old.level != level;
 }
