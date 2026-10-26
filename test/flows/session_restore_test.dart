@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/widgets.dart' show Key;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
@@ -5,6 +7,7 @@ import 'package:tidewater/app/providers/session_persistence.dart';
 import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/app/providers/ui_providers.dart';
 import 'package:tidewater/core/api/api_exception.dart';
+import 'package:tidewater/core/api/list_cache.dart';
 import 'package:tidewater/core/models/track.dart';
 import 'package:tidewater/core/playback/play_queue.dart';
 import 'package:tidewater/core/playback/saved_session.dart';
@@ -22,6 +25,11 @@ SavedSession _saved({String? server, List<Track>? tracks, int index = 1, Duratio
       repeat: LoopMode.all,
       volume: .35,
     );
+
+SavedSession? _stored(MemoryListStore store) {
+  final list = store.saved['session'];
+  return list == null || list.isEmpty ? null : SavedSession.decode(jsonEncode(list.first));
+}
 
 void main() {
   group('SavedSession', () {
@@ -115,19 +123,20 @@ void main() {
 
   group('saving', () {
     testWidgets('a new queue is saved shortly after, with shuffle and repeat', (tester) async {
-      final c = await pumpApp(tester);
+      final store = MemoryListStore();
+      final c = await pumpApp(tester, listStore: store);
       final prefs = c.read(sharedPreferencesProvider);
-      expect(prefs.getString('saved_session'), isNull);
+      expect(store.saved['session'], isNull);
       await c.read(playbackProvider.notifier).playAlbum(fakeAlbums[1]);
       await advance(tester, const Duration(seconds: 2));
-      final saved = SavedSession.decode(prefs.getString('saved_session'))!;
+      final saved = _stored(store)!;
       expect(saved.tracks.map((t) => t.id), ['t-a1', 't-a1-1', 't-a1-2']);
       expect(saved.server, serverKeyOf(testServer));
 
       await c.read(playbackProvider.notifier).toggleRepeat();
       await c.read(playbackProvider.notifier).setVolume(.55);
       await advance(tester, const Duration(seconds: 2));
-      final later = SavedSession.decode(prefs.getString('saved_session'))!;
+      final later = _stored(store)!;
       expect(later.repeat, LoopMode.all);
       expect(later.volume, .55);
       expect(prefs.getDouble('player.volume'), .55);
@@ -136,26 +145,28 @@ void main() {
     });
 
     testWidgets('the position is saved when pausing', (tester) async {
-      final c = await pumpApp(tester);
-      final prefs = c.read(sharedPreferencesProvider);
+      final store = MemoryListStore();
+      final c = await pumpApp(tester, listStore: store);
       await c.read(playbackProvider.notifier).playAlbum(fakeAlbums[0]);
       await advance(tester, const Duration(seconds: 1));
       c.read(positionProvider).value = const Duration(seconds: 77);
       await c.read(playbackProvider.notifier).toggle();
       await advance(tester, const Duration(seconds: 2));
-      expect(SavedSession.decode(prefs.getString('saved_session'))!.position, const Duration(seconds: 77));
+      expect(_stored(store)!.position, const Duration(seconds: 77));
       await disposeApp(tester);
     });
 
     testWidgets('signing out forgets the queue', (tester) async {
-      final c = await pumpApp(tester, prefs: {'saved_session': _saved().encode()});
+      final store = MemoryListStore();
+      final c = await pumpApp(tester, listStore: store, prefs: {'saved_session': _saved().encode()});
       final prefs = c.read(sharedPreferencesProvider);
-      expect(prefs.getString('saved_session'), isNotNull);
+      expect(c.read(playbackProvider).queue, isNotEmpty, reason: 'an old save in the settings moves over');
+      expect(prefs.getString('saved_session'), isNull, reason: 'and is removed from the settings file');
       await tester.tap(find.byKey(const Key('account-avatar')));
       await advance(tester, const Duration(milliseconds: 600));
       await tester.tap(find.text('Sign out or switch server'));
       await advance(tester, const Duration(seconds: 2));
-      expect(prefs.getString('saved_session'), isNull);
+      expect(store.saved['session'], isEmpty, reason: 'the file no longer holds a queue');
       await disposeApp(tester);
     });
   });

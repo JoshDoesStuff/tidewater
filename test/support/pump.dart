@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/app.dart';
 import 'package:tidewater/app/playback/system_media.dart';
 import 'package:tidewater/core/api/connect.dart';
+import 'package:tidewater/core/api/list_cache.dart';
 import 'package:tidewater/core/api/session_store.dart';
 import 'package:tidewater/core/lyrics/lyrics.dart';
 import 'package:tidewater/core/models/track.dart';
@@ -24,9 +25,10 @@ Future<ProviderContainer> pumpApp(
   Map<String, Object> prefs = const {},
   Future<Lyrics?> Function(Track track)? lrclib,
   SystemMediaControls? media,
+  ListStore? listStore,
   Duration settle = const Duration(seconds: 2),
 }) async {
-  final overrides = await testOverrides(api: api, signedIn: signedIn, store: store, factory: factory, prefs: prefs, lrclib: lrclib, media: media);
+  final overrides = await testOverrides(api: api, signedIn: signedIn, store: store, factory: factory, prefs: prefs, lrclib: lrclib, media: media, listStore: listStore);
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);

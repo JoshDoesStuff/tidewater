@@ -167,6 +167,27 @@ class FakeLibraryApi implements LibraryApi {
         ]);
       });
 
+  /// How many getScanStatus polls say "scanning" after a startScan (0: done at once).
+  int scanPolls = 1;
+  int _scanLeft = 0;
+
+  @override
+  Future<ScanStatus> startScan() async {
+    calls.add('startScan');
+    if (failWith != null) throw failWith!;
+    _scanLeft = scanPolls;
+    return ScanStatus(scanning: _scanLeft > 0, count: 10);
+  }
+
+  @override
+  Future<ScanStatus> getScanStatus() async {
+    calls.add('getScanStatus');
+    if (failWith != null) throw failWith!;
+    final scanning = _scanLeft > 0;
+    if (scanning) _scanLeft--;
+    return ScanStatus(scanning: scanning, count: fakeTracks.length);
+  }
+
   /// What savePlayQueue stored (and getPlayQueue returns).
   ServerPlayQueue? serverQueue;
   final queueSaves = <({List<String> ids, String? current, Duration position})>[];

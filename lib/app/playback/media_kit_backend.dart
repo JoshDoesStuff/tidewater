@@ -63,6 +63,10 @@ class MediaKitBackend implements AudioBackend {
       await platform.setProperty('gapless-audio', 'yes');
       await platform.setProperty('prefetch-playlist', 'yes');
       await platform.setProperty('audio-client-name', 'Tidewater');
+      // Nothing written to disk by the player: its stream cache stays in memory, and
+      // it does not save a resume position per file or keep a log.
+      await platform.setProperty('cache-on-disk', 'no');
+      await platform.setProperty('save-position-on-quit', 'no');
     }
   }
 

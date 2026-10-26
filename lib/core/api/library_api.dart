@@ -52,6 +52,14 @@ enum AlbumListType {
 
 /// The server operations the UI uses. [OpenSubsonicClient] talks to a real
 /// server; tests supply an in-memory one.
+/// Where the server's library scan stands.
+class ScanStatus {
+  const ScanStatus({required this.scanning, this.count = 0});
+
+  final bool scanning;
+  final int count;
+}
+
 abstract class LibraryApi {
   Future<ServerInfo> ping();
 
@@ -110,6 +118,12 @@ abstract class LibraryApi {
   /// The queue the server holds for this user, or null when there is none (or
   /// the server cannot keep one).
   Future<ServerPlayQueue?> getPlayQueue();
+
+  /// Starts a scan of the music folders on the server (admin accounts only).
+  /// Returns whether it is scanning, and how many songs it has seen so far.
+  Future<ScanStatus> startScan();
+
+  Future<ScanStatus> getScanStatus();
 
   /// `submission: false` is "now playing"; `true` counts a play.
   Future<void> scrobble(String trackId, {bool submission = false, DateTime? time});

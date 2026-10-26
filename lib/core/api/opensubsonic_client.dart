@@ -351,6 +351,18 @@ class OpenSubsonicClient implements LibraryApi {
       });
 
   @override
+  Future<ScanStatus> startScan() async => _scanStatus(await _call('startScan'));
+
+  @override
+  Future<ScanStatus> getScanStatus() async => _scanStatus(await _call('getScanStatus'));
+
+  static ScanStatus _scanStatus(Map<String, dynamic> body) {
+    final s = body['scanStatus'];
+    if (s is! Map<String, dynamic>) return const ScanStatus(scanning: false);
+    return ScanStatus(scanning: s['scanning'] == true, count: asInt(s['count']) ?? 0);
+  }
+
+  @override
   Future<void> savePlayQueue(List<String> ids, {String? current, Duration position = Duration.zero}) =>
       _call('savePlayQueue', {
         'id': ids,
