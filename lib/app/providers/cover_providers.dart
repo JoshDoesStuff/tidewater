@@ -32,8 +32,9 @@ final coverCacheProvider = Provider<CoverStore>((ref) {
     directory: () async => Directory('${(await root()).path}${Platform.pathSeparator}$folder'),
     fetch: (id, size) => api.getCoverArt(id, size: size),
   );
-  // Keep the cache under 500 MB, dropping the least recently used covers.
-  unawaited(cache.trim(500 * 1024 * 1024).catchError((Object _) {}));
+  // Keep the cache under 1 GB, dropping the least recently used covers. (512 albums
+  // take about 150 MB; the cap only matters for huge libraries.)
+  unawaited(cache.trim(1024 * 1024 * 1024).catchError((Object _) {}));
   return cache;
 });
 

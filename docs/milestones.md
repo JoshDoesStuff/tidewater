@@ -97,7 +97,7 @@ What was built, and the decisions that were not in the plan:
   (`ShapeKind.forKey`), so an album keeps its shape everywhere.
 - **Covers** (`core/api/cover_cache.dart`, `ui/widgets/cover_art.dart`): sizes snap to 150/300/800, files are
   `<cache>/<server hash>/<id>_<size>.img`, concurrent requests share one download, the placeholder gradient (hue from
-  the album id) shows until the image fades in. The cache is trimmed to 500 MB (least recently used first) when the
+  the album id) shows until the image fades in. The cache is trimmed to 1 GB (least recently used first) when the
   session starts.
 - **Scheme from the cover** (`core/color/cover_seed.dart`, `app/providers/scheme_providers.dart`): Celebi quantizer
   + `Score` on a 112 px decode, run on another isolate. Art with no color (black, white, gray) gives a *muted*
