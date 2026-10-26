@@ -94,6 +94,7 @@ class _CaptionButton extends StatelessWidget {
               kind: glyph,
               size: 16,
               color: hot && danger ? scheme.onError : scheme.onSurfaceVariant,
+              hovered: s.hovered,
               active: s.pressed,
             ),
           ),

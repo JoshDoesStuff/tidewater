@@ -25,7 +25,9 @@ class VizPicker extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final open = ref.watch(vizPopupOpenProvider);
     final mode = ref.watch(vizModeProvider);
-    return IgnorePointer(
+    return ExcludeSemantics(
+      excluding: !open,
+      child: IgnorePointer(
       ignoring: !open,
       child: AnimatedOpacity(
         opacity: open ? 1 : 0,
@@ -100,6 +102,7 @@ class VizPicker extends ConsumerWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }

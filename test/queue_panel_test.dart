@@ -176,4 +176,15 @@ void main() {
       await closeNowPlaying(tester, c);
     });
   }
+
+  testWidgets('a closed queue keeps its rows out of the accessibility tree', (tester) async {
+    final handle = tester.ensureSemantics();
+    final c = await openNowPlaying(tester);
+    expect(find.bySemanticsLabel(RegExp('Last Tram Home 3')), findsNothing, reason: 'closed');
+    await tester.tap(find.byTooltip('Queue (Q)'));
+    await advance(tester, const Duration(seconds: 1));
+    expect(find.bySemanticsLabel(RegExp('Last Tram Home 3')), findsWidgets, reason: 'open');
+    await closeNowPlaying(tester, c);
+    handle.dispose();
+  });
 }

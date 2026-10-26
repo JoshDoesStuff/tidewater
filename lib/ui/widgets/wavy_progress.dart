@@ -547,7 +547,10 @@ class WavyPainter extends CustomPainter {
     final path = Path();
     for (var x = from; x <= to; x += 1.5) {
       final u = ((x - (centerX - span / 2)) / span).clamp(0.0, 1.0);
-      final y = cy + 4 * math.sin(math.pi * u) * math.sin(2 * math.pi * (x / wavelength - s * 3));
+      // Ramp the height up from the bar's ends so the squiggle grows out of the
+      // line instead of starting mid-wave at the edge.
+      final edge = math.min(1.0, math.min((x - x0) / 16, (x1 - x) / 16));
+      final y = cy + 4 * edge * math.sin(math.pi * u) * math.sin(2 * math.pi * (x / wavelength - s * 3));
       x == from ? path.moveTo(x, y) : path.lineTo(x, y);
     }
     canvas.drawPath(

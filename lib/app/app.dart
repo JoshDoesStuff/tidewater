@@ -1,7 +1,11 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:window_manager/window_manager.dart' show DragToResizeArea;
 
 import 'providers/scheme_providers.dart';
 import 'providers/session_providers.dart';
@@ -49,7 +53,9 @@ class TidewaterApp extends ConsumerWidget {
         return MediaQuery(
           data: media.copyWith(disableAnimations: reduced),
           // The whole app recolors from the playing album's scheme.
-          child: TweenAnimationBuilder<ColorScheme>(
+          // Frameless window: the edges resize it (see main.dart).
+          child: _resizable(
+            TweenAnimationBuilder<ColorScheme>(
             tween: ColorSchemeTween(end: scheme),
             duration: reduced ? Duration.zero : Motion.recolor,
             curve: Curves.easeInOut,
@@ -60,8 +66,14 @@ class TidewaterApp extends ConsumerWidget {
               child: child!,
             ),
           ),
+          ),
         );
       },
     );
   }
 }
+
+/// Resize edges for the frameless window (Windows only; elsewhere the system
+/// frame does it).
+Widget _resizable(Widget child) =>
+    !kIsWeb && Platform.isWindows ? DragToResizeArea(resizeEdgeSize: 6, child: child) : child;

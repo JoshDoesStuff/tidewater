@@ -117,9 +117,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                     child: child,
                   ),
                 ),
+                // The row on its way out stays out of the accessibility tree.
                 layoutBuilder: (current, previous) => Stack(
                   alignment: Alignment.topLeft,
-                  children: [...previous, ?current],
+                  children: [for (final p in previous) ExcludeSemantics(child: p), ?current],
                 ),
                 child: _CardRow<Album>(
                   key: ValueKey(random.value?.map((a) => a.id).join(',')),

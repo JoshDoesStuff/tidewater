@@ -59,7 +59,11 @@ class _QueuePanelState extends ConsumerState<QueuePanel> {
     final player = ref.read(playbackProvider.notifier);
     final remaining = queue.skip(index + 1).fold<Duration>(Duration.zero, (a, t) => a + t.duration);
 
-    return IgnorePointer(
+    // Closed: nothing to click, and none of its rows in the accessibility tree
+    // (fifty queue rows were being re-announced on every track change).
+    return ExcludeSemantics(
+      excluding: !open,
+      child: IgnorePointer(
       ignoring: !open,
       child: AnimatedSlide(
         offset: open ? Offset.zero : (widget.docked ? const Offset(1.12, 0) : const Offset(.05, -.02)),
@@ -161,6 +165,7 @@ class _QueuePanelState extends ConsumerState<QueuePanel> {
         ),
       ),
     ),
+      ),
     );
   }
 }

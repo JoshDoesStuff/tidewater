@@ -125,6 +125,7 @@ class _Avatar extends ConsumerWidget {
       color: scheme.surfaceContainerHigh,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      clipBehavior: Clip.antiAlias,
       items: [
         PopupMenuItem<String>(
           enabled: false,

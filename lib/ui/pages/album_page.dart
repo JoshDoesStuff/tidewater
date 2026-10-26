@@ -373,6 +373,11 @@ class _RowMenu extends ConsumerWidget {
       color: scheme.surfaceContainerHigh,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      // Without a clip the hover highlight of the first and last item pokes out
+      // past the rounded corners.
+      clipBehavior: Clip.antiAlias,
+      elevation: 2,
+      shadowColor: Colors.black38,
       onSelected: (v) {
         switch (v) {
           case 'next':

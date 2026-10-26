@@ -26,6 +26,10 @@ Future<void> main() async {
     titleBarStyle: TitleBarStyle.hidden,
   );
   await windowManager.waitUntilReadyToShow(options, () async {
+    // "Hidden" keeps Windows' own caption buttons drawn over the top right, which
+    // cover ours. Frameless removes them; our title bar draws min / max / close and
+    // DragToResizeArea (app.dart) supplies the resize edges.
+    await windowManager.setAsFrameless();
     await windowManager.show();
     await windowManager.focus();
   });

@@ -221,21 +221,22 @@ class _GlyphPainter extends CustomPainter {
         canvas.drawLine(const Offset(6.5, -6.5), const Offset(-6.5, 6.5), line);
       case GlyphKind.collapse:
         // Two corner arrows squeeze toward the middle and let go.
-        final d = 2.6 * _bump(0, .7);
-        canvas.drawLine(Offset(3 + d, 3 + d), Offset(10 + d, 10 + d), line);
+        // They start well apart and stop short of each other, so the tips never touch.
+        final d = 1.6 * _bump(0, .7);
+        canvas.drawLine(Offset(3 + d, 3 + d), Offset(9 + d, 9 + d), line);
         canvas.drawPath(
           Path()
-            ..moveTo(10 + d, 5.5 + d)
-            ..lineTo(10 + d, 10 + d)
-            ..lineTo(5.5 + d, 10 + d),
+            ..moveTo(9 + d, 4.5 + d)
+            ..lineTo(9 + d, 9 + d)
+            ..lineTo(4.5 + d, 9 + d),
           line,
         );
-        canvas.drawLine(Offset(21 - d, 21 - d), Offset(14 - d, 14 - d), line);
+        canvas.drawLine(Offset(21 - d, 21 - d), Offset(15 - d, 15 - d), line);
         canvas.drawPath(
           Path()
-            ..moveTo(14 - d, 18.5 - d)
-            ..lineTo(14 - d, 14 - d)
-            ..lineTo(18.5 - d, 14 - d),
+            ..moveTo(15 - d, 19.5 - d)
+            ..lineTo(15 - d, 15 - d)
+            ..lineTo(19.5 - d, 15 - d),
           line,
         );
       case GlyphKind.aurora:
