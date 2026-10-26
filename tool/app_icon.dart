@@ -139,7 +139,7 @@ List<(double, double)> _tide({double drop = 0, double amp = _tideAmp, double pha
 // pennant flag (after a quick sketch, cleaned up). It tilts to follow the wave
 // under it and sits a little into the water.
 const _boatX = 898.0;
-const _boatScale = .8;
+const _boatScale = 1.1;
 const _sail = 0xFFF4FBFF;
 const _hull = 0xFFFF7E5F;
 

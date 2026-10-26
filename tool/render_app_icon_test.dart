@@ -16,9 +16,9 @@ import 'app_icon.dart';
 /// The design the Windows build uses.
 const windowsDesign = IconDesign.record;
 
-/// Frames this size and up keep the boat; the small ones (the taskbar and the
-/// title bar use 16 to 48 px) go without, where it only reads as a smudge.
-const boatFromSize = 64;
+/// Frames this size and up keep the boat and the fine detail; the smaller ones (the taskbar and the
+/// title bar use 16 to 96 px) are the bold simplified version, where it would only be a smudge.
+const boatFromSize = 128;
 
 /// Every size Windows asks for at the usual display scales (the taskbar uses 24, 30,
 /// 36, 48 and 60 px at 100, 125, 150, 200 and 250 %; a missing size is scaled from a

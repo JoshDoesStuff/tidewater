@@ -129,7 +129,10 @@ namespace {
 void SetWindowIcons(HWND window) {
   const UINT dpi = GetDpiForWindow(window);
   const HINSTANCE instance = GetModuleHandle(nullptr);
-  const int big = GetSystemMetricsForDpi(SM_CXICON, dpi);
+  // One big icon serves the taskbar on every monitor, so make it 64 px: it is
+  // scaled down for a 100 to 250 % taskbar (a 32 px one was scaled UP on the
+  // 200 % laptop panel when the window sat on the 100 % monitor).
+  const int big = 64;
   const int small_size = GetSystemMetricsForDpi(SM_CXSMICON, dpi);
   auto load = [&](int size) {
     return reinterpret_cast<LPARAM>(LoadImage(
