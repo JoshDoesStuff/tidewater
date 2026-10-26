@@ -5,11 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 enum QueueHome { none, server, thisPc }
 
 class QueueSyncStatus {
-  const QueueSyncStatus(this.home, {this.at, this.songs = 0, this.reason});
+  const QueueSyncStatus(this.home, {this.at, this.songs = 0, this.position = Duration.zero, this.reason});
 
   final QueueHome home;
   final DateTime? at;
   final int songs;
+
+  /// Where in the current song the saved position was.
+  final Duration position;
 
   /// Why it is on this PC: syncing is off, or what went wrong with the server.
   final String? reason;

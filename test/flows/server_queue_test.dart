@@ -126,6 +126,24 @@ void main() {
       await disposeApp(tester);
     });
 
+    testWidgets('pausing saves the position at once, and flushing on close saves it too', (tester) async {
+      final api = FakeLibraryApi();
+      final c = await pumpApp(tester, api: api);
+      await c.read(playbackProvider.notifier).playAlbum(fakeAlbums[1]);
+      await advance(tester, const Duration(seconds: 4));
+      final before = api.queueSaves.length;
+      c.read(positionProvider).value = const Duration(seconds: 33);
+      await c.read(playbackProvider.notifier).toggle();
+      await advance(tester, const Duration(milliseconds: 100));
+      expect(api.queueSaves.length, before + 1, reason: 'no waiting a couple of seconds after a pause');
+      expect(api.queueSaves.last.position, const Duration(seconds: 33));
+
+      c.read(positionProvider).value = const Duration(seconds: 48);
+      await flushSessionPersistence();
+      expect(api.queueSaves.last.position, const Duration(seconds: 48));
+      await disposeApp(tester);
+    });
+
     testWidgets('while playing, the position goes to the server every 30 seconds, not to disk every 5', (tester) async {
       final api = FakeLibraryApi();
       final c = await pumpApp(tester, api: api);

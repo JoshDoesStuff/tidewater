@@ -18,6 +18,8 @@ Future<void> main() async {
   // Media keys and the Windows media overlay; the app runs without them if this fails.
   final smtc = await SmtcControls.create();
   await windowManager.ensureInitialized();
+  // Closing asks first, so the queue and position can reach the server (see TitleBar).
+  await windowManager.setPreventClose(true);
   const options = WindowOptions(
     size: Size(1280, 800),
     minimumSize: Size(720, 520),

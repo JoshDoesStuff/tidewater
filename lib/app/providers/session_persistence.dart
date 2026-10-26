@@ -34,6 +34,11 @@ const _serverPushEvery = Duration(seconds: 30);
 /// longer). A queue that long goes in a POST body, not in the address.
 const _serverQueueMax = 10000;
 
+/// Saves the queue and position now, for the moment the window is closed (the
+/// shell waits for it, briefly, before the app exits).
+Future<void> flushSessionPersistence() => _flush?.call() ?? Future.value();
+Future<void> Function()? _flush;
+
 /// Identifies the server and user a saved queue belongs to.
 String serverKeyOf(ServerConfig c) => '${c.baseUrl}|${c.username}';
 
@@ -79,7 +84,15 @@ final sessionPersistenceProvider = Provider<void>((ref) {
       unawaited(store.write(_sessionFile, const []));
       return;
     }
-    report(QueueSyncStatus(QueueHome.thisPc, at: DateTime.now(), songs: s.queue.length, reason: lastReason));
+    report(
+      QueueSyncStatus(
+        QueueHome.thisPc,
+        at: DateTime.now(),
+        songs: s.queue.length,
+        position: ref.read(positionProvider).value,
+        reason: lastReason,
+      ),
+    );
     final saved = SavedSession(
       server: serverKeyOf(config),
       tracks: s.queue,
@@ -132,7 +145,14 @@ final sessionPersistenceProvider = Provider<void>((ref) {
       if (serverHolds == false) lastReason = 'the server accepted the queue but did not keep it';
       final holds = serverHolds ?? s.queue.isEmpty;
       if (holds && s.queue.isNotEmpty) {
-        report(QueueSyncStatus(QueueHome.server, at: DateTime.now(), songs: upTo - from));
+        report(
+          QueueSyncStatus(
+            QueueHome.server,
+            at: DateTime.now(),
+            songs: upTo - from,
+            position: ref.read(positionProvider).value,
+          ),
+        );
       }
       return holds;
     } catch (e) {
@@ -190,7 +210,14 @@ final sessionPersistenceProvider = Provider<void>((ref) {
     if (chosen == null) return;
     if (remote != null && !remote.isEmpty) {
       serverHolds = true;
-      report(QueueSyncStatus(QueueHome.server, at: remote.changed?.toLocal(), songs: remote.tracks.length));
+      report(
+        QueueSyncStatus(
+          QueueHome.server,
+          at: remote.changed?.toLocal(),
+          songs: remote.tracks.length,
+          position: remote.position,
+        ),
+      );
     }
     await player.restore(chosen);
   }
@@ -211,9 +238,15 @@ final sessionPersistenceProvider = Provider<void>((ref) {
     if (next.repeat != prev.repeat) unawaited(prefs.setString(_repeatKey, next.repeat.name));
     final queueChanged =
         prev.queue.length != next.queue.length || prev.track?.id != next.track?.id || !_sameOrder(prev.queue, next.queue);
-    // Pausing is when the position is final.
+    // Pausing is when the position is final, and the window may be closed a moment
+    // later: save at once. Queue changes wait a moment, in case more follow.
     final paused = prev.playing && !next.playing;
-    if (queueChanged || paused) persistSoon();
+    if (paused) {
+      persistTimer?.cancel();
+      unawaited(persist());
+    } else if (queueChanged) {
+      persistSoon();
+    }
   });
 
   // Signing out forgets the queue; signing in to a server restores its own.
@@ -235,9 +268,14 @@ final sessionPersistenceProvider = Provider<void>((ref) {
 
   // Hiding or closing the window is the last chance to keep the position.
   final observer = _LifecycleSaver(() => unawaited(persist()));
+  _flush = () async {
+    persistTimer?.cancel();
+    await persist();
+  };
   WidgetsBinding.instance.addObserver(observer);
 
   ref.onDispose(() {
+    _flush = null;
     ticker.cancel();
     persistTimer?.cancel();
     volumeDebounce?.cancel();
