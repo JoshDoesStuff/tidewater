@@ -25,14 +25,15 @@ The original plan was shell → server → playback → color/shapes → Now Pla
 | 8 | Search, playlists, offline cache, settings, real visualizer | ⬜ (Settings partly ✅) |
 | 9 | Settings overhaul | ⬜ |
 | 10 | Casting (Chromecast, DLNA; the Windows app is feature complete after this) | ⬜ |
+| 11 | Jellyfin support (music only) | ⬜ |
 
 **Release and other platforms**
 
 | # | Milestone | Status |
 |---|-----------|--------|
-| 11 | Website (after all the Windows builds are ready) | ⬜ |
-| 12 | Linux | ⬜ |
-| 13 | Android (only if EQ, exclusive USB audio and bit-perfect DAP output prove feasible) | ⬜ |
+| 12 | Website (after all the Windows builds are ready) | ⬜ |
+| 13 | Linux | ⬜ |
+| 14 | Android (only if EQ, exclusive USB audio and bit-perfect DAP output prove feasible) | ⬜ |
 
 ## Next up: M7
 
@@ -323,7 +324,25 @@ the platform ports so that the Windows app is complete first.
   transcoding for devices that do not play every format. Likely needs new packages: ask first.
 - Bring back the `cast.json` animation (still in `assets/icons/`, `castGlyph`) for the button.
 
-## M11 — Website
+## M11 — Jellyfin (music only)
+
+Tidewater stays a music client; this adds Jellyfin servers next to Navidrome / OpenSubsonic ones.
+
+- Put Jellyfin behind the same `LibraryApi` the UI already uses (`lib/core/api/library_api.dart`), so no page needs to
+  know which server it is talking to. A server "kind" is picked on the login screen (auto-detected from the address
+  where possible: `/System/Info/Public` for Jellyfin, `ping` for OpenSubsonic).
+- Auth: username and password (`AuthenticateByName`) or an API key, stored like the current secrets.
+- Library: music libraries only (ignore movies, shows, books): albums, artists, album artists, songs, playlists,
+  genres, favorites; search; sort and filter to match what Library already offers.
+- Playback: stream through the universal audio endpoint (direct play first, transcode only when needed), cover art
+  with sized variants and the existing disk cache, and playback reporting (started, progress, stopped) in place of
+  Subsonic scrobbling, with Jellyfin's own play-count rules.
+- Lyrics: use Jellyfin's lyrics endpoint where the server has it, falling back to LRCLIB like today.
+- Hearts map to favorites; ratings and play counts show only where both servers expose them.
+- Tests against a fake Jellyfin like `FakeLibraryApi`; verify on a real server with read-only checks first. Ask before
+  adding packages (`dio` already covers HTTP).
+
+## M12 — Website
 
 Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Windows release).
 
@@ -333,7 +352,7 @@ Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Wi
 - Screenshots and a short screen recording once the UI has settled. Keep the credits and licenses reachable from it.
 - Optional later: a custom domain, and a changelog page generated from the release notes.
 
-## M12 — Linux
+## M13 — Linux
 
 - Flutter's Linux desktop target. Replace the Windows-only pieces: the custom frameless window (`window_manager`
   works on Linux too; check the resize edges and rounded corners), media keys and now-playing via MPRIS instead of
@@ -343,7 +362,7 @@ Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Wi
 - Secure storage needs libsecret on Linux; check the fallback when no keyring is running.
 - Icons: add the `.png` set and a `.desktop` file; reuse `tool/branding`.
 
-## M13 — Android
+## M14 — Android
 
 > **Gate: only if the audio is good enough.** An Android player lives or dies on audio quality, and plenty of good
 > Android apps exist. Before building the phone UI, prove the hard parts are reachable from Flutter: a real

@@ -1,6 +1,6 @@
 # Tidewater — Navidrome client for Windows (Flutter, Material 3 Expressive)
 
-A desktop music client for Navidrome / OpenSubsonic servers in the style of Symfonium and PixelPlayer: Material 3 Expressive shapes, springy motion, wavy progress, dynamic color from album art, a fullscreen Now Playing with background visualizers, synced lyrics, and an idle mode.
+A desktop music client for Navidrome / OpenSubsonic servers (Jellyfin music support planned, M11) in the style of Symfonium and PixelPlayer: Material 3 Expressive shapes, springy motion, wavy progress, dynamic color from album art, a fullscreen Now Playing with background visualizers, synced lyrics, and an idle mode.
 
 ## Source of truth
 - `docs/tidewater-m3e-demo.html` is the **interactive reference**. Open it in a browser before building any screen or animation. It defines layout, shapes, timings, and behavior. Do not invent different ones. If code and demo disagree, the demo wins unless I say otherwise.
@@ -109,9 +109,10 @@ Build in milestones; stop after each so I can run it.
 8. **Search, playlists, offline cache, settings, real visualizer.**
 9. **Settings overhaul:** grouped, searchable settings page with account, playback and about sections.
 10. **Casting:** Chromecast and DLNA devices, a cast picker, remote playback control (the Windows app is complete after this).
-11. **Website:** a GitHub Pages one-pager once every Windows build is ready.
-12. **Linux:** desktop target, MPRIS media controls, AppImage and Flatpak.
-13. **Android:** phone layouts, media notification, background playback. Only if good audio is feasible (see M13); macOS and iOS are dropped.
+11. **Jellyfin:** music-only Jellyfin servers behind the same `LibraryApi` as Navidrome.
+12. **Website:** a GitHub Pages one-pager once every Windows build is ready.
+13. **Linux:** desktop target, MPRIS media controls, AppImage and Flatpak.
+14. **Android:** phone layouts, media notification, background playback. Only if good audio is feasible (see M14); macOS and iOS are dropped.
 After each milestone: `flutter analyze` clean, `flutter test` passing, summarize in ≤ 5 lines. Don't refactor unrelated files. Ask before adding packages not listed. Small, reviewable commits.
 
 ## Commands
