@@ -178,5 +178,6 @@ are flat, no gradients). Regenerate `assets/branding/tidewater_<design>.svg` / `
 `flutter test tool/branding/render_app_icon_test.dart`, then rebuild the Windows app (Windows caches icons; a new .ico may
 need the exe renamed or the icon cache cleared before the taskbar updates).
 
-- The Windows engine ignores `fontVariations` (checked with `tool/probes/font_probe.dart`): only `fontWeight` changes the
-  Google Sans Flex look. Width and roundness need static font instances to show up.
+- `fontVariations` work on Windows (checked with `tool/probes/font_probe.dart`). If they ever stop, check
+  `tool/branding/fonts/GoogleSansFlex.ttf` is 3910784 bytes: a Git line-ending conversion once cut 483 bytes out of it
+  and the axes silently vanished. `.gitattributes` marks fonts and images binary now.
