@@ -9,6 +9,7 @@ import '../../core/api/server_config.dart';
 import '../shell/title_bar.dart';
 import '../widgets/effects/letter_reveal.dart';
 import '../widgets/effects/ripple.dart';
+import '../widgets/animated_glyphs.dart';
 import '../widgets/expressive_buttons.dart';
 import '../widgets/pressable.dart';
 import '../widgets/shapes/morph_path.dart';
@@ -180,6 +181,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         autofill: _useKey ? null : const [AutofillHints.password],
                         trailing: ExpressiveIconButton(
                           icon: _showSecret ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                          glyph: (context, color, hovered, pressed) => AnimatedGlyph(
+                            kind: _showSecret ? GlyphKind.eyeOff : GlyphKind.eye,
+                            size: 22,
+                            color: color,
+                            active: pressed,
+                          ),
                           tooltip: _showSecret ? 'Hide' : 'Show',
                           tone: ButtonTone.ghost,
                           size: 40,

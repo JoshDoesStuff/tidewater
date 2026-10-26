@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../widgets/animated_glyphs.dart';
 import '../widgets/pressable.dart';
 
 /// Draggable region plus minimize / maximize / close, since the native title
@@ -52,13 +53,13 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
       child: Row(
         children: [
           const Expanded(child: DragToMoveArea(child: SizedBox.expand())),
-          _CaptionButton(icon: Icons.remove_rounded, label: 'Minimize', onTap: windowManager.minimize),
+          _CaptionButton(glyph: GlyphKind.minimize, label: 'Minimize', onTap: windowManager.minimize),
           _CaptionButton(
-            icon: _maximized ? Icons.filter_none_rounded : Icons.crop_square_rounded,
+            glyph: _maximized ? GlyphKind.restore : GlyphKind.maximize,
             label: _maximized ? 'Restore' : 'Maximize',
             onTap: () => _maximized ? windowManager.unmaximize() : windowManager.maximize(),
           ),
-          _CaptionButton(icon: Icons.close_rounded, label: 'Close', onTap: windowManager.close, danger: true),
+          _CaptionButton(glyph: GlyphKind.close, label: 'Close', onTap: windowManager.close, danger: true),
         ],
       ),
     );
@@ -66,9 +67,9 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
 }
 
 class _CaptionButton extends StatelessWidget {
-  const _CaptionButton({required this.icon, required this.label, required this.onTap, this.danger = false});
+  const _CaptionButton({required this.glyph, required this.label, required this.onTap, this.danger = false});
 
-  final IconData icon;
+  final GlyphKind glyph;
   final String label;
   final VoidCallback onTap;
   final bool danger;
@@ -88,10 +89,13 @@ class _CaptionButton extends StatelessWidget {
           color: hot
               ? (danger ? scheme.error : scheme.surfaceContainerHighest)
               : scheme.surfaceContainerHighest.withValues(alpha: 0),
-          child: Icon(
-            icon,
-            size: 16,
-            color: hot && danger ? scheme.onError : scheme.onSurfaceVariant,
+          child: Center(
+            child: AnimatedGlyph(
+              kind: glyph,
+              size: 16,
+              color: hot && danger ? scheme.onError : scheme.onSurfaceVariant,
+              active: s.pressed,
+            ),
           ),
         );
       },

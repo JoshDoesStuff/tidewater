@@ -36,7 +36,7 @@ mixin _PlayOnEdge<T extends StatefulWidget> on State<T>, SingleTickerProviderSta
   }
 }
 
-enum GlyphKind { list, cards, sort, filter, next, previous, shuffle, menu, repeat, repeatOne, lyrics, queue, back, search, close, collapse, visualizer, aurora, shapes, ring, off }
+enum GlyphKind { list, cards, sort, filter, next, previous, shuffle, menu, repeat, repeatOne, lyrics, queue, back, search, close, collapse, visualizer, aurora, shapes, ring, off, minimize, maximize, restore, more, eye, eyeOff }
 
 /// A small 24 x 24 stroke icon drawn in code, with its own one-shot motion:
 /// list rows retract and return, card tiles pop in a wave, sort bars retract
@@ -298,6 +298,56 @@ class _GlyphPainter extends CustomPainter {
         } else {
           canvas.drawPath(circle, line);
           canvas.drawPath(slash, line);
+        }
+      case GlyphKind.minimize:
+        // The bar dips toward the taskbar and comes back.
+        final dip = 3.5 * _bump(0, .7);
+        canvas.drawLine(Offset(6, 12 + dip), Offset(18, 12 + dip), line);
+      case GlyphKind.maximize:
+        // The square swells, then settles.
+        canvas.translate(12, 12);
+        canvas.scale(1 + .22 * _bump(0, .7));
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset.zero, width: 13, height: 13), const Radius.circular(2)), line);
+      case GlyphKind.restore:
+        // The front window slides back into the corner and out again.
+        final slide = 2.2 * _bump(0, .7);
+        canvas.drawPath(
+          Path()
+            ..moveTo(9, 5 - slide)
+            ..lineTo(19, 5 - slide)
+            ..lineTo(19, 15 - slide)
+            ..lineTo(15.5, 15 - slide),
+          line,
+        );
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(Rect.fromLTWH(5 - slide * .5, 9 + slide * .5, 10, 10), const Radius.circular(2)),
+          line,
+        );
+      case GlyphKind.more:
+        // Three dots swell one after another.
+        final fill = Paint()..color = color;
+        for (var i = 0; i < 3; i++) {
+          canvas.drawCircle(Offset(12, 5.5 + i * 6.5), 1.8 * (1 + .45 * _bump(i * .14, .6)), fill);
+        }
+      case GlyphKind.eye:
+      case GlyphKind.eyeOff:
+        // A blink: the eye closes and opens again.
+        canvas.translate(12, 12);
+        canvas.scale(1, 1 - .9 * math.pow(_bump(0, .8), 2));
+        canvas.translate(-12, -12);
+        canvas.drawPath(
+          Path()
+            ..moveTo(2, 12)
+            ..cubicTo(5, 6.5, 8.5, 5, 12, 5)
+            ..cubicTo(15.5, 5, 19, 6.5, 22, 12)
+            ..cubicTo(19, 17.5, 15.5, 19, 12, 19)
+            ..cubicTo(8.5, 19, 5, 17.5, 2, 12)
+            ..close(),
+          line,
+        );
+        canvas.drawCircle(const Offset(12, 12), 3, line);
+        if (kind == GlyphKind.eyeOff) {
+          canvas.drawLine(const Offset(4, 4), const Offset(20, 20), line);
         }
       case GlyphKind.visualizer:
         // A little equalizer: four bars that dance, each on its own beat.

@@ -129,7 +129,7 @@ pages that don't exist yet.
 | 2 | Server (login, OpenSubsonic, real library, cover cache) | ✅ (search/artist pages come later) |
 | 3 | Playback (real engine, queue, SMTC, scrobbling, album page) | ✅ (gaps listed in the M3 section) |
 | 4 | Dynamic color + shapes | ✅ |
-| 5 | Animated icons (sidebar, buttons, transport) | 🟡 (see the M5 section) |
+| 5 | Animated icons (sidebar, buttons, transport) | ✅ |
 | 6 | Now Playing | 🟡 (real audio, lyrics and queue; the visualizer is still simulated) |
 | 7 | Motion polish pass | 🟡 (most of the demo list is in; QA pass outstanding) |
 | 8 | Search, playlists, offline cache, settings, real visualizer | ⬜ (Settings partly ✅) |
@@ -206,19 +206,25 @@ ReplayGain, crossfade, device choice, saving the position on window close.
 
 ## M4 — Dynamic color + shapes (done; see the wrap-up above)
 
-## M5 — Animated icons (in progress)
+## M5 — Animated icons (done)
 
-Every icon that moves does so with its own one-shot animation, rest state = the whole icon, reduced motion = still.
-Artwork is a mix: UseAnimations Lottie files (`assets/icons/`, via the `lottie` package), Lucide Home and the
-UseAnimations heart shape drawn in code, and small stroke glyphs in `ui/widgets/animated_glyphs.dart`.
-Credits live in Settings and `third-party-licenses/`; add an entry for any new artwork.
+Every icon that moves does so with its own one-shot animation; rest state is the whole icon, reduced motion means still.
 
-Done: sidebar (Home, Library, Artists, Liked, Lists, Radio, Settings), cast button, list/cards toggle, sort and filter.
-
-Also done: Next and Previous, Shuffle (straight lines), Menu, Repeat (rounded), Lyrics, Queue, Back, Search, Close,
-Visualizer (mini bars), Collapse, the volume speaker (UseAnimations "volume", scrubbed between loud/quiet/muted) and the
-visualizer picker options. Still static: title bar buttons, play on cards,
-login page icons. The queue also became a docked side panel (Settings switches it back to a popup).
+- **Artwork:** UseAnimations Lottie files in `assets/icons/` (Library, Cast, Artists, Lists, Radio, Settings, Volume;
+  played through the `lottie` package, tinted with a color filter), the Lucide house for Home (`home_icon.dart`), the
+  Material heart for Liked (`code_icons.dart`), and small stroke glyphs in `ui/widgets/animated_glyphs.dart`: list,
+  cards, sort, filter, next, previous, shuffle, repeat, repeat-one, lyrics, queue, back, search, close, collapse,
+  menu, visualizer and its four siblings, minimize, maximize, restore, eye. Credits are in Settings and
+  `third-party-licenses/`; add an entry for any new artwork.
+- **Rule of thumb:** actions and toggles animate on click (`glyphFor`, `active: pressed`); hover only animates
+  things that are decorative or in menus (search, sort, filter, the visualizer picker options). The Settings
+  switch "Faint icon while it redraws" keeps a ghost under trace-on animations (erase-and-redraw is the default).
+- **Beyond icons:** queue docks as a side panel (setting, popup still available), the mini player hugs its content
+  and has a heart, the Now Playing lyrics button grows in and out with the controls centered under the progress bar,
+  and the progress bar got its buffering squiggle, retract/squiggle-back transitions, a handle that shrinks into the
+  end dot, click-to-squiggle seeking and an optional live scrub (see `wavy_progress.dart`).
+- **Left alone on purpose:** the play arrows on cards and rows (they already pop in), the heart buttons (they have the
+  like pop and burst), login-page field icons (decorative).
 
 ## M6 — Now Playing (remaining)
 

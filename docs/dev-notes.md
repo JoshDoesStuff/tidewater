@@ -154,3 +154,18 @@ The desktop is often locked, so screen capture of the real app returns the lock 
   running the real app (`tool/e2e_main.dart --dart-define=TW_GO=/settings,/home,...` navigates and the console is
   counted) and removing page parts one per run. Settings uses a plain custom slider plus one explicit semantics node,
   like the volume slider. Widget tests cannot see this class of bug; check a new control type in the real app.
+
+## Animated icons (M5)
+
+- New icon animation = a `GlyphKind` in `ui/widgets/animated_glyphs.dart` (a painter case, 24 x 24 box, 2 px round
+  stroke), then use `AnimatedGlyph` or `glyphFor(kind)` as an `ExpressiveIconButton.glyph`. It plays on the rising
+  edge of `active` (press) or `hovered`. Reduced motion skips the play.
+- Traced-on icons erase and redraw (`_redraw`); `_ghost` keeps a faint copy when the Settings option is on.
+- Lottie files: tint with a `ColorFiltered` (srcATop), not `ValueDelegate` color overrides (these files have unnamed
+  shapes, so key paths crash). Remove any white "knockout" layers from a file before tinting.
+- Text drawn from textures (`GlyphRun`, lyrics) is baked at pixel ratio times the scale applied above it
+  (`FitScale`) and pixel-snapped through that scale. Without that it looks soft once the Now Playing canvas is
+  stretched to the window (seen on a 100 % monitor after a 200 % laptop panel).
+- Stack children that appear and disappear (scrims, popups) need keys, or siblings shift and implicit animations
+  restart from their end state (the queue popup "just appeared" because of this).
+- Gate commits on the tests (`flutter test` first), not only on `grep` of its output.
