@@ -60,16 +60,12 @@ Uint8List _ico(Map<int, Uint8List> frames) {
   return out.toBytes();
 }
 
-/// Bundled Roboto so the banner text renders the same everywhere (the SDK ships it
-/// for the test engine).
-Future<void> _loadRoboto() async {
-  final sdk = Platform.environment['FLUTTER_ROOT'] ?? File(Platform.resolvedExecutable).parent.parent.parent.parent.path;
-  final roboto = FontLoader('Roboto');
-  for (final name in ['roboto-regular.ttf', 'roboto-bold.ttf']) {
-    final bytes = await File('$sdk/bin/cache/artifacts/material_fonts/$name').readAsBytes();
-    roboto.addFont(Future.value(ByteData.sublistView(bytes)));
-  }
-  await roboto.load();
+/// Roboto Flex (variable, OFL; see third-party-licenses/roboto-flex-OFL.txt) for the
+/// banner's name: its weight and width axes give the Material 3 Expressive look.
+Future<void> _loadRobotoFlex() async {
+  final bytes = await File('tool/fonts/RobotoFlex.ttf').readAsBytes();
+  final flex = FontLoader('RobotoFlex')..addFont(Future.value(ByteData.sublistView(bytes)));
+  await flex.load();
 }
 
 /// The GitHub social preview image: 1280 x 640, the icon on the left and the
@@ -79,17 +75,33 @@ Future<Uint8List> _banner() async {
   final recorder = ui.PictureRecorder();
   final canvas = ui.Canvas(recorder);
   paintBanner(canvas, w.toDouble(), h.toDouble());
-  ui.Paragraph text(String s, double size, ui.FontWeight weight, int color, double width) {
-    final b = ui.ParagraphBuilder(ui.ParagraphStyle(fontFamily: 'Roboto', fontSize: size, fontWeight: weight))
-      ..pushStyle(ui.TextStyle(color: ui.Color(color), fontFamily: 'Roboto', fontSize: size, fontWeight: weight, letterSpacing: size > 60 ? -2 : 0))
-      ..addText(s);
-    return b.build()..layout(ui.ParagraphConstraints(width: width));
+  // Heavy and wide, with a large optical size: the expressive headline look.
+  ui.Paragraph name(double size) {
+    final style = ui.TextStyle(
+      color: const ui.Color(0xFFF4FBFF),
+      fontFamily: 'RobotoFlex',
+      fontSize: size,
+      letterSpacing: -2,
+      fontVariations: [
+        const ui.FontVariation('wght', 800),
+        const ui.FontVariation('wdth', 100),
+        const ui.FontVariation('opsz', 144),
+      ],
+    );
+    final b = ui.ParagraphBuilder(ui.ParagraphStyle(fontFamily: 'RobotoFlex', fontSize: size))
+      ..pushStyle(style)
+      ..addText('Tidewater');
+    return b.build()..layout(const ui.ParagraphConstraints(width: 1000));
   }
 
-  final title = text('Tidewater', 118, ui.FontWeight.bold, 0xFFF4FBFF, 700);
-  canvas.drawParagraph(title, ui.Offset((w - title.longestLine) / 2 + 50, 150));
-  final tag = text('A Navidrome client for Windows', 34, ui.FontWeight.normal, 0xFFD7F2FF, 700);
-  canvas.drawParagraph(tag, ui.Offset((w - tag.longestLine) / 2 + 50, 300));
+  // As big as fits between the record and the boat.
+  var size = 240.0;
+  var title = name(size);
+  while (title.longestLine > 600 && size > 60) {
+    size -= 4;
+    title = name(size);
+  }
+  canvas.drawParagraph(title, ui.Offset((w - title.longestLine) / 2 + 50, 215 - title.height / 2));
   final image = await recorder.endRecording().toImage(w, h);
   final data = await image.toByteData(format: ui.ImageByteFormat.png);
   image.dispose();
@@ -118,7 +130,7 @@ void main() {
 
   testWidgets('render the GitHub banner', (tester) async {
     await tester.runAsync(() async {
-      await _loadRoboto();
+      await _loadRobotoFlex();
       File('assets/branding/tidewater_banner_1280x640.png').writeAsBytesSync(await _banner());
     });
     expect(File('assets/branding/tidewater_banner_1280x640.png').lengthSync(), greaterThan(1000));
