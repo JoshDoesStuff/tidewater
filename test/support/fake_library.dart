@@ -190,12 +190,16 @@ class FakeLibraryApi implements LibraryApi {
 
   /// What savePlayQueue stored (and getPlayQueue returns).
   ServerPlayQueue? serverQueue;
+
+  /// Makes only savePlayQueue and getPlayQueue fail (a server that cannot keep a queue).
+  ApiException? queueFailWith;
   final queueSaves = <({List<String> ids, String? current, Duration position})>[];
 
   @override
   Future<void> savePlayQueue(List<String> ids, {String? current, Duration position = Duration.zero}) async {
     calls.add('savePlayQueue');
     if (failWith != null) throw failWith!;
+    if (queueFailWith != null) throw queueFailWith!;
     queueSaves.add((ids: ids, current: current, position: position));
     serverQueue = ServerPlayQueue(
       tracks: [for (final id in ids) fakeTracks.firstWhere((t) => t.id == id)],
@@ -206,7 +210,10 @@ class FakeLibraryApi implements LibraryApi {
   }
 
   @override
-  Future<ServerPlayQueue?> getPlayQueue() async => _ok('getPlayQueue', () => serverQueue);
+  Future<ServerPlayQueue?> getPlayQueue() async => _ok('getPlayQueue', () {
+        if (queueFailWith != null) throw queueFailWith!;
+        return serverQueue;
+      });
 
   @override
   Future<List<Playlist>> getPlaylists() async => _ok('getPlaylists', () => fakePlaylists);

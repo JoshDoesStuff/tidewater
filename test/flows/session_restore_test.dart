@@ -122,37 +122,59 @@ void main() {
   });
 
   group('saving', () {
-    testWidgets('a new queue is saved shortly after, with shuffle and repeat', (tester) async {
+    testWidgets('a new queue goes to the server, not to the disk; shuffle, repeat and volume go to the settings', (tester) async {
       final store = MemoryListStore();
-      final c = await pumpApp(tester, listStore: store);
+      final api = FakeLibraryApi();
+      final c = await pumpApp(tester, listStore: store, api: api);
       final prefs = c.read(sharedPreferencesProvider);
-      expect(store.saved['session'], isNull);
       await c.read(playbackProvider.notifier).playAlbum(fakeAlbums[1]);
-      await advance(tester, const Duration(seconds: 2));
-      final saved = _stored(store)!;
-      expect(saved.tracks.map((t) => t.id), ['t-a1', 't-a1-1', 't-a1-2']);
-      expect(saved.server, serverKeyOf(testServer));
+      await advance(tester, const Duration(seconds: 4));
+      expect(api.serverQueue!.tracks.map((t) => t.id), ['t-a1', 't-a1-1', 't-a1-2']);
+      expect(_stored(store), isNull, reason: 'the server holds it, so there is nothing to write here');
 
       await c.read(playbackProvider.notifier).toggleRepeat();
       await c.read(playbackProvider.notifier).setVolume(.55);
       await advance(tester, const Duration(seconds: 2));
-      final later = _stored(store)!;
-      expect(later.repeat, LoopMode.all);
-      expect(later.volume, .55);
+      expect(prefs.getString('player.repeat'), 'all');
       expect(prefs.getDouble('player.volume'), .55);
       await c.read(playbackProvider.notifier).toggle();
       await disposeApp(tester);
     });
 
-    testWidgets('the position is saved when pausing', (tester) async {
+    testWidgets('the position goes to the server when pausing', (tester) async {
       final store = MemoryListStore();
-      final c = await pumpApp(tester, listStore: store);
+      final api = FakeLibraryApi();
+      final c = await pumpApp(tester, listStore: store, api: api);
       await c.read(playbackProvider.notifier).playAlbum(fakeAlbums[0]);
       await advance(tester, const Duration(seconds: 1));
       c.read(positionProvider).value = const Duration(seconds: 77);
       await c.read(playbackProvider.notifier).toggle();
-      await advance(tester, const Duration(seconds: 2));
-      expect(_stored(store)!.position, const Duration(seconds: 77));
+      await advance(tester, const Duration(seconds: 4));
+      expect(api.serverQueue!.position, const Duration(seconds: 77));
+      expect(_stored(store), isNull);
+      await disposeApp(tester);
+    });
+
+    testWidgets('a server that cannot keep the queue gets a copy on this PC instead', (tester) async {
+      final store = MemoryListStore();
+      final api = FakeLibraryApi()..queueFailWith = const ApiException(ApiErrorKind.server, 'not supported');
+      final c = await pumpApp(tester, listStore: store, api: api);
+      await c.read(playbackProvider.notifier).playAlbum(fakeAlbums[1]);
+      await advance(tester, const Duration(seconds: 4));
+      expect(_stored(store)!.tracks.map((t) => t.id), ['t-a1', 't-a1-1', 't-a1-2']);
+      await c.read(playbackProvider.notifier).toggle();
+      await disposeApp(tester);
+    });
+
+    testWidgets('with syncing off the queue is written to this PC', (tester) async {
+      final store = MemoryListStore();
+      final api = FakeLibraryApi();
+      final c = await pumpApp(tester, listStore: store, api: api, prefs: {'sync_position': false});
+      await c.read(playbackProvider.notifier).playAlbum(fakeAlbums[1]);
+      await advance(tester, const Duration(seconds: 4));
+      expect(_stored(store)!.tracks.length, 3);
+      expect(api.serverQueue, isNull);
+      await c.read(playbackProvider.notifier).toggle();
       await disposeApp(tester);
     });
 

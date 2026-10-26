@@ -17,6 +17,8 @@ SavedSession? chooseResume({
   SavedSession? local,
   ServerPlayQueue? server,
   double volume = .7,
+  bool shuffled = false,
+  LoopMode repeat = LoopMode.off,
 }) {
   final remote = server == null || server.isEmpty ? null : server;
   if (remote == null) return local;
@@ -25,8 +27,8 @@ SavedSession? chooseResume({
     tracks: remote.tracks,
     index: remote.currentIndex,
     position: remote.position,
-    shuffled: local?.shuffled ?? false,
-    repeat: local?.repeat ?? LoopMode.off,
+    shuffled: local?.shuffled ?? shuffled,
+    repeat: local?.repeat ?? repeat,
     volume: local?.volume ?? volume,
     savedAt: remote.changed,
   );
