@@ -120,6 +120,28 @@ Win32Window::~Win32Window() {
   Destroy();
 }
 
+namespace {
+
+// The window class only carries the default 32 px icon, which Windows stretches
+// on a high-DPI taskbar (soft, "crunchy" edges). Set the big and small icons at
+// this window's own DPI so the taskbar and Alt+Tab get a real frame of the size
+// they draw, picked from the .ico's many sizes.
+void SetWindowIcons(HWND window) {
+  const UINT dpi = GetDpiForWindow(window);
+  const HINSTANCE instance = GetModuleHandle(nullptr);
+  const int big = GetSystemMetricsForDpi(SM_CXICON, dpi);
+  const int small_size = GetSystemMetricsForDpi(SM_CXSMICON, dpi);
+  auto load = [&](int size) {
+    return reinterpret_cast<LPARAM>(LoadImage(
+        instance, MAKEINTRESOURCE(IDI_APP_ICON), IMAGE_ICON, size, size,
+        LR_DEFAULTCOLOR | LR_SHARED));
+  };
+  SendMessage(window, WM_SETICON, ICON_BIG, load(big));
+  SendMessage(window, WM_SETICON, ICON_SMALL, load(small_size));
+}
+
+}  // namespace
+
 bool Win32Window::Create(const std::wstring& title,
                          const Point& origin,
                          const Size& size) {
@@ -145,6 +167,7 @@ bool Win32Window::Create(const std::wstring& title,
   }
 
   UpdateTheme(window);
+  SetWindowIcons(window);
 
   // Rounded corners like a normal Windows 11 window (the frame is custom, so
   // ask for them explicitly; Windows 10 ignores this). 33 is
@@ -201,6 +224,7 @@ Win32Window::MessageHandler(HWND hwnd,
 
       SetWindowPos(hwnd, nullptr, newRectSize->left, newRectSize->top, newWidth,
                    newHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+      SetWindowIcons(hwnd);  // the new monitor may want a different icon size
 
       return 0;
     }
