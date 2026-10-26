@@ -24,12 +24,12 @@ The original plan was shell → server → playback → color/shapes → Now Pla
 | 7 | Motion polish pass | 🟡 (most of the demo list is in; QA pass outstanding) |
 | 8 | Search, playlists, offline cache, settings, real visualizer | ⬜ (Settings partly ✅) |
 | 9 | Settings overhaul | ⬜ |
+| 10 | Casting (Chromecast, DLNA; the Windows app is feature complete after this) | ⬜ |
 
 **Release and other platforms**
 
 | # | Milestone | Status |
 |---|-----------|--------|
-| 10 | Casting | ⬜ |
 | 11 | Website (after all the Windows builds are ready) | ⬜ |
 | 12 | Linux | ⬜ |
 | 13 | Android | ⬜ |
