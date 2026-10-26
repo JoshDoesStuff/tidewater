@@ -34,3 +34,22 @@ final libraryIndexProvider = Provider.autoDispose<LibraryIndex>((ref) {
   final songs = ref.watch(libraryAllSongsProvider).value?.songs ?? const [];
   return LibraryIndex(artists: artists, albums: albums, songs: songs);
 });
+
+/// Saved lists that were just refreshed from the server (by Refresh or Scan in
+/// Settings): the provider that loads one reads it from the fresh copy and skips
+/// asking the server a second time. Each name is used up once.
+class FreshListsNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => const {};
+
+  void add(Iterable<String> names) => state = {...state, ...names};
+
+  /// True once for a name that was just refreshed.
+  bool consume(String name) {
+    if (!state.contains(name)) return false;
+    state = {...state}..remove(name);
+    return true;
+  }
+}
+
+final freshListsProvider = NotifierProvider<FreshListsNotifier, Set<String>>(FreshListsNotifier.new);

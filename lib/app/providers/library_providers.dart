@@ -53,6 +53,7 @@ final libraryAlbumsProvider = StreamProvider.family<LibraryAlbums, LibrarySort>(
   // quietly, then swapped in; without one the pages appear as they arrive.
   final hasCache = cached != null && cached.isNotEmpty;
   if (hasCache) yield LibraryAlbums(List.unmodifiable([for (final j in cached) Album.fromJson(j)]), complete: true);
+  if (hasCache && ref.read(freshListsProvider.notifier).consume(name)) return; // just refreshed
   final all = <Album>[];
   try {
     while (true) {
@@ -85,6 +86,7 @@ final artistsProvider = StreamProvider<List<Artist>>((ref) async* {
   final cached = await store.read('artists');
   final hasCache = cached != null && cached.isNotEmpty;
   if (hasCache) yield [for (final j in cached) Artist.fromJson(j)];
+  if (hasCache && ref.read(freshListsProvider.notifier).consume('artists')) return;
   try {
     final fresh = await api.getArtists();
     yield fresh;
@@ -100,6 +102,7 @@ final playlistsProvider = StreamProvider<List<Playlist>>((ref) async* {
   final cached = await store.read('playlists');
   final hasCache = cached != null && cached.isNotEmpty;
   if (hasCache) yield [for (final j in cached) Playlist.fromJson(j)];
+  if (hasCache && ref.read(freshListsProvider.notifier).consume('playlists')) return;
   try {
     final fresh = await api.getPlaylists();
     yield fresh;
@@ -215,6 +218,7 @@ final libraryAllSongsProvider = StreamProvider<LibrarySongs>((ref) async* {
   final cached = await store.read('songs');
   final hasCache = cached != null && cached.isNotEmpty;
   if (hasCache) yield LibrarySongs(List.unmodifiable([for (final j in cached) Track.fromJson(j)]), complete: true);
+  if (hasCache && ref.read(freshListsProvider.notifier).consume('songs')) return;
   final all = <Track>[];
   try {
     while (true) {

@@ -20,6 +20,7 @@ class SettingsPage extends ConsumerWidget {
     final reduce = ref.watch(reduceMotionProvider);
     final dark = ref.watch(darkThemeProvider);
     final viz = ref.watch(vizModeProvider);
+    final task = ref.watch(libraryTaskProvider);
     return PageFrame(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
@@ -108,6 +109,10 @@ class SettingsPage extends ConsumerWidget {
                     subtitle: 'Asks the server for albums, songs, artists, playlists and Home again, for music added while the app is open. What you see stays until the new lists arrive.',
                     action: 'Refresh',
                     onPressed: () => ref.read(refreshLibraryProvider)(),
+                    busy: task.running && task.kind == LibraryTaskKind.refresh,
+                    status: task.kind == LibraryTaskKind.refresh ? task.text : null,
+                    statusIsError: task.error,
+                    disabled: task.running,
                   ),
                   const SizedBox(height: 8),
                   _ActionRow(
@@ -115,6 +120,10 @@ class SettingsPage extends ConsumerWidget {
                     subtitle: 'Tells your server to look for new music in its folders (needs an admin account), waits for it to finish, then refreshes the library here.',
                     action: 'Scan',
                     onPressed: () => ref.read(scanServerProvider)(),
+                    busy: task.running && task.kind == LibraryTaskKind.scan,
+                    status: task.kind == LibraryTaskKind.scan ? task.text : null,
+                    statusIsError: task.error,
+                    disabled: task.running,
                   ),
                   const SizedBox(height: 8),
                   _ActionRow(
@@ -379,12 +388,29 @@ class _QueueStatusLine extends ConsumerWidget {
 
 /// A row with a title, a hint and a button.
 class _ActionRow extends StatelessWidget {
-  const _ActionRow({required this.title, required this.subtitle, required this.action, required this.onPressed});
+  const _ActionRow({
+    required this.title,
+    required this.subtitle,
+    required this.action,
+    required this.onPressed,
+    this.busy = false,
+    this.status,
+    this.statusIsError = false,
+    this.disabled = false,
+  });
 
   final String title;
   final String subtitle;
   final String action;
   final VoidCallback onPressed;
+
+  /// A spinner stands in for the button while the job runs, with [status] under the hint.
+  final bool busy;
+  final String? status;
+  final bool statusIsError;
+
+  /// Another job is running: the button waits.
+  final bool disabled;
 
   @override
   Widget build(BuildContext context) {
@@ -402,11 +428,24 @@ class _ActionRow extends StatelessWidget {
                 Text(title, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
                 Text(subtitle, style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
+                if (status != null && status!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    status!,
+                    style: text.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: statusIsError ? scheme.error : scheme.primary,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
           const SizedBox(width: 16),
-          FilledButton.tonal(onPressed: onPressed, child: Text(action)),
+          if (busy)
+            const SizedBox.square(dimension: 28, child: CircularProgressIndicator(strokeWidth: 3))
+          else
+            FilledButton.tonal(onPressed: disabled ? null : onPressed, child: Text(action)),
         ],
       ),
     );
