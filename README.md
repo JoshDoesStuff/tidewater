@@ -32,7 +32,7 @@ progress bar, and colors that follow the album you're playing.
 | Android | Planned (phone layouts in portrait and landscape) |
 | macOS / iOS | Somewhere in the future… when I can afford a Mac and a developer license to make one app, lol |
 
-The order and details are in [docs/milestones.md](docs/milestones.md) (M10 to M14).
+The order and details are in [docs/milestones.md](docs/milestones.md) (M10 to M15).
 
 ## Get started
 

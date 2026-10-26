@@ -7,12 +7,11 @@ import '../../../app/providers/ui_providers.dart';
 import '../../../app/theme/motion.dart';
 import '../../../core/api/server_config.dart';
 import '../../widgets/animated_glyphs.dart';
-import '../../widgets/expressive_buttons.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/shapes/morph_path.dart';
 import '../../widgets/shapes/morph_shape.dart';
 
-/// Search pill, cast button and avatar along the top of a page.
+/// Search pill and avatar along the top of a page (the cast button returns in M15).
 class AppHeader extends StatelessWidget {
   const AppHeader({super.key});
 
@@ -21,12 +20,6 @@ class AppHeader extends StatelessWidget {
     return const Row(
       children: [
         Expanded(child: SearchPill()),
-        SizedBox(width: 12),
-        ExpressiveIconButton(
-          icon: Icons.cast_rounded,
-          tooltip: 'Cast',
-          glyph: castGlyph,
-        ),
         SizedBox(width: 12),
         _Avatar(),
       ],

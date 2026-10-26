@@ -93,7 +93,7 @@ Honor reduced motion: `MediaQuery.disableAnimations` plus a Settings toggle → 
 
 ## Visual rules
 - Window: custom title bar (`window_manager`, hidden native title bar, our own draggable region + min/max/close). Rounded outer corners follow Windows 11.
-- Shell: left `NavigationRail` (Home, Library, Artists, Lists, Radio; Settings pinned bottom) with a pill indicator that springs between items; menu button on top; content to the right; search bar + cast + avatar in the header; mini player pill floats bottom-center; FAB bottom-right.
+- Shell: left `NavigationRail` (Home, Library, Artists, Lists, Radio; Settings pinned bottom) with a pill indicator that springs between items; menu button on top; content to the right; search bar + avatar in the header (the cast button returns in M15); mini player pill floats bottom-center; FAB bottom-right.
 - No hardcoded colors outside the color-scheme generator. Everything via `Theme.of(context).colorScheme` (animated scheme).
 - Keep animations cheap: `RepaintBoundary` around painters and large animated subtrees; cache shape `Path`s when `m` and `rot` are unchanged; cap visualizer to 60 fps and pause when Now Playing is hidden or the window is minimized.
 
@@ -112,6 +112,7 @@ Build in milestones; stop after each so I can run it.
 12. **Android:** phone layouts, media notification, background playback.
 13. **macOS:** desktop target, system media center, signed and notarized dmg.
 14. **iOS:** phone layouts from Android, background audio, TestFlight and App Store.
+15. **Casting:** the final milestone: Chromecast and DLNA devices, a cast picker, remote playback control.
 After each milestone: `flutter analyze` clean, `flutter test` passing, summarize in ≤ 5 lines. Don't refactor unrelated files. Ask before adding packages not listed. Small, reviewable commits.
 
 ## Commands

@@ -71,12 +71,12 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
   late final AnimationController _fade = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 280),
-    reverseDuration: const Duration(milliseconds: 520),
+    reverseDuration: const Duration(milliseconds: 360),
   );
   late final AnimationController _enter = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 820),
-    reverseDuration: const Duration(milliseconds: 560),
+    reverseDuration: const Duration(milliseconds: 360),
   );
   late final AnimationController _trackFx =
       AnimationController(vsync: this, duration: const Duration(milliseconds: 600), value: 1);
@@ -158,7 +158,8 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
       _fade.value = 0;
       done();
     } else {
-      // Fly the cover back to the mini player while everything else sinks away.
+      // A snappier inverse of the open: the cover flies straight back to the mini
+      // player (no hold, symmetrical ease) while everything else sinks away.
       _measureFlight();
       _enter.reverse(from: _enter.value);
       _fade.reverse(from: _fade.value).then((_) => done());
@@ -538,7 +539,10 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
       animation: Listenable.merge([_enter, _trackFx]),
       builder: (context, child) {
         // Hero flight: from the mini player cover to here.
-        final e = Motion.emphasized.transform((_enter.value * 820 / 640).clamp(0.0, 1.0));
+        final closing = _enter.status == AnimationStatus.reverse;
+        final e = closing
+            ? Curves.easeInOutCubic.transform(_enter.value)
+            : Motion.emphasized.transform((_enter.value * 820 / 640).clamp(0.0, 1.0));
         final f = _flight;
         final m = Matrix4.identity();
         if (f != null && e < 1) {
@@ -635,14 +639,6 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
           selected: ref.watch(queueOpenProvider),
           tooltip: 'Queue (Q)',
           onPressed: () => ref.read(queueOpenProvider.notifier).toggle(),
-        ),
-        const SizedBox(width: 16),
-        const ExpressiveIconButton(
-          icon: Icons.cast_rounded,
-          size: 56,
-          squareRadius: 18,
-          tooltip: 'Cast',
-          glyph: castGlyph,
         ),
       ],
     );

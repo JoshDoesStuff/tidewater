@@ -34,10 +34,11 @@ The original plan was shell → server → playback → color/shapes → Now Pla
 | 12 | Android | ⬜ |
 | 13 | macOS | ⬜ (somewhere in the future…) |
 | 14 | iOS | ⬜ (somewhere in the future…) |
+| 15 | Casting (the final milestone) | ⬜ |
 
 ## Next up: M6
 
-Window-size checks, focus styling and the fast-skip freeze are done; what is left is the hero flight at different mini player widths, idle mode edge cases with real playback, and the cast button.
+M6 is done apart from one look by eye at the hero flight (open and the new snappier flight back) at different mini player widths and with the compact rail.
 
 ## Stand-ins and gaps today
 
@@ -47,7 +48,8 @@ Each is a known, deliberate stand-in. Replace them as the milestones land.
 |----------|-------|-------------|
 | `SimulatedVisualizerSource` (time-based, not from audio) | `core/playback/visualizer_source.dart` | M8 |
 | `SimulatedEngine` is still the engine in tests, previews and the perf tools (the app itself uses libmpv) | `core/playback/simulated_engine.dart` | stays (test double) |
-| No-op controls: sidebar menu button, header search field, cast button | various | M8 (menu button is the sidebar toggle) |
+| No-op controls: sidebar menu button (hidden for now), header search field | various | M8 (menu button is the sidebar toggle) |
+| Cast button (hidden until casting exists) | header, Now Playing | M15 |
 | Library has no Genres tab (Songs has its own sort and cards/list view; the genre filter is a popup with search, Ctrl+click for several) | `library_page.dart` | M8 |
 | Radio is a placeholder page (Artists, Liked and Lists are real; playlists open a playlist page) | `placeholder_page.dart` | M8 |
 | The quality tag shows the file's own format from the server, not the engine's decoded format | `now_playing_overlay.dart` | M8 (with transcoding) |
@@ -246,7 +248,11 @@ Still to do:
 
 - Verify the hero flight by eye when the mini player is at different widths and the rail is compact.
 - Idle mode on real playback: track end and window deactivation.
-- Cast button is a no-op.
+- Cast button hidden from the header and Now Playing until M15 (casting is the final milestone).
+- Done since: the back arrow replaces the hidden menu button on detail pages (springs in and out), wider content cap on
+  big monitors, diagonal grid stagger, a readable A-Z rail, the squiggle on a track restart, a snappier flight back
+  on close (360 ms, symmetrical ease, the cover holds no longer), Google Sans Flex with bundled Noto Sans JP and SC and
+  per-string Japanese or Chinese detection, and the new sign-in scene.
 
 ## M7 — Motion polish pass
 
@@ -355,6 +361,18 @@ Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Wi
   plain HTTP or self-signed certificates.
 - Needs a Mac, Xcode and an Apple developer account (a free one installs for 7 days at a time); TestFlight for
   testing and the App Store for release, with App Review's rules on streaming clients in mind.
+
+## M15 — Casting (the final milestone)
+
+The cast button (header and Now Playing) was removed from the UI until this lands.
+
+- Cast to Chromecast / Google Cast and DLNA / UPnP renderers on the local network: discover devices, show them in a
+  picker from the cast button (animated, Material 3 Expressive), and send the current queue.
+- Playback hands over to the remote device: the mini player and Now Playing show where it is playing, volume and
+  seek control the remote, local audio pauses. Falls back cleanly if the device disappears.
+- Needs stream URLs the device can reach (Navidrome over the LAN or a reachable address), and a decision on
+  transcoding for devices that do not play every format. Likely needs new packages: ask first.
+- Bring back the `cast.json` animation (still in `assets/icons/`, `castGlyph`) for the button.
 
 ---
 
