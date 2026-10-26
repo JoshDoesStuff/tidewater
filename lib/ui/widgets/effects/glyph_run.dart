@@ -175,6 +175,7 @@ class _GlyphRunState extends State<GlyphRun> {
   String? _sheetText;
   TextStyle? _sheetStyle;
   double? _sheetDpr;
+  final _fit = FitScale();
 
   @override
   void dispose() {
@@ -184,7 +185,11 @@ class _GlyphRunState extends State<GlyphRun> {
 
   @override
   Widget build(BuildContext context) {
-    final dpr = MediaQuery.devicePixelRatioOf(context);
+    // Bake at the pixel ratio times any scale the ancestors apply (see [FitScale]).
+    final dpr = MediaQuery.devicePixelRatioOf(context) * _fit.value;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _fit.measure(context)) setState(() {});
+    });
     final effective = DefaultTextStyle.of(context).style.merge(widget.style);
     final color = effective.color ?? Theme.of(context).colorScheme.onSurface;
     final maskStyle = effective.copyWith(color: const Color(0xFFFFFFFF));
@@ -259,6 +264,9 @@ class RenderGlyphRun extends RenderBox {
   double _emSize;
   LetterState Function(int i) _state;
   Listenable? _repaint;
+
+  /// The baked textures (exposed so tests can check their resolution).
+  GlyphSheet get sheet => _sheet;
 
   set sheet(GlyphSheet v) {
     if (identical(v, _sheet)) return;
@@ -401,5 +409,30 @@ class RenderGlyphRun extends RenderBox {
       null,
       Paint()..filterQuality = FilterQuality.low,
     );
+  }
+}
+
+/// How much the widgets above one on screen scale it (a `FittedBox` shrinking or
+/// growing the Now Playing canvas to the window). Text baked into a texture at
+/// the screen's pixel ratio alone looks soft once such a scale stretches it
+/// (a window dragged from a 200 % laptop panel to a 100 % monitor), so
+/// textures are baked at pixel ratio times this.
+class FitScale {
+  double value = 1;
+
+  /// Re-reads the scale for [context]; true when it moved enough that textures
+  /// should be baked again. Upscaling is followed promptly, a shrink only when
+  /// the texture is much bigger than needed, so ordinary animation doesn't
+  /// rebake.
+  bool measure(BuildContext context) {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.attached || !box.hasSize) return false;
+    final s = box.getTransformTo(null).getMaxScaleOnAxis();
+    if (!s.isFinite || s <= 0) return false;
+    if (s > value * 1.1 || s < value / 1.6) {
+      value = (s * 8).ceil() / 8;
+      return true;
+    }
+    return false;
   }
 }

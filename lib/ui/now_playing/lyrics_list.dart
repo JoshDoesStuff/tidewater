@@ -10,6 +10,7 @@ import '../../app/providers/lyrics_providers.dart';
 import '../../app/providers/playback_providers.dart';
 import '../../app/theme/motion.dart';
 import '../../core/lyrics/lyrics.dart';
+import '../widgets/effects/glyph_run.dart' show FitScale;
 import 'lyrics_motion.dart';
 
 export 'lyrics_motion.dart' show LyricsStyle;
@@ -79,6 +80,7 @@ class _LyricsListState extends ConsumerState<LyricsList> with SingleTickerProvid
   List<_LineAnim> _anims = const [];
   double _pad = 0;
   Object? _sheetKey;
+  final _fit = FitScale();
   int _active = 0;
   bool _reduced = false;
   ValueNotifier<Duration>? _position;
@@ -205,7 +207,11 @@ class _LyricsListState extends ConsumerState<LyricsList> with SingleTickerProvid
     if (lyrics.isEmpty) return const SizedBox.shrink();
     if (!lyrics.synced) return _PlainList(lyrics: lyrics, style: st);
 
-    final dpr = MediaQuery.devicePixelRatioOf(context);
+    // Bake at the pixel ratio times any scale the ancestors apply (see [FitScale]).
+    final dpr = MediaQuery.devicePixelRatioOf(context) * _fit.value;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _fit.measure(context)) setState(() {});
+    });
     final base = Theme.of(context).textTheme.bodyLarge!;
     final textStyle = base.copyWith(fontSize: st.fontSize, fontWeight: FontWeight.w700, height: st.lineHeight);
 
