@@ -1,0 +1,16 @@
+# Weekly pull requests that bump Dart / Flutter packages (security fixes also arrive
+# as separate Dependabot security updates, whatever this schedule says).
+# The native Windows parts (the C++ runner, and the Rust that smtc_windows builds)
+# are not covered by this; check them by hand now and then.
+version: 2
+updates:
+  - package-ecosystem: "pub"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"

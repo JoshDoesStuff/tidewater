@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest something Tidewater could do
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tidewater follows a fairly specific design (see `CLAUDE.md` and `milestones.md`), so not every idea
+        will fit, but suggestions are welcome. Check the milestones first: it may already be planned.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the situation, not only the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like to see?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Anything you've tried or considered instead?
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and `milestones.md`.
+          required: true

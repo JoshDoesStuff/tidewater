@@ -1,0 +1,60 @@
+name: Bug report
+description: Something in Tidewater isn't working
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Please fill in as much as you can; reports without steps to reproduce are
+        hard to act on. **Remove passwords, API keys and private server addresses from anything you paste.**
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Tidewater version or commit
+      description: The commit hash or the build you are running.
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version and display scale
+      placeholder: Windows 11 24H2, 2560x1600 at 200%
+    validations:
+      required: true
+  - type: input
+    id: server
+    attributes:
+      label: Server and version
+      placeholder: Navidrome 0.5x.x
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, error messages or screenshots
+      description: Paste text between triple backticks. Remove anything private first.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and didn't find this one.
+          required: true
+        - label: I removed passwords, API keys and private addresses from everything above.
+          required: true
