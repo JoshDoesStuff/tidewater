@@ -12,6 +12,7 @@ import '../../app/theme/app_theme.dart';
 import '../../app/theme/motion.dart';
 import '../../core/api/library_api.dart';
 import '../../core/models/album.dart';
+import '../widgets/animated_glyphs.dart';
 import '../widgets/art_tile.dart';
 import '../widgets/async_states.dart';
 import '../widgets/cover_art.dart';
@@ -93,20 +94,40 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
             if (random.value?.isNotEmpty ?? false) ...[
               SectionHeader(
-                title: 'Try something new',
-                action: 'Shuffle picks',
-                onAction: () {
-                  _randomId = null;
-                  ref.invalidate(albumRowProvider(AlbumListType.random));
-                },
-              ),
-              _CardRow<Album>(
-                value: random.whenData(
-                  (l) => [for (final a in l) if (!picked.contains(a.id)) a].take(fit).toList(),
+                title: 'Random albums',
+                trailing: _ShufflePicksButton(
+                  onPressed: () {
+                    _randomId = null;
+                    ref.invalidate(albumRowProvider(AlbumListType.random));
+                  },
                 ),
-                onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.random)),
-                emptyTitle: 'Nothing to suggest',
-                card: (a) => AlbumCard(album: a, size: _cardSize),
+              ),
+              // A new set of picks swaps in with a fade and rise, and its cards
+              // cascade in one after another.
+              AnimatedSwitcher(
+                duration: Motion.of(context, Motion.slow),
+                switchInCurve: Motion.curve(context, Motion.emphasized),
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween(begin: const Offset(0, .06), end: Offset.zero).animate(animation),
+                    child: child,
+                  ),
+                ),
+                layoutBuilder: (current, previous) => Stack(
+                  alignment: Alignment.topLeft,
+                  children: [...previous, ?current],
+                ),
+                child: _CardRow<Album>(
+                  key: ValueKey(random.value?.map((a) => a.id).join(',')),
+                  value: random.whenData(
+                    (l) => [for (final a in l) if (!picked.contains(a.id)) a].take(fit).toList(),
+                  ),
+                  onRetry: () => ref.invalidate(albumRowProvider(AlbumListType.random)),
+                  emptyTitle: 'Nothing to suggest',
+                  card: (a) => AlbumCard(album: a, size: _cardSize),
+                ),
               ),
             ],
             if (frequent.value?.isNotEmpty ?? false) ...[
@@ -206,6 +227,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 /// Horizontal row of cards with loading, error and empty states.
 class _CardRow<T> extends StatelessWidget {
   const _CardRow({
+    super.key,
     required this.value,
     required this.onRetry,
     required this.card,
@@ -682,6 +704,54 @@ class _ContinueListening extends ConsumerWidget {
             ),
             ),
           ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Shuffle picks": a tonal pill whose shuffle icon plays on each press and
+/// whose arrows keep turning for a moment, so a reroll feels like something
+/// happened even before the new albums arrive.
+class _ShufflePicksButton extends StatelessWidget {
+  const _ShufflePicksButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Pressable(
+      onTap: onPressed,
+      semanticLabel: 'Shuffle picks',
+      builder: (context, s) => AnimatedScale(
+        scale: s.pressed ? .94 : 1,
+        duration: Motion.of(context, Motion.fast),
+        curve: Motion.curve(context, Motion.spring),
+        child: AnimatedContainer(
+          duration: Motion.of(context, Motion.medium),
+          curve: Motion.curve(context, Motion.spring),
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: s.hovered ? Color.lerp(scheme.secondaryContainer, scheme.onSecondaryContainer, .08) : scheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(s.pressed ? 12 : 20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedGlyph(kind: GlyphKind.shuffle, size: 20, color: scheme.onSecondaryContainer, active: s.pressed),
+              const SizedBox(width: 8),
+              Text(
+                'Shuffle picks',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSecondaryContainer,
+                    ),
+              ),
             ],
           ),
         ),

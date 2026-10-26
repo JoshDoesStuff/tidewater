@@ -3,13 +3,16 @@ import 'package:flutter/material.dart';
 import '../../widgets/pressable.dart';
 
 class SectionHeader extends StatelessWidget {
-  const SectionHeader({super.key, required this.title, this.action = 'Show all', this.onAction});
+  const SectionHeader({super.key, required this.title, this.action = 'Show all', this.onAction, this.trailing});
 
   final String title;
   final String? action;
 
   /// Tapped "Show all"; the link is hidden without it.
   final VoidCallback? onAction;
+
+  /// A button (or anything) shown at the end instead of the "Show all" link.
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +26,9 @@ class SectionHeader extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(title, style: text.titleLarge),
-          if (action != null && onAction != null)
+          if (trailing != null)
+            trailing!
+          else if (action != null && onAction != null)
             Pressable(
               onTap: onAction!,
               builder: (context, s) => Text(

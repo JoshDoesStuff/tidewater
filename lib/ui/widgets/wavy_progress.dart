@@ -336,22 +336,19 @@ class WavyPainter extends CustomPainter {
   /// Waiting for sound: a flat track with a squiggle that sweeps along it, in
   /// place of the played wave, so the bar never runs ahead of the audio.
   void _paintBuffering(Canvas canvas, double x0, double x1, double cy, double height) {
-    final xp = x0 + (x1 - x0) * fraction();
-    final hw = 4.0;
-    final hh = math.min(13.0, height * .32);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTRB(xp + strokeWidth * 1.3, cy - strokeWidth / 2, x1, cy + strokeWidth / 2), Radius.circular(strokeWidth / 2)),
-      Paint()..color = track,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(xp - hw / 2, cy - hh, hw, hh * 2), Radius.circular(hw / 2)),
-      Paint()..color = played,
-    );
+    // No handle while waiting. The squiggle replaces the track where it is:
+    // the flat bar is drawn only to each side of it, so no gray shows behind.
     final s = sweep();
     final span = math.max(60.0, (x1 - x0) * .38);
     final centerX = x0 - span / 2 + (x1 - x0 + span) * s;
-    final from = math.max(xp + 8, centerX - span / 2);
+    final from = math.max(x0, centerX - span / 2);
     final to = math.min(x1, centerX + span / 2);
+    final r = Radius.circular(strokeWidth / 2);
+    final bar = Paint()..color = track;
+    final left = math.min(from, x1);
+    final right = math.max(to, x0);
+    if (left > x0) canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTRB(x0, cy - strokeWidth / 2, left, cy + strokeWidth / 2), r), bar);
+    if (x1 > right) canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTRB(right, cy - strokeWidth / 2, x1, cy + strokeWidth / 2), r), bar);
     if (to <= from) return;
     final path = Path();
     for (var x = from; x <= to; x += 1.5) {
