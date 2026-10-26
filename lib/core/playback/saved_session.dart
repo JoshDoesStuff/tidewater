@@ -15,6 +15,7 @@ class SavedSession {
     required this.shuffled,
     required this.repeat,
     required this.volume,
+    this.savedAt,
   });
 
   /// Identifies the server and user (`https://host|user`).
@@ -25,6 +26,9 @@ class SavedSession {
   final bool shuffled;
   final LoopMode repeat;
   final double volume;
+
+  /// When this was written (to tell whether the server's copy is newer).
+  final DateTime? savedAt;
 
   /// Queues longer than this are cut around the current track when saving.
   static const maxTracks = 1000;
@@ -47,6 +51,7 @@ class SavedSession {
       'shuffled': shuffled,
       'repeat': repeat.name,
       'volume': volume,
+      'savedAt': (savedAt ?? DateTime.now()).toUtc().toIso8601String(),
     });
   }
 
@@ -70,6 +75,7 @@ class SavedSession {
         shuffled: j['shuffled'] == true,
         repeat: LoopMode.values.firstWhere((m) => m.name == j['repeat'], orElse: () => LoopMode.off),
         volume: ((j['volume'] as num?)?.toDouble() ?? .7).clamp(0.0, 1.0),
+        savedAt: DateTime.tryParse(j['savedAt'] as String? ?? ''),
       );
     } catch (_) {
       return null;

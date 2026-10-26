@@ -233,3 +233,20 @@ class RailCollapsedNotifier extends Notifier<bool> {
 }
 
 final railCollapsedProvider = NotifierProvider<RailCollapsedNotifier, bool>(RailCollapsedNotifier.new);
+
+/// Keep the play queue and position on the server too, so a restart (or another
+/// device) resumes where you stopped and the app does not have to save the
+/// position to disk every few seconds. Persisted.
+class SyncPositionNotifier extends Notifier<bool> {
+  static const _key = 'sync_position';
+
+  @override
+  bool build() => ref.watch(sharedPreferencesProvider).getBool(_key) ?? true;
+
+  void set(bool value) {
+    state = value;
+    ref.read(sharedPreferencesProvider).setBool(_key, value);
+  }
+}
+
+final syncPositionProvider = NotifierProvider<SyncPositionNotifier, bool>(SyncPositionNotifier.new);

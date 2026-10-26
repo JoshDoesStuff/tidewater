@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/providers/refresh_library.dart';
 import '../../app/providers/settings_providers.dart';
 import '../../app/theme/motion.dart';
 import '../widgets/effects/letter_reveal.dart';
@@ -64,6 +65,13 @@ class SettingsPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   _SwitchRow(
+                    title: 'Keep your place on the server',
+                    subtitle: 'Saves the queue and position on the server (every 30 seconds while playing, and when you pause), so a restart or another device resumes where you stopped. Off, only this PC remembers.',
+                    value: ref.watch(syncPositionProvider),
+                    onChanged: ref.read(syncPositionProvider.notifier).set,
+                  ),
+                  const SizedBox(height: 8),
+                  _SwitchRow(
                     title: 'Look up missing lyrics online',
                     subtitle: 'When your server has no lyrics for a track, ask lrclib.net. This sends the artist, title, album and length of that track to lrclib.net.',
                     value: ref.watch(lrclibEnabledProvider),
@@ -89,6 +97,22 @@ class SettingsPage extends ConsumerWidget {
                     subtitle: 'Some icons erase and draw themselves again when clicked. On keeps a faint copy of the icon underneath so it never fully disappears.',
                     value: ref.watch(iconGhostProvider),
                     onChanged: ref.read(iconGhostProvider.notifier).set,
+                  ),
+                  const SizedBox(height: 22),
+                  Text('Library', style: text.titleLarge),
+                  const SizedBox(height: 10),
+                  _ActionRow(
+                    title: 'Refresh the library',
+                    subtitle: 'Asks the server for albums, songs, artists, playlists and Home again, for music added while the app is open. What you see stays until the new lists arrive.',
+                    action: 'Refresh',
+                    onPressed: () => refreshLibrary(ref),
+                  ),
+                  const SizedBox(height: 8),
+                  _ActionRow(
+                    title: 'Clear the cover cache',
+                    subtitle: 'Deletes the saved cover art so it is downloaded again, for covers you changed on the server.',
+                    action: 'Clear',
+                    onPressed: () => clearCoverCache(ref),
                   ),
                   const SizedBox(height: 22),
                   Text('Visualizer style', style: text.titleLarge),
@@ -302,6 +326,42 @@ class _ModeChip extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A row with a title, a hint and a button.
+class _ActionRow extends StatelessWidget {
+  const _ActionRow({required this.title, required this.subtitle, required this.action, required this.onPressed});
+
+  final String title;
+  final String subtitle;
+  final String action;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(color: scheme.surfaceContainerLow, borderRadius: BorderRadius.circular(24)),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(subtitle, style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          FilledButton.tonal(onPressed: onPressed, child: Text(action)),
+        ],
       ),
     );
   }

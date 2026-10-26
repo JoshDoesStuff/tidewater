@@ -5,6 +5,7 @@ import '../models/album.dart';
 import '../models/artist.dart';
 import '../models/playlist.dart';
 import '../models/search_results.dart';
+import '../models/server_play_queue.dart';
 import '../models/track.dart';
 
 /// What the server told us about itself (`ping` + `getOpenSubsonicExtensions`).
@@ -101,6 +102,14 @@ abstract class LibraryApi {
 
   Future<void> star({String? trackId, String? albumId, String? artistId});
   Future<void> unstar({String? trackId, String? albumId, String? artistId});
+
+  /// Saves the play queue (song ids in order, the current one and where in it, in
+  /// ms) on the server so another client, or this one after a restart, can resume.
+  Future<void> savePlayQueue(List<String> ids, {String? current, Duration position = Duration.zero});
+
+  /// The queue the server holds for this user, or null when there is none (or
+  /// the server cannot keep one).
+  Future<ServerPlayQueue?> getPlayQueue();
 
   /// `submission: false` is "now playing"; `true` counts a play.
   Future<void> scrobble(String trackId, {bool submission = false, DateTime? time});

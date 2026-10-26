@@ -286,6 +286,10 @@ two loops that ignored it, the visualizer and the equalizer bars; both now hold 
 - Playlists: list, detail, create/edit, add-to-playlist from context menus, reorder.
 - Radio page (placeholder). Library Genres tab.
 - Offline cache: download albums/playlists, cache management (size, clear), offline mode.
+- **Done in M8:** the playback position and queue live on the server too (`savePlayQueue` / `getPlayQueue`, every 30 s
+  while playing and when pausing), so the 5-second queue writes to disk are gone; at launch the newer of the server's and
+  this PC's copy wins (`chooseResume`). Settings has "Keep your place on the server" and, under Library, "Refresh the
+  library" and "Clear the cover cache" (for music added while the app is open).
 - **List cache**: cache the list data on disk (songs, albums, artists, playlists, liked songs; Home rows) so the
   Library and the Songs tab open instantly and refresh in the background. Today only covers, extracted colors and the
   saved queue persist. With it:

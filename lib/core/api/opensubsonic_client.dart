@@ -14,6 +14,7 @@ import '../models/artist.dart';
 import '../models/json_util.dart';
 import '../models/playlist.dart';
 import '../models/search_results.dart';
+import '../models/server_play_queue.dart';
 import '../models/track.dart';
 import 'api_exception.dart';
 import 'library_api.dart';
@@ -74,7 +75,8 @@ class OpenSubsonicClient implements LibraryApi {
       queryParameters: {
         ...authParams(),
         for (final e in params.entries)
-          if (e.value != null) e.key: e.value.toString(),
+          if (e.value != null)
+            e.key: e.value is Iterable ? [for (final v in e.value as Iterable) v.toString()] : e.value.toString(),
       },
     );
   }
@@ -347,6 +349,23 @@ class OpenSubsonicClient implements LibraryApi {
         'submission': submission,
         'time': (time ?? DateTime.now()).millisecondsSinceEpoch,
       });
+
+  @override
+  Future<void> savePlayQueue(List<String> ids, {String? current, Duration position = Duration.zero}) =>
+      _call('savePlayQueue', {
+        'id': ids,
+        'current': current,
+        'position': position.inMilliseconds,
+      });
+
+  @override
+  Future<ServerPlayQueue?> getPlayQueue() async {
+    final body = await _call('getPlayQueue');
+    final q = body['playQueue'];
+    if (q is! Map<String, dynamic>) return null;
+    final queue = ServerPlayQueue.fromJson(q);
+    return queue.isEmpty ? null : queue;
+  }
 
   @override
   void close() => _dio.close();

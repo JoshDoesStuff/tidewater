@@ -8,6 +8,7 @@ import 'package:tidewater/core/models/album.dart';
 import 'package:tidewater/core/models/artist.dart';
 import 'package:tidewater/core/models/playlist.dart';
 import 'package:tidewater/core/models/search_results.dart';
+import 'package:tidewater/core/models/server_play_queue.dart';
 import 'package:tidewater/core/models/track.dart';
 
 import 'placeholder_lyrics.dart';
@@ -165,6 +166,26 @@ class FakeLibraryApi implements LibraryApi {
             if (a.artistId == id) a,
         ]);
       });
+
+  /// What savePlayQueue stored (and getPlayQueue returns).
+  ServerPlayQueue? serverQueue;
+  final queueSaves = <({List<String> ids, String? current, Duration position})>[];
+
+  @override
+  Future<void> savePlayQueue(List<String> ids, {String? current, Duration position = Duration.zero}) async {
+    calls.add('savePlayQueue');
+    if (failWith != null) throw failWith!;
+    queueSaves.add((ids: ids, current: current, position: position));
+    serverQueue = ServerPlayQueue(
+      tracks: [for (final id in ids) fakeTracks.firstWhere((t) => t.id == id)],
+      currentId: current,
+      position: position,
+      changed: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<ServerPlayQueue?> getPlayQueue() async => _ok('getPlayQueue', () => serverQueue);
 
   @override
   Future<List<Playlist>> getPlaylists() async => _ok('getPlaylists', () => fakePlaylists);
