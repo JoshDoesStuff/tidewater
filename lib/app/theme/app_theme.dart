@@ -1,5 +1,6 @@
-import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
+
+import '../../core/text/cjk_script.dart';
 
 /// The only place colors are chosen. Everything else reads
 /// `Theme.of(context).colorScheme`.
@@ -59,16 +60,25 @@ abstract final class AppTheme {
         fontVariations: [FontVariation('ROND', 100), FontVariation('wdth', wdth)],
       );
 
-  /// For text that is the user's music (track, album, artist names), which is
-  /// often Japanese or Chinese: the platform's own font, which has those
-  /// glyphs and matches the fallback, instead of Google Sans Flex.
-  static TextStyle? content(TextStyle? s) => s?.copyWith(
-        fontFamily: Typography.material2021(platform: defaultTargetPlatform).black.bodyLarge?.fontFamily,
-        fontVariations: const [],
-      );
+  /// Fallback fonts for characters Google Sans Flex lacks: bundled Noto Sans for
+  /// Japanese and Chinese, then the system font. Han characters are drawn
+  /// differently in the two languages, so the order matters: [script] puts the
+  /// right one first for a given string.
+  static const fallbackJapanese = ['NotoSansJP', 'NotoSansSC', 'Segoe UI'];
+  static const fallbackChinese = ['NotoSansSC', 'NotoSansJP', 'Segoe UI'];
+
+  /// [style] adjusted for the CJK script of [text] (Japanese is the default).
+  static TextStyle? script(String text, TextStyle? style) => cjkScriptOf(text) == CjkScript.chinese
+      ? (style ?? const TextStyle()).copyWith(fontFamilyFallback: fallbackChinese)
+      : style;
 
   static ThemeData fromScheme(ColorScheme scheme) {
-    final base = ThemeData(colorScheme: scheme, useMaterial3: true);
+    final base = ThemeData(
+      colorScheme: scheme,
+      useMaterial3: true,
+      fontFamily: fontFamily,
+      fontFamilyFallback: fallbackJapanese,
+    );
     final t = base.textTheme;
     final text = t
         .copyWith(

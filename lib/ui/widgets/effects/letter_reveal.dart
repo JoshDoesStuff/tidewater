@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/theme/app_theme.dart';
 import '../../../app/theme/motion.dart';
 import 'glyph_run.dart';
 
@@ -75,8 +76,8 @@ class _LetterRevealState extends State<LetterReveal> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    if (_reduced) return Text(widget.text, style: widget.style, maxLines: 1, softWrap: false);
-    return GlyphRun(text: widget.text, style: widget.style, repaint: _c, state: _letter);
+    if (_reduced) return Text(widget.text, style: AppTheme.script(widget.text, widget.style), maxLines: 1, softWrap: false);
+    return GlyphRun(text: widget.text, style: AppTheme.script(widget.text, widget.style), repaint: _c, state: _letter);
   }
 }
 
@@ -192,7 +193,7 @@ class _LetterSwapState extends State<LetterSwap> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    if (_reduced) return Text(_shown, style: widget.style, maxLines: 1, softWrap: false);
-    return GlyphRun(text: _shown, style: widget.style, repaint: _c, state: _letter);
+    if (_reduced) return Text(_shown, style: AppTheme.script(_shown, widget.style), maxLines: 1, softWrap: false);
+    return GlyphRun(text: _shown, style: AppTheme.script(_shown, widget.style), repaint: _c, state: _letter);
   }
 }

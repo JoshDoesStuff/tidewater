@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers/library_providers.dart';
 import '../../app/providers/playback_providers.dart';
-import '../../app/theme/app_theme.dart';
 import '../../app/theme/motion.dart';
 import '../../core/models/artist.dart';
 import '../widgets/art_tile.dart';
@@ -101,7 +100,7 @@ class _ArtistBody extends ConsumerWidget {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
-                    child: LetterReveal(text: artist.name, style: AppTheme.content(text.displaySmall), delay: const Duration(milliseconds: 100)),
+                    child: LetterReveal(text: artist.name, style: text.displaySmall, delay: const Duration(milliseconds: 100)),
                   ),
                   const SizedBox(height: 6),
                   Text(

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers/library_providers.dart';
 import '../../app/providers/playback_providers.dart';
-import '../../app/theme/app_theme.dart';
 import '../../core/models/playlist.dart';
 import '../widgets/art_tile.dart';
 import '../widgets/async_states.dart';
@@ -98,7 +97,7 @@ class _Body extends ConsumerWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
-          child: LetterReveal(text: playlist.name, style: AppTheme.content(text.displaySmall), delay: const Duration(milliseconds: 100)),
+          child: LetterReveal(text: playlist.name, style: text.displaySmall, delay: const Duration(milliseconds: 100)),
         ),
         const SizedBox(height: 6),
         Text(

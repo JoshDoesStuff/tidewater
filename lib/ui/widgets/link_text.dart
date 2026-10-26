@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme/app_theme.dart';
+
 /// One line of text that underlines on hover and opens something when tapped
 /// (an album title, an artist name). Plain text when [onTap] is null.
 class LinkText extends StatefulWidget {
@@ -19,7 +21,7 @@ class _LinkTextState extends State<LinkText> {
   @override
   Widget build(BuildContext context) {
     final style = widget.style?.copyWith(decoration: _hovered && widget.onTap != null ? TextDecoration.underline : null);
-    final label = Text(widget.text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
+    final label = Text(widget.text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTheme.script(widget.text, style));
     if (widget.onTap == null) return label;
     return MouseRegion(
       cursor: SystemMouseCursors.click,

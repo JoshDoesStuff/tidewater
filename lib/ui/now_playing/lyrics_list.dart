@@ -1,3 +1,5 @@
+import '../widgets/name_text.dart';
+import '../../app/theme/app_theme.dart';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -177,7 +179,7 @@ class _LyricsListState extends ConsumerState<LyricsList> with SingleTickerProvid
     var top = 0.0;
     for (final line in lyrics.lines) {
       final tp = TextPainter(
-        text: TextSpan(text: line.text.isEmpty ? ' ' : line.text, style: mask),
+        text: TextSpan(text: line.text.isEmpty ? ' ' : line.text, style: AppTheme.script(line.text, mask)),
         textDirection: TextDirection.ltr,
       )..layout(maxWidth: width);
       ui.Image? image;
@@ -349,7 +351,7 @@ class _PlainList extends StatelessWidget {
         for (final l in lyrics.lines)
           Padding(
             padding: EdgeInsets.only(bottom: math.max(8, style.spacing / 2)),
-            child: Text(
+            child: NameText(
               l.text,
               style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                     fontSize: style.fontSize,

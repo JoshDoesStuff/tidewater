@@ -1,3 +1,4 @@
+import '../../widgets/name_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -77,7 +78,7 @@ class SongRow extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    NameText(
                       track.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

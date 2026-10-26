@@ -144,6 +144,10 @@ class _Credits extends StatelessWidget {
       'App font',
       'Google Sans Flex (https://github.com/googlefonts/googlesans-flex), SIL Open Font License 1.1',
     ),
+    (
+      'Japanese and Chinese text',
+      'Noto Sans JP and Noto Sans SC (https://fonts.google.com/noto), SIL Open Font License 1.1',
+    ),
   ];
 
   @override

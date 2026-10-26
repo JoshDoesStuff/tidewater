@@ -81,6 +81,12 @@ flutter:
     - family: GoogleSansFlex
       fonts:
         - asset: assets/fonts/GoogleSansFlex.ttf
+    - family: NotoSansJP
+      fonts:
+        - asset: assets/fonts/NotoSansJP.ttf
+    - family: NotoSansSC
+      fonts:
+        - asset: assets/fonts/NotoSansSC.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

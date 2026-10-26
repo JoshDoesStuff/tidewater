@@ -1,3 +1,4 @@
+import '../widgets/name_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -83,13 +84,13 @@ class _MiniPlayerBody extends ConsumerWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
+                            NameText(
                               track.title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: text.bodyLarge?.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
                             ),
-                            Text(
+                            NameText(
                               track.artist,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

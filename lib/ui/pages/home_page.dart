@@ -1,3 +1,4 @@
+import '../widgets/name_text.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -523,12 +524,12 @@ class _HeroCard extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Overflowing text fades out softly instead of being sliced.
-                    Text(
+                    NameText(
                       album.title,
                       maxLines: 1,
                       overflow: TextOverflow.fade,
                       softWrap: false,
-                      style: AppTheme.content(text.titleLarge)?.copyWith(color: AppTheme.onArt.withValues(alpha: _labelOpacity)),
+                      style: text.titleLarge?.copyWith(color: AppTheme.onArt.withValues(alpha: _labelOpacity)),
                     ),
                     Text(
                       subtitle,
@@ -661,14 +662,14 @@ class _ContinueListening extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          NameText(
                             track.title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: text.bodyMedium?.copyWith(fontSize: 15.5, fontWeight: FontWeight.w700, height: 1.25),
                           ),
                           const SizedBox(height: 2),
-                          Text(
+                          NameText(
                             track.artist,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
