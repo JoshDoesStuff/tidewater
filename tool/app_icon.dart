@@ -118,29 +118,31 @@ const _recLabel = 0xFFFF7E5F;
 const _recHole = 0xFF123A72;
 
 const _rx = 512.0;
-const _ry = 480.0;
+const _ry = 530.0;
 const _outer = 250.0;
 const _grooves = [(180.0, 14.0), (132.0, 10.0)];
 const _labelR = 88.0;
 const _waterLevel = 640.0;
 const _tideAmp = 30.0;
 const _tideLength = 300.0;
+const _tidePhase = -2.87; // puts a trough under the record's middle
 const _shineR = 218.0;
 const _shineFrom = 3.55;
 const _shineTo = 4.15;
 
-List<(double, double)> _tide({double drop = 0, double amp = _tideAmp, double phase = 0}) => [
+List<(double, double)> _tide({double drop = 0, double amp = _tideAmp, double phase = _tidePhase}) => [
       for (var x = -8.0; x <= iconSize + 8; x += 8)
         (x, _waterLevel + drop + amp * math.sin(2 * math.pi * x / _tideLength + phase)),
     ];
 
 // A tiny boat riding the surface on the right: a shallow hull, one mast and a
 // pennant flag (after a quick sketch, cleaned up).
-const _boatX = 830.0;
+const _boatX = 944.0;
+const _boatScale = .8;
 const _sail = 0xFFF4FBFF;
 const _hull = 0xFFFF7E5F;
 
-double _surfaceAt(double x) => _waterLevel + _tideAmp * math.sin(2 * math.pi * x / _tideLength);
+double _surfaceAt(double x) => _waterLevel + _tideAmp * math.sin(2 * math.pi * x / _tideLength + _tidePhase);
 
 ({
   List<(double, double)> hull,
@@ -148,8 +150,8 @@ double _surfaceAt(double x) => _waterLevel + _tideAmp * math.sin(2 * math.pi * x
   (double, double) mastTop,
   (double, double) mastBase,
 }) _boat() {
-  final by = _surfaceAt(_boatX) - 16;
-  (double, double) p(double dx, double dy) => (_boatX + dx, by + dy);
+  final by = _surfaceAt(_boatX) - 20;
+  (double, double) p(double dx, double dy) => (_boatX + dx * _boatScale, by + dy * _boatScale);
   return (
     hull: [p(-52, -16), p(52, -16), p(46, -2), p(36, 10), p(-36, 10), p(-46, -2)],
     flag: [p(3, -96), p(3, -64), p(46, -80)],
@@ -172,13 +174,13 @@ void _paintBoat(ui.Canvas canvas) {
   final b = _boat();
   void shape(List<(double, double)> pts, int color) {
     canvas.drawPath(_path(pts, close: true), _fill(color));
-    canvas.drawPath(_path(pts, close: true), _stroke(color, 6));
+    canvas.drawPath(_path(pts, close: true), _stroke(color, 5));
   }
 
   canvas.drawLine(
     ui.Offset(b.mastTop.$1, b.mastTop.$2),
     ui.Offset(b.mastBase.$1, b.mastBase.$2),
-    _stroke(_sail, 8),
+    _stroke(_sail, 6),
   );
   shape(b.flag, _sail);
   shape(b.hull, _hull);
@@ -208,7 +210,7 @@ String _recordSvg() {
     <path d="${_poly(_scallop(_rx, _ry, _labelR, 6, .085), close: true)}" fill="${_hex(_recLabel)}"/>
     <circle cx="$_rx" cy="$_ry" r="18" fill="${_hex(_recHole)}"/>
     <path d="${_poly(_waterShape(), close: true)}" fill="${_hex(_recWater)}"/>
-    ${_boatSvg()}    <path d="${_poly(_tide(drop: 96, amp: 22, phase: 1.6))}" fill="none" stroke="${_hex(_recWaterLine)}" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    ${_boatSvg()}<path d="${_poly(_tide(drop: 96, amp: 22, phase: _tidePhase + 1.6))}" fill="none" stroke="${_hex(_recWaterLine)}" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="${_poly(_tide())}" fill="none" stroke="${_hex(_recSurface)}" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 </svg>
@@ -237,7 +239,7 @@ void _paintRecord(ui.Canvas canvas) {
   canvas.drawCircle(center, 18, _fill(_recHole));
   canvas.drawPath(_path(_waterShape(), close: true), _fill(_recWater));
   _paintBoat(canvas);
-  canvas.drawPath(_path(_tide(drop: 96, amp: 22, phase: 1.6)), _stroke(_recWaterLine, 12));
+  canvas.drawPath(_path(_tide(drop: 96, amp: 22, phase: _tidePhase + 1.6)), _stroke(_recWaterLine, 12));
   canvas.drawPath(_path(_tide()), _stroke(_recSurface, 20));
 }
 
