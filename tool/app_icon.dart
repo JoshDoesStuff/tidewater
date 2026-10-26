@@ -246,16 +246,13 @@ void _paintRecord(ui.Canvas canvas, {required bool boat, required bool simple}) 
     // Taskbar sizes: a few bold shapes, no hairline rings, shine or second wave,
     // so it stays clean instead of crunchy at 16 to 48 px.
     canvas.drawRect(const ui.Rect.fromLTWH(0, 0, iconSize, iconSize), _fill(_recBg));
-    const bold = ui.Offset(_rx, 450);
+    // Same tide as the full icon, so the record is sunk about a third of the way.
+    const bold = ui.Offset(_rx, 500);
     canvas.drawCircle(bold, 290, _stroke(_recLine, 84));
-    canvas.drawPath(_path(_scallop(_rx, 450, 160, 6, .085), close: true), _fill(_recLabel));
-    canvas.drawCircle(bold, 40, _fill(_recHole));
-    // The water sits lower here so more of the record shows above it.
-    canvas.save();
-    canvas.translate(0, 110);
+    canvas.drawPath(_path(_scallop(_rx, 500, 138, 6, .085), close: true), _fill(_recLabel));
+    canvas.drawCircle(bold, 36, _fill(_recHole));
     canvas.drawPath(_path(_waterShape(), close: true), _fill(_recWater));
-    canvas.drawPath(_path(_tide()), _stroke(_recSurface, 46));
-    canvas.restore();
+    canvas.drawPath(_path(_tide()), _stroke(_recSurface, 44));
     return;
   }
   void rings(int outer, List<int> grooves) {
