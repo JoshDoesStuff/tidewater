@@ -5,7 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 enum QueueHome { none, server, thisPc }
 
 class QueueSyncStatus {
-  const QueueSyncStatus(this.home, {this.at, this.songs = 0, this.position = Duration.zero, this.reason});
+  const QueueSyncStatus(
+    this.home, {
+    this.at,
+    this.songs = 0,
+    this.position = Duration.zero,
+    this.reason,
+    this.took,
+  });
 
   final QueueHome home;
   final DateTime? at;
@@ -16,6 +23,9 @@ class QueueSyncStatus {
 
   /// Why it is on this PC: syncing is off, or what went wrong with the server.
   final String? reason;
+
+  /// How long the last send to the server took.
+  final Duration? took;
 }
 
 class QueueSyncStatusNotifier extends Notifier<QueueSyncStatus> {

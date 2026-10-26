@@ -382,10 +382,11 @@ class _QueueStatusLine extends ConsumerWidget {
     final time = status.at == null ? '' : ' at ${TimeOfDay.fromDateTime(status.at!).format(context)}';
     final into = status.position.inSeconds;
     final place = '${into ~/ 60}:${(into % 60).toString().padLeft(2, '0')} into the song';
+    final took = status.took == null ? '' : ' It took ${(status.took!.inMilliseconds / 1000).toStringAsFixed(1)} s to send.';
     final songs = status.songs == 1 ? '1 song' : '${status.songs} songs';
     final (icon, text) = switch (status.home) {
       QueueHome.none => (Icons.hourglass_empty_rounded, 'Nothing saved yet this session.'),
-      QueueHome.server => (Icons.cloud_done_rounded, 'Your queue is on the server: saved$time, $songs, $place.'),
+      QueueHome.server => (Icons.cloud_done_rounded, 'Your queue is on the server: saved$time, $songs, $place.$took'),
       QueueHome.thisPc => (
         Icons.save_alt_rounded,
         'Your queue is saved on this PC only${status.reason == null ? '' : ' (${status.reason})'}: saved$time, $songs, $place.',

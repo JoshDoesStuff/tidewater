@@ -144,6 +144,27 @@ void main() {
       await disposeApp(tester);
     });
 
+    testWidgets('closing right after a pause has nothing left to send, so it does not wait', (tester) async {
+      final api = FakeLibraryApi();
+      final c = await pumpApp(tester, api: api);
+      await c.read(playbackProvider.notifier).playAlbum(fakeAlbums[1]);
+      await advance(tester, const Duration(seconds: 4));
+      c.read(positionProvider).value = const Duration(seconds: 20);
+      await c.read(playbackProvider.notifier).toggle();
+      await advance(tester, const Duration(milliseconds: 200));
+      final sent = api.queueSaves.length;
+      await flushSessionPersistence();
+      expect(api.queueSaves.length, sent, reason: 'the pause already saved this exact place');
+      expect(c.read(queueSyncStatusProvider).took, isNotNull, reason: 'the status says how long a send took');
+
+      // Playing on moves the place: closing then does send it.
+      c.read(positionProvider).value = const Duration(seconds: 55);
+      await flushSessionPersistence();
+      expect(api.queueSaves.length, sent + 1);
+      expect(api.queueSaves.last.position, const Duration(seconds: 55));
+      await disposeApp(tester);
+    });
+
     testWidgets('while playing, the position goes to the server every 30 seconds, not to disk every 5', (tester) async {
       final api = FakeLibraryApi();
       final c = await pumpApp(tester, api: api);

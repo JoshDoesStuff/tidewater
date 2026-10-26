@@ -68,6 +68,11 @@ final sessionPersistenceProvider = Provider<void>((ref) {
   /// been tried (and read back) in this run.
   bool? serverHolds;
 
+  // What the server was last sent, to tell whether closing has anything left to save.
+  List<String>? pushedIds;
+  String? pushedCurrent;
+  Duration pushedPosition = Duration.zero;
+
   void report(QueueSyncStatus status) => ref.read(queueSyncStatusProvider.notifier).set(status);
 
   String why(Object e) => e is ApiException ? e.message : 'the server could not be reached';
@@ -122,13 +127,15 @@ final sessionPersistenceProvider = Provider<void>((ref) {
       from = (s.index - _serverQueueMax ~/ 2).clamp(0, upTo - _serverQueueMax);
       upTo = from + _serverQueueMax;
     }
+    final ids = [for (final t in s.queue.sublist(from, upTo)) t.id];
+    final at = ref.read(positionProvider).value;
+    final clock = Stopwatch()..start();
     try {
       final api = ref.read(apiProvider);
-      await api.savePlayQueue(
-        [for (final t in s.queue.sublist(from, upTo)) t.id],
-        current: s.track?.id,
-        position: ref.read(positionProvider).value,
-      );
+      await api.savePlayQueue(ids, current: s.track?.id, position: at);
+      pushedIds = ids;
+      pushedCurrent = s.track?.id;
+      pushedPosition = at;
       if (serverHolds == null && s.queue.isNotEmpty) {
         // Some servers accept the call and keep nothing: read it back once.
         final back = await api.getPlayQueue();
@@ -150,7 +157,8 @@ final sessionPersistenceProvider = Provider<void>((ref) {
             QueueHome.server,
             at: DateTime.now(),
             songs: upTo - from,
-            position: ref.read(positionProvider).value,
+            position: at,
+            took: clock.elapsed,
           ),
         );
       }
@@ -162,11 +170,42 @@ final sessionPersistenceProvider = Provider<void>((ref) {
     }
   }
 
-  /// Keeps the queue: on the server when it holds it, otherwise on this PC.
-  Future<void> persist() async {
-    if (ref.read(sessionProvider) == null) return;
-    if (ref.read(syncPositionProvider) && await pushServer()) return;
-    writeLocal();
+  /// True when the server holds this exact queue, song and (within a second or
+  /// two) position, so there is nothing new to send.
+  bool upToDate() {
+    if (serverHolds != true || !ref.read(syncPositionProvider)) return false;
+    final s = ref.read(playbackProvider);
+    final sent = pushedIds;
+    if (sent == null || s.track?.id != pushedCurrent) return false;
+    if ((ref.read(positionProvider).value - pushedPosition).abs() > const Duration(milliseconds: 1500)) return false;
+    var from = 0;
+    var upTo = s.queue.length;
+    if (upTo > _serverQueueMax) {
+      from = (s.index - _serverQueueMax ~/ 2).clamp(0, upTo - _serverQueueMax);
+      upTo = from + _serverQueueMax;
+    }
+    if (upTo - from != sent.length) return false;
+    for (var i = 0; i < sent.length; i++) {
+      if (s.queue[from + i].id != sent[i]) return false;
+    }
+    return true;
+  }
+
+  /// Keeps the queue: on the server when it holds it, otherwise on this PC. A
+  /// save that is already on its way is joined, not repeated (hiding the window
+  /// and closing it both ask, a moment apart, and two copies of a big queue only
+  /// slow the server down).
+  Future<void>? saving;
+  Future<void> persist() {
+    return saving ??= () async {
+      try {
+        if (ref.read(sessionProvider) == null) return;
+        if (ref.read(syncPositionProvider) && await pushServer()) return;
+        writeLocal();
+      } finally {
+        saving = null;
+      }
+    }();
   }
 
   void persistSoon() {
@@ -270,6 +309,8 @@ final sessionPersistenceProvider = Provider<void>((ref) {
   final observer = _LifecycleSaver(() => unawaited(persist()));
   _flush = () async {
     persistTimer?.cancel();
+    // Paused (or just saved): the server already has all of it, so closing need not wait.
+    if (upToDate()) return;
     await persist();
   };
   WidgetsBinding.instance.addObserver(observer);
