@@ -215,12 +215,64 @@ class FakeLibraryApi implements LibraryApi {
         return serverQueue;
       });
 
-  @override
-  Future<List<Playlist>> getPlaylists() async => _ok('getPlaylists', () => fakePlaylists);
+  /// The playlists on this fake server and their songs (change them to set a test up;
+  /// createPlaylist, updatePlaylist and deletePlaylist change them too).
+  late final List<Playlist> playlists = [...fakePlaylists];
+  late final Map<String, List<Track>> playlistSongs = {
+    'pl-1': fakeTracks.take(2).toList(),
+    'pl-2': fakeTracks.take(1).toList(),
+  };
+  int _newPlaylists = 0;
+
+  Playlist _refreshed(Playlist p) => p.copyWith(songCount: playlistSongs[p.id]?.length ?? 0);
 
   @override
-  Future<PlaylistDetail> getPlaylist(String id) async =>
-      _ok('getPlaylist:$id', () => PlaylistDetail(fakePlaylists.firstWhere((p) => p.id == id), fakeTracks.take(2).toList()));
+  Future<List<Playlist>> getPlaylists() async => _ok('getPlaylists', () => [for (final p in playlists) _refreshed(p)]);
+
+  @override
+  Future<PlaylistDetail> getPlaylist(String id) async => _ok('getPlaylist:$id', () {
+        final p = playlists.firstWhere((p) => p.id == id);
+        return PlaylistDetail(_refreshed(p), List.of(playlistSongs[id] ?? const []));
+      });
+
+  Track _song(String id) => fakeTracks.firstWhere((t) => t.id == id);
+
+  @override
+  Future<Playlist?> createPlaylist({String? name, String? playlistId, List<String> songIds = const []}) async =>
+      _ok('createPlaylist', () {
+        if (playlistId != null) {
+          playlistSongs[playlistId] = [for (final id in songIds) _song(id)];
+          return _refreshed(playlists.firstWhere((p) => p.id == playlistId));
+        }
+        final p = Playlist(id: 'pl-new-${++_newPlaylists}', name: name ?? 'Untitled', owner: 'josh');
+        playlists.add(p);
+        playlistSongs[p.id] = [for (final id in songIds) _song(id)];
+        return _refreshed(p);
+      });
+
+  @override
+  Future<void> updatePlaylist(
+    String playlistId, {
+    String? name,
+    bool? isPublic,
+    List<String> addSongIds = const [],
+    List<int> removeIndexes = const [],
+  }) async =>
+      _ok('updatePlaylist', () {
+        final at = playlists.indexWhere((p) => p.id == playlistId);
+        playlists[at] = playlists[at].copyWith(name: name, isPublic: isPublic);
+        final songs = playlistSongs.putIfAbsent(playlistId, () => []);
+        for (final i in [...removeIndexes]..sort((a, b) => b.compareTo(a))) {
+          songs.removeAt(i);
+        }
+        songs.addAll([for (final id in addSongIds) _song(id)]);
+      });
+
+  @override
+  Future<void> deletePlaylist(String playlistId) async => _ok('deletePlaylist', () {
+        playlists.removeWhere((p) => p.id == playlistId);
+        playlistSongs.remove(playlistId);
+      });
 
   @override
   Future<SearchResults> search(String query, {int artistCount = 5, int albumCount = 10, int songCount = 20}) async =>

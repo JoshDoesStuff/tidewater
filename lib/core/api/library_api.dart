@@ -82,6 +82,23 @@ abstract class LibraryApi {
 
   Future<PlaylistDetail> getPlaylist(String id);
 
+  /// Makes a playlist named [name] with [songIds] (private, until changed). With
+  /// [playlistId] it instead replaces that playlist's songs with [songIds] (the way
+  /// to reorder one). Returns the playlist when the server says which.
+  Future<Playlist?> createPlaylist({String? name, String? playlistId, List<String> songIds = const []});
+
+  /// Changes a playlist: its name, who can see it, songs to add (at the end) and
+  /// songs to remove by their position in it.
+  Future<void> updatePlaylist(
+    String playlistId, {
+    String? name,
+    bool? isPublic,
+    List<String> addSongIds = const [],
+    List<int> removeIndexes = const [],
+  });
+
+  Future<void> deletePlaylist(String playlistId);
+
   Future<SearchResults> search(String query, {int artistCount = 5, int albumCount = 10, int songCount = 20});
 
   /// A page of every song in the library (Subsonic `search3` with an empty

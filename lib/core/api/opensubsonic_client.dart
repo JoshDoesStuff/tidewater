@@ -288,6 +288,39 @@ class OpenSubsonicClient implements LibraryApi {
   }
 
   @override
+  Future<Playlist?> createPlaylist({String? name, String? playlistId, List<String> songIds = const []}) async {
+    final params = {'name': name, 'playlistId': playlistId, 'songId': songIds};
+    final body = songIds.length > _maxIdsInUrl ? await _post('createPlaylist', params) : await _call('createPlaylist', params);
+    final p = body['playlist'];
+    return p is Map<String, dynamic> ? Playlist.fromJson(p) : null;
+  }
+
+  @override
+  Future<void> updatePlaylist(
+    String playlistId, {
+    String? name,
+    bool? isPublic,
+    List<String> addSongIds = const [],
+    List<int> removeIndexes = const [],
+  }) async {
+    final params = {
+      'playlistId': playlistId,
+      'name': name,
+      'public': isPublic,
+      'songIdToAdd': addSongIds.isEmpty ? null : addSongIds,
+      'songIndexToRemove': removeIndexes.isEmpty ? null : removeIndexes,
+    };
+    if (addSongIds.length + removeIndexes.length > _maxIdsInUrl) {
+      await _post('updatePlaylist', params);
+    } else {
+      await _call('updatePlaylist', params);
+    }
+  }
+
+  @override
+  Future<void> deletePlaylist(String playlistId) => _call('deletePlaylist', {'id': playlistId});
+
+  @override
   Future<PlaylistDetail> getPlaylist(String id) async {
     final body = await _call('getPlaylist', {'id': id});
     return PlaylistDetail.fromJson(_object(body, 'playlist'));
