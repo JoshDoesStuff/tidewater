@@ -28,6 +28,8 @@ void main() {
     await tester.enterText(find.byType(TextField), 'Velvet');
     await advance(tester, const Duration(milliseconds: 100));
     expect(find.text('Songs'), findsNothing, reason: 'still waiting for the pause after typing');
+    expect(find.textContaining('No results'), findsNothing, reason: 'waiting is not an empty answer');
+    expect(find.byType(LinearProgressIndicator), findsOneWidget, reason: 'the searching line runs');
     await advance(tester, const Duration(seconds: 1));
     expect(find.text('Albums'), findsOneWidget);
     expect(find.text('Songs'), findsOneWidget);

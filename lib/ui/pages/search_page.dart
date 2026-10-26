@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers/playback_providers.dart';
 import '../../app/providers/search_providers.dart';
 import '../../core/models/search_results.dart';
+import '../../app/theme/motion.dart';
 import '../widgets/async_states.dart';
 import '../widgets/effects/stagger_in.dart';
 import '../widgets/pressable.dart';
@@ -98,7 +99,18 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 },
                 onClear: _clear,
               ),
-              const SizedBox(height: 8),
+              // A thin line runs while a search is on its way, so waiting looks like waiting.
+              Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 6, left: 20, right: 20),
+                child: AnimatedOpacity(
+                  duration: Motion.of(context, Motion.medium),
+                  opacity: query.isNotEmpty && results.isLoading ? 1 : 0,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: const LinearProgressIndicator(minHeight: 3),
+                  ),
+                ),
+              ),
               if (query.isEmpty)
                 _Recent(onPick: _setQuery)
               else
@@ -108,13 +120,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     padding: const EdgeInsets.only(top: 22),
                     child: ErrorPanel(error: e, onRetry: () => ref.invalidate(searchResultsProvider)),
                   ),
-                  // Keep the old results up while a new search is on its way.
-                  loading: () => results.hasValue
+                  // Old results stay up while a new search is on its way, but an empty
+                  // answer to an earlier query never shows as "No results" for this one.
+                  loading: () => results.hasValue && !results.requireValue.isEmpty
                       ? _Results(results: results.requireValue, query: query)
-                      : const Padding(
-                          padding: EdgeInsets.only(top: 36),
-                          child: Center(child: SizedBox.square(dimension: 28, child: CircularProgressIndicator(strokeWidth: 3))),
-                        ),
+                      : const _Searching(),
                 ),
             ],
           ),
@@ -244,6 +254,27 @@ class _Results extends ConsumerWidget {
             ),
         ],
       ],
+    );
+  }
+}
+
+/// Placeholder rows while the first results of a search load.
+class _Searching extends StatelessWidget {
+  const _Searching();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 22),
+      child: Column(
+        children: [
+          for (var i = 0; i < 5; i++)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 10),
+              child: SkeletonBox(height: 52, radius: 22),
+            ),
+        ],
+      ),
     );
   }
 }
