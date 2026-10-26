@@ -275,6 +275,7 @@ Most of the demo list is in. Remaining and review items:
   FFmpeg, `flutter_soloud`, or a native audio tap). Same `VisualizerSource` interface; keep the 64-band,
   fast-attack/slow-decay smoothing. Say so in the UI until it ships.
 - Context menus (right click), drag and drop, multi-select.
+- Sidebar menu button (the hamburger at the top of the rail, a no-op today): make it collapse and expand the rail by  hand at any window size (icon-only vs labeled), remembered between launches; the narrow-window auto-collapse stays.
 
 ## M9 — Settings overhaul
 
