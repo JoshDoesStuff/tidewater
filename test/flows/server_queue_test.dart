@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
+import 'package:tidewater/app/providers/queue_sync_status.dart';
+import 'package:tidewater/core/api/api_exception.dart';
 import 'package:tidewater/app/providers/session_persistence.dart';
 import 'package:tidewater/app/providers/settings_providers.dart';
 import 'package:tidewater/core/models/server_play_queue.dart';
@@ -118,6 +120,9 @@ void main() {
       expect(api.queueSaves, isNotEmpty);
       expect(api.queueSaves.last.ids, ['t-a1', 't-a1-1', 't-a1-2']);
       expect(api.queueSaves.last.position, const Duration(seconds: 61));
+      final status = c.read(queueSyncStatusProvider);
+      expect(status.home, QueueHome.server);
+      expect(status.songs, 3);
       await disposeApp(tester);
     });
 
@@ -132,6 +137,18 @@ void main() {
       final before = api.queueSaves.length;
       await advance(tester, const Duration(seconds: 65));
       expect(api.queueSaves.length - before, lessThanOrEqualTo(3));
+      await c.read(playbackProvider.notifier).toggle();
+      await disposeApp(tester);
+    });
+
+    testWidgets('the status says why the queue is on this PC when the server cannot keep it', (tester) async {
+      final api = FakeLibraryApi()..queueFailWith = const ApiException(ApiErrorKind.server, 'The server had a problem (HTTP 500).');
+      final c = await pumpApp(tester, api: api);
+      await c.read(playbackProvider.notifier).playAlbum(fakeAlbums[1]);
+      await advance(tester, const Duration(seconds: 4));
+      final status = c.read(queueSyncStatusProvider);
+      expect(status.home, QueueHome.thisPc);
+      expect(status.reason, contains('HTTP 500'));
       await c.read(playbackProvider.notifier).toggle();
       await disposeApp(tester);
     });

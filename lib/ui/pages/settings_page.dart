@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers/refresh_library.dart';
+import '../../app/providers/queue_sync_status.dart';
 import '../../app/providers/settings_providers.dart';
 import '../../app/theme/motion.dart';
 import '../widgets/effects/letter_reveal.dart';
@@ -70,6 +71,7 @@ class SettingsPage extends ConsumerWidget {
                     value: ref.watch(syncPositionProvider),
                     onChanged: ref.read(syncPositionProvider.notifier).set,
                   ),
+                  const _QueueStatusLine(),
                   const SizedBox(height: 8),
                   _SwitchRow(
                     title: 'Look up missing lyrics online',
@@ -333,6 +335,41 @@ class _ModeChip extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Under the server-sync switch: where the queue was last saved, or why it is on
+/// this PC instead.
+class _QueueStatusLine extends ConsumerWidget {
+  const _QueueStatusLine();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(queueSyncStatusProvider);
+    final scheme = Theme.of(context).colorScheme;
+    final time = status.at == null ? '' : ' at ${TimeOfDay.fromDateTime(status.at!).format(context)}';
+    final songs = status.songs == 1 ? '1 song' : '${status.songs} songs';
+    final (icon, text) = switch (status.home) {
+      QueueHome.none => (Icons.hourglass_empty_rounded, 'Nothing saved yet this session.'),
+      QueueHome.server => (Icons.cloud_done_rounded, 'Your queue is on the server: saved$time, $songs.'),
+      QueueHome.thisPc => (
+        Icons.save_alt_rounded,
+        'Your queue is saved on this PC only${status.reason == null ? '' : ' (${status.reason})'}: saved$time, $songs.',
+      ),
+    };
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 6, 24, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+          ),
+        ],
       ),
     );
   }

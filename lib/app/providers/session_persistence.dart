@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/api/api_exception.dart';
 import '../../core/api/list_cache.dart';
 import '../../core/api/server_config.dart';
 import '../../core/models/server_play_queue.dart';
@@ -13,6 +14,7 @@ import '../../core/playback/resume.dart';
 import '../../core/playback/saved_session.dart';
 import 'list_cache_providers.dart';
 import 'playback_providers.dart';
+import 'queue_sync_status.dart';
 import 'session_providers.dart';
 import 'settings_providers.dart';
 
@@ -61,6 +63,12 @@ final sessionPersistenceProvider = Provider<void>((ref) {
   /// been tried (and read back) in this run.
   bool? serverHolds;
 
+  void report(QueueSyncStatus status) => ref.read(queueSyncStatusProvider.notifier).set(status);
+
+  String why(Object e) => e is ApiException ? e.message : 'the server could not be reached';
+
+  String? lastReason;
+
   void writeLocal() {
     final config = ref.read(sessionProvider);
     if (config == null) return;
@@ -71,6 +79,7 @@ final sessionPersistenceProvider = Provider<void>((ref) {
       unawaited(store.write(_sessionFile, const []));
       return;
     }
+    report(QueueSyncStatus(QueueHome.thisPc, at: DateTime.now(), songs: s.queue.length, reason: lastReason));
     final saved = SavedSession(
       server: serverKeyOf(config),
       tracks: s.queue,
@@ -88,7 +97,11 @@ final sessionPersistenceProvider = Provider<void>((ref) {
   /// Sends the queue and position to the server; true when the server now holds
   /// them (the first time in a run it also reads them back to be sure).
   Future<bool> pushServer() async {
-    if (ref.read(sessionProvider) == null || !ref.read(syncPositionProvider)) return false;
+    if (ref.read(sessionProvider) == null) return false;
+    if (!ref.read(syncPositionProvider)) {
+      lastReason = 'keeping your place on the server is off';
+      return false;
+    }
     final s = ref.read(playbackProvider);
     var from = 0;
     var upTo = s.queue.length;
@@ -116,9 +129,15 @@ final sessionPersistenceProvider = Provider<void>((ref) {
       } else if (s.queue.isNotEmpty) {
         serverHolds = true;
       }
-      return serverHolds ?? s.queue.isEmpty;
-    } catch (_) {
+      if (serverHolds == false) lastReason = 'the server accepted the queue but did not keep it';
+      final holds = serverHolds ?? s.queue.isEmpty;
+      if (holds && s.queue.isNotEmpty) {
+        report(QueueSyncStatus(QueueHome.server, at: DateTime.now(), songs: upTo - from));
+      }
+      return holds;
+    } catch (e) {
       serverHolds = false;
+      lastReason = why(e);
       return false;
     }
   }
@@ -169,7 +188,10 @@ final sessionPersistenceProvider = Provider<void>((ref) {
       repeat: LoopMode.values.firstWhere((m) => m.name == repeatName, orElse: () => LoopMode.off),
     );
     if (chosen == null) return;
-    if (remote != null && !remote.isEmpty) serverHolds = true;
+    if (remote != null && !remote.isEmpty) {
+      serverHolds = true;
+      report(QueueSyncStatus(QueueHome.server, at: remote.changed?.toLocal(), songs: remote.tracks.length));
+    }
     await player.restore(chosen);
   }
 
