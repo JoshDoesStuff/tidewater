@@ -230,7 +230,7 @@ heart burst, track-change choreography, `V`/`L`/`Esc`/`Space`/`N`/`P`.
 - Verify the hero flight when the mini player is at different widths / the rail is compact.
 - Idle mode edge cases with real playback: buffering, track end, pause/resume, window deactivation.
 - Keyboard focus handling: global `Space` shouldn't also activate a focused button; add visible focus styling.
-- Buffering state on the wavy progress bar (mini player, Now Playing and the idle-mode line): while the engine is
+- DONE (squiggle sweeps the bar until the track really starts; the bar no longer runs ahead of the sound). Buffering state on the wavy progress bar (mini player, Now Playing and the idle-mode line): while the engine is
   loading or stalled, an animated squiggle runs across the bar instead of a static position. Needs a `buffering`
   flag in the engine's state stream (media_kit exposes `player.stream.buffering`), shown in `PlaybackState`, with
   reduced motion falling back to a pulsing bar. Belongs here because it is part of the progress bar and idle mode

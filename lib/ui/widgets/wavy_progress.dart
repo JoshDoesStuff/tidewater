@@ -13,6 +13,12 @@ class _WavyModel {
   double amplitude = 0;
   double phase = 0;
   bool dragging = false;
+
+  /// Waiting for the track to start: the bar shows a squiggle sweeping along it.
+  bool buffering = false;
+
+  /// 0 to 1, how far the sweep has travelled.
+  double sweep = 0;
 }
 
 /// Wavy progress bar bound to playback: a sine path over the played portion,
@@ -47,6 +53,7 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
   Ticker? _ticker;
   Duration _last = Duration.zero;
   bool _playing = false;
+  bool _buffering = false;
   bool _reduced = false;
 
   // Smooth position: the engine reports about 30 times a second, which would
@@ -60,7 +67,7 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
   /// Best estimate of the playback position right now.
   Duration _estimate(Duration duration) {
     var p = _anchorPos;
-    if (_playing && !_model.dragging) p += _clock.elapsed - _anchorAt;
+    if (_playing && !_buffering && !_model.dragging) p += _clock.elapsed - _anchorAt;
     if (p < Duration.zero) return Duration.zero;
     return p > duration ? duration : p;
   }
@@ -68,13 +75,13 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
   void _onPosition() {
     final actual = _positionSource!.value;
     final now = _clock.elapsed;
-    final shown = _playing ? _anchorPos + (now - _anchorAt) : _anchorPos;
+    final shown = _playing && !_buffering ? _anchorPos + (now - _anchorAt) : _anchorPos;
     // A report that lags slightly behind what is already shown must not pull
     // the bar backwards; real seeks (large jumps) are taken as they come.
-    final lagging = _playing && actual < shown && shown - actual < const Duration(milliseconds: 300);
+    final lagging = _playing && !_buffering && actual < shown && shown - actual < const Duration(milliseconds: 300);
     _anchorPos = lagging ? shown : actual;
     _anchorAt = now;
-    if (!_playing) _frame.value++;
+    if (!_playing || _buffering) _frame.value++;
   }
 
   @override
@@ -104,7 +111,7 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
       _frame.value++;
       return;
     }
-    final needed = _playing || _model.amplitude > .02;
+    final needed = _playing || _buffering || _model.amplitude > .02;
     if (needed && _ticker == null) {
       _last = Duration.zero;
       _ticker = createTicker(_onTick)..start();
@@ -128,8 +135,9 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
     final k = 1 - math.pow(1 - .1, dt * 60).toDouble();
     _model.amplitude += (_target(source) - _model.amplitude) * k;
     if (_playing) _model.phase += 8.1 * dt;
+    if (_buffering) _model.sweep = (_model.sweep + dt / 1.15) % 1;
     _frame.value++;
-    if (!_playing && _model.amplitude < .02) {
+    if (!_playing && !_buffering && _model.amplitude < .02) {
       _model.amplitude = 0;
       _ticker?.stop();
     }
@@ -159,6 +167,18 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
     final duration = ref.watch(currentTrackProvider.select((t) => t?.duration)) ?? Duration.zero;
     final position = ref.watch(positionProvider);
     final playing = ref.watch(playbackProvider.select((s) => s.playing));
+    final buffering = ref.watch(playbackProvider.select((s) => s.buffering));
+    if (buffering != _buffering) {
+      // Hold the bar where it is while waiting, and let go when sound starts.
+      _anchorPos = _estimate(duration);
+      _anchorAt = _clock.elapsed;
+      _buffering = buffering;
+      _model.buffering = buffering;
+      _model.sweep = 0;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _sync();
+      });
+    }
     if (playing != _playing) {
       // Freeze or resume the extrapolation from exactly where the bar is.
       _anchorPos = _estimate(duration);
@@ -190,6 +210,8 @@ class _WavyScrubberState extends ConsumerState<WavyScrubber> with SingleTickerPr
               amplitude: () => _model.amplitude,
               phase: () => _model.phase,
               dragging: () => _model.dragging,
+              buffering: () => _model.buffering,
+              sweep: () => _reduced ? .5 : _model.sweep,
               wavelength: widget.wavelength,
               strokeWidth: widget.strokeWidth,
               padding: widget.padding,
@@ -233,6 +255,8 @@ class WavyPainter extends CustomPainter {
     required this.amplitude,
     required this.phase,
     required this.dragging,
+    required this.buffering,
+    required this.sweep,
     required this.wavelength,
     required this.strokeWidth,
     required this.padding,
@@ -244,6 +268,8 @@ class WavyPainter extends CustomPainter {
   final double Function() amplitude;
   final double Function() phase;
   final bool Function() dragging;
+  final bool Function() buffering;
+  final double Function() sweep;
   final double wavelength;
   final double strokeWidth;
   final double padding;
@@ -255,6 +281,10 @@ class WavyPainter extends CustomPainter {
     final x0 = padding;
     final x1 = size.width - padding;
     final cy = size.height / 2;
+    if (buffering()) {
+      _paintBuffering(canvas, x0, x1, cy, size.height);
+      return;
+    }
     final xp = x0 + (x1 - x0) * fraction();
     final amp = amplitude();
     final ph = phase();
@@ -301,6 +331,43 @@ class WavyPainter extends CustomPainter {
       );
     }
     canvas.drawCircle(Offset(x1 - 3, cy), 2, Paint()..color = played);
+  }
+
+  /// Waiting for sound: a flat track with a squiggle that sweeps along it, in
+  /// place of the played wave, so the bar never runs ahead of the audio.
+  void _paintBuffering(Canvas canvas, double x0, double x1, double cy, double height) {
+    final xp = x0 + (x1 - x0) * fraction();
+    final hw = 4.0;
+    final hh = math.min(13.0, height * .32);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTRB(xp + strokeWidth * 1.3, cy - strokeWidth / 2, x1, cy + strokeWidth / 2), Radius.circular(strokeWidth / 2)),
+      Paint()..color = track,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(xp - hw / 2, cy - hh, hw, hh * 2), Radius.circular(hw / 2)),
+      Paint()..color = played,
+    );
+    final s = sweep();
+    final span = math.max(60.0, (x1 - x0) * .38);
+    final centerX = x0 - span / 2 + (x1 - x0 + span) * s;
+    final from = math.max(xp + 8, centerX - span / 2);
+    final to = math.min(x1, centerX + span / 2);
+    if (to <= from) return;
+    final path = Path();
+    for (var x = from; x <= to; x += 1.5) {
+      final u = ((x - (centerX - span / 2)) / span).clamp(0.0, 1.0);
+      final y = cy + 4 * math.sin(math.pi * u) * math.sin(2 * math.pi * (x / wavelength - s * 3));
+      x == from ? path.moveTo(x, y) : path.lineTo(x, y);
+    }
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..color = played,
+    );
   }
 
   @override

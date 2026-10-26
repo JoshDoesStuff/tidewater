@@ -83,7 +83,7 @@ class QueueEngine implements PlaybackEngine {
       index: _queue.index,
       started: _started,
       playing: _playing,
-      buffering: _buffering,
+      buffering: _buffering || _awaitingStart,
       volume: _volume,
       shuffle: _queue.shuffled,
       repeat: _repeat,
@@ -98,6 +98,20 @@ class QueueEngine implements PlaybackEngine {
   // --- backend events ---------------------------------------------------------
 
   Timer? _stallTimer;
+
+  /// True from asking the backend to play a track until it really moves, so the
+  /// UI can show a buffering state instead of a bar that runs ahead of the sound.
+  bool _awaitingStart = false;
+  bool _loadingBackend = false;
+  Duration _openStart = Duration.zero;
+  Timer? _startTimer;
+
+  void _endAwaitingStart() {
+    _startTimer?.cancel();
+    if (!_awaitingStart) return;
+    _awaitingStart = false;
+    _emit();
+  }
 
   void _onBackendPlaying(bool playing) {
     if (!_opened) return;
@@ -129,7 +143,10 @@ class QueueEngine implements PlaybackEngine {
   }
 
   void _onBackendPosition(Duration p) {
-    if (_opened) _emitPosition(p);
+    // While a track is being opened the backend may still report the old one.
+    if (!_opened || _loadingBackend) return;
+    if (_awaitingStart && p >= _openStart + const Duration(milliseconds: 80)) _endAwaitingStart();
+    _emitPosition(p);
   }
 
   void _onBuffering(bool value) {
@@ -206,13 +223,23 @@ class QueueEngine implements PlaybackEngine {
     _playing = play;
     _intent = play;
     if (play) _started = true;
+    _awaitingStart = play;
+    _openStart = start;
+    _startTimer?.cancel();
+    // Never stay "buffering" for good if the backend never reports progress.
+    if (play) _startTimer = Timer(const Duration(seconds: 10), _endAwaitingStart);
     _emit();
     _emitPosition(start);
     if (!_volumeSent) {
       _volumeSent = true;
       await _backend.setVolume(_volume);
     }
-    await _backend.open([cur, ?next], start: start, play: play);
+    _loadingBackend = true;
+    try {
+      await _backend.open([cur, ?next], start: start, play: play);
+    } finally {
+      _loadingBackend = false;
+    }
   }
 
   Future<void> _refreshNext() async {
@@ -279,6 +306,7 @@ class QueueEngine implements PlaybackEngine {
   @override
   Future<void> pause() => _run(() async {
         if (!_playing && !_intent) return;
+        _endAwaitingStart();
         _playing = false;
         _intent = false;
         _emit();
@@ -287,6 +315,8 @@ class QueueEngine implements PlaybackEngine {
 
   @override
   Future<void> stop() => _run(() async {
+        _startTimer?.cancel();
+        _awaitingStart = false;
         if (_opened) await _backend.pause();
         _queue.clear();
         _opened = false;
@@ -401,6 +431,7 @@ class QueueEngine implements PlaybackEngine {
   @override
   Future<void> dispose() async {
     _stallTimer?.cancel();
+    _startTimer?.cancel();
     for (final s in _subs) {
       await s.cancel();
     }

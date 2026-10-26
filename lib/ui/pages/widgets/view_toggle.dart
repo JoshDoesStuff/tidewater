@@ -44,7 +44,6 @@ class ViewToggle extends StatelessWidget {
             child: AnimatedGlyph(
               kind: kind,
               color: selected ? scheme.onSecondaryContainer : scheme.onSurface,
-              hovered: s.hovered,
               active: selected,
             ),
           ),
