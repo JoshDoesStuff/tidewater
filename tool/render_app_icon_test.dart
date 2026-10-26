@@ -20,6 +20,11 @@ const windowsDesign = IconDesign.record;
 /// title bar use 16 to 48 px) go without, where it only reads as a smudge.
 const boatFromSize = 64;
 
+/// Every size Windows asks for at the usual display scales (the taskbar uses 24, 30,
+/// 36, 48 and 60 px at 100, 125, 150, 200 and 250 %; a missing size is scaled from a
+/// neighbor, which is what makes an icon look soft or crunchy).
+const iconSizes = [16, 20, 24, 30, 32, 36, 40, 48, 60, 64, 72, 80, 96, 128, 256];
+
 Future<Uint8List> _png(int size, IconDesign design) async {
   final recorder = ui.PictureRecorder();
   paintIcon(ui.Canvas(recorder), size.toDouble(), design, boat: size >= boatFromSize, simple: size < boatFromSize);
@@ -66,7 +71,7 @@ void main() {
         File('assets/branding/tidewater_${design.name}.png').writeAsBytesSync(await _png(1024, design));
       }
       final frames = <int, Uint8List>{
-        for (final s in [16, 24, 32, 48, 64, 128, 256]) s: await _png(s, windowsDesign),
+        for (final s in iconSizes) s: await _png(s, windowsDesign),
       };
       File('windows/runner/resources/app_icon.ico').writeAsBytesSync(_ico(frames));
     });
