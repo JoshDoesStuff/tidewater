@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/library_api.dart';
 import '../../core/models/album.dart';
 import '../../core/models/artist.dart';
+import '../../core/models/genre.dart';
 import '../../core/models/playlist.dart';
 import '../../core/models/track.dart';
 import 'playback_providers.dart';
@@ -148,6 +149,7 @@ class SavedPickNotifier<T extends Enum> extends PickNotifier<T> {
 enum LibraryTab {
   albums('Albums'),
   songs('Songs'),
+  genres('Genres'),
   playlists('Playlists');
 
   const LibraryTab(this.label);
@@ -173,6 +175,17 @@ final albumDetailProvider = FutureProvider.family<AlbumDetail, String>((ref, id)
 
 /// One artist with their albums (the artist page).
 final artistDetailProvider = FutureProvider.family<ArtistDetail, String>((ref, id) => ref.watch(apiProvider).getArtist(id));
+
+/// Every genre with its counts, biggest first (the Library's Genres tab).
+final genresProvider = FutureProvider<List<Genre>>((ref) async {
+  final list = await ref.watch(apiProvider).getGenres();
+  return [for (final g in list) if (g.name.isNotEmpty) g]..sort((a, b) => b.songCount.compareTo(a.songCount));
+});
+
+/// The albums in one genre (the genre page).
+final genreAlbumsProvider = FutureProvider.family<List<Album>, String>(
+  (ref, genre) => ref.watch(apiProvider).getAlbumList(AlbumListType.byGenre, genre: genre, size: 500),
+);
 
 /// How the Songs tab is ordered (client-side: the server has no sorted
 /// "all songs" call).

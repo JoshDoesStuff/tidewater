@@ -23,11 +23,17 @@ class _LinkTextState extends State<LinkText> {
     final style = widget.style?.copyWith(decoration: _hovered && widget.onTap != null ? TextDecoration.underline : null);
     final label = Text(widget.text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTheme.script(widget.text, style));
     if (widget.onTap == null) return label;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: widget.onTap, child: label),
+    // Only the words themselves are the link, not the empty space after them in a wide cell.
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      widthFactor: 1,
+      heightFactor: 1,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: widget.onTap, child: label),
+      ),
     );
   }
 }

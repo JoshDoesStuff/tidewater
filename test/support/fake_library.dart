@@ -6,6 +6,7 @@ import 'package:tidewater/core/api/library_api.dart';
 import 'package:tidewater/core/lyrics/lyrics.dart';
 import 'package:tidewater/core/models/album.dart';
 import 'package:tidewater/core/models/artist.dart';
+import 'package:tidewater/core/models/genre.dart';
 import 'package:tidewater/core/models/playlist.dart';
 import 'package:tidewater/core/models/search_results.dart';
 import 'package:tidewater/core/models/server_play_queue.dart';
@@ -126,7 +127,36 @@ class FakeLibraryApi implements LibraryApi {
       );
 
   @override
-  Future<List<Album>> getAlbumList(AlbumListType type, {int size = 20, int offset = 0, int? fromYear, int? toYear}) async {
+  Future<List<Genre>> getGenres() async => _ok('getGenres', () {
+        final names = {for (final a in _albums) if (a.genre != null) a.genre!}.toList()..sort();
+        return [
+          for (final n in names)
+            Genre(
+              name: n,
+              albumCount: _albums.where((a) => a.genre == n).length,
+              songCount: [for (final a in _albums) if (a.genre == n) a.songCount].fold(0, (x, y) => x + y),
+            ),
+        ];
+      });
+
+  @override
+  Future<List<Track>> getSongsByGenre(String genre, {int size = 500, int offset = 0}) async => _ok(
+        'getSongsByGenre',
+        () => [
+          for (final t in fakeTracks)
+            if (_albums.any((a) => a.id == t.albumId && a.genre == genre)) t,
+        ].skip(offset).take(size).toList(),
+      );
+
+  @override
+  Future<List<Album>> getAlbumList(
+    AlbumListType type, {
+    int size = 20,
+    int offset = 0,
+    int? fromYear,
+    int? toYear,
+    String? genre,
+  }) async {
     await listGate[type]?.future;
     return _ok('getAlbumList:${type.wire}:$offset', () {
       final list = switch (type) {
@@ -136,6 +166,7 @@ class FakeLibraryApi implements LibraryApi {
         AlbumListType.frequent => [for (final i in [6, 8, 10]) if (i < _albums.length) _albums[i]],
         AlbumListType.alphabeticalByName => [..._albums]..sort((a, b) => a.title.compareTo(b.title)),
         AlbumListType.alphabeticalByArtist => [..._albums]..sort((a, b) => a.artist.compareTo(b.artist)),
+        AlbumListType.byGenre => [for (final a in _albums) if (a.genre == genre) a],
         AlbumListType.byYear => [..._albums]..sort((a, b) => (b.year ?? 0).compareTo(a.year ?? 0)),
         _ => [..._albums],
       };

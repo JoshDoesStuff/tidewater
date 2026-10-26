@@ -9,7 +9,12 @@ import '../../app/theme/motion.dart';
 /// Short messages (a play request that failed, the server going away) in a
 /// pill above the mini player. Each message stays for 4 s.
 class ToastLayer extends ConsumerStatefulWidget {
-  const ToastLayer({super.key});
+  const ToastLayer({super.key, this.aboveNowPlaying = false});
+
+  /// There are two layers, one under Now Playing and one over it. A message goes on
+  /// whichever matches where you were when it came, so one shown on a page slides
+  /// behind Now Playing when that opens instead of fading over it.
+  final bool aboveNowPlaying;
 
   @override
   ConsumerState<ToastLayer> createState() => _ToastLayerState();
@@ -28,6 +33,7 @@ class _ToastLayerState extends ConsumerState<ToastLayer> {
 
   void _onToast(Toast? toast) {
     if (toast == null) return;
+    if (ref.read(nowPlayingOpenProvider) != widget.aboveNowPlaying) return;
     _hide?.cancel();
     final wasShowing = _visible;
     setState(() {

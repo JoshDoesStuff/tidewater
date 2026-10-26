@@ -19,6 +19,8 @@ import '../widgets/pressable.dart';
 import 'page_frame.dart';
 import 'widgets/album_card.dart';
 import 'widgets/genre_picker.dart';
+import 'widgets/genre_card.dart';
+import '../../core/models/genre.dart';
 import 'widgets/song_row.dart';
 import 'widgets/view_toggle.dart';
 import '../../app/providers/settings_providers.dart';
@@ -102,6 +104,8 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     final genre = ref.watch(libraryGenreProvider);
     final albums = ref.watch(libraryAlbumsProvider(sort));
     final playlists = ref.watch(playlistsProvider);
+    // The genre list is only fetched once its tab is opened.
+    final genreList = (tab == LibraryTab.genres) ? ref.watch(genresProvider) : null;
     // Only the Songs tab pulls in every song (thousands of rows of metadata).
     final songSort = ref.watch(librarySongSortProvider);
     final songs = (tab == LibraryTab.songs || _shown == LibraryTab.songs)
@@ -139,6 +143,11 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
           final label = '$n song${n == 1 ? '' : 's'}';
           subtitle = loaded.complete ? label : '$label so far…';
         }
+      case LibraryTab.genres:
+        final n = genreList!.value?.length;
+        subtitle = n == null
+            ? (genreList.hasError ? 'Couldn\x27t load genres' : 'Loading…')
+            : '$n genre${n == 1 ? '' : 's'}';
       case LibraryTab.playlists:
         final n = playlists.value?.length;
         subtitle = n == null
@@ -169,6 +178,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
             SongSort.album => t.albumTitle,
           },
       ],
+      LibraryTab.genres => const [],
       LibraryTab.playlists => const [],
     };
 
@@ -445,6 +455,8 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
               bottom: true,
             ),
         ];
+      case LibraryTab.genres:
+        return _genreSlivers(ref.watch(genresProvider));
       case LibraryTab.playlists:
         if (playlists.hasError && !playlists.hasValue) {
           return [
@@ -476,6 +488,43 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
           ),
         ];
     }
+  }
+
+  List<Widget> _genreSlivers(AsyncValue<List<Genre>> genres) {
+    if (genres.hasError && !genres.hasValue) {
+      return [_message(ErrorPanel(error: genres.error!, onRetry: () => ref.invalidate(genresProvider)))];
+    }
+    if (!genres.hasValue) return [_skeletonGrid()];
+    final list = genres.requireValue;
+    if (list.isEmpty) {
+      return [
+        _message(
+          const EmptyPanel(
+            icon: Icons.category_rounded,
+            title: 'No genres yet',
+            message: 'Genres come from the tags on your music.',
+          ),
+        ),
+      ];
+    }
+    _columns = 1;
+    _rowExtent = 0;
+    _rowGap = 0;
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 40, PageFrame.bottomClearance),
+        sliver: SliverGrid.builder(
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 280,
+            mainAxisExtent: 88,
+            mainAxisSpacing: 14,
+            crossAxisSpacing: 14,
+          ),
+          itemCount: list.length,
+          itemBuilder: (context, i) => StaggerIn(index: i < 24 ? i : 0, child: GenreCard(genre: list[i], index: i)),
+        ),
+      ),
+    ];
   }
 
   Widget _message(Widget child, {bool bottom = false}) => SliverPadding(

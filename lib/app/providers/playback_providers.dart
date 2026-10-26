@@ -76,6 +76,10 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// All of an artist's albums, in the server's order.
   Future<void> playArtist(Artist artist, {bool shuffle = false}) => _load(() => artistTracks(artist), shuffle: shuffle);
 
+  /// Songs of one genre (the first 500 the server gives).
+  Future<void> playGenre(String genre, {bool shuffle = false}) =>
+      _load(() => ref.read(apiProvider).getSongsByGenre(genre), shuffle: shuffle);
+
   /// The songs of an album, a playlist or an artist (for menus and drags).
   Future<List<Track>> albumTracks(Album album) async => (await ref.read(apiProvider).getAlbum(album.id)).tracks;
 

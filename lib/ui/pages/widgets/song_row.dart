@@ -91,6 +91,19 @@ class SongRow extends ConsumerWidget {
       }
     }
 
+    // While picking songs, a click on an artist or album name picks the song like any other click.
+    VoidCallback? link(VoidCallback? go) {
+      if (go == null) return null;
+      return () {
+        final k = HardwareKeyboard.instance;
+        if (k.isControlPressed || k.isMetaPressed || k.isShiftPressed || ref.read(selectionProvider).isNotEmpty) {
+          tapped();
+        } else {
+          go();
+        }
+      };
+    }
+
     return TrackDragSource(
       enabled: draggable,
       drag: TrackDrag.tracks(group()),
@@ -175,9 +188,7 @@ class SongRow extends ConsumerWidget {
                       ),
                       LinkText(
                         text: track.artist,
-                        onTap: track.artistId == null
-                            ? null
-                            : () => context.push('/artist/${track.artistId}'),
+                        onTap: link(track.artistId == null ? null : () => context.push('/artist/${track.artistId}')),
                         style: text.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
                         ),
@@ -190,9 +201,7 @@ class SongRow extends ConsumerWidget {
                   flex: 4,
                   child: LinkText(
                     text: track.albumTitle,
-                    onTap: track.albumId.isEmpty
-                        ? null
-                        : () => context.push('/album/${track.albumId}'),
+                    onTap: link(track.albumId.isEmpty ? null : () => context.push('/album/${track.albumId}')),
                     style: text.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),

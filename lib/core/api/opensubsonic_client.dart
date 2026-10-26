@@ -11,6 +11,7 @@ import '../lyrics/lyrics.dart';
 import '../lyrics/structured_lyrics.dart';
 import '../models/album.dart';
 import '../models/artist.dart';
+import '../models/genre.dart';
 import '../models/json_util.dart';
 import '../models/playlist.dart';
 import '../models/search_results.dart';
@@ -246,15 +247,31 @@ class OpenSubsonicClient implements LibraryApi {
     int offset = 0,
     int? fromYear,
     int? toYear,
+    String? genre,
   }) async {
     final body = await _call('getAlbumList2', {
       'type': type.wire,
       'size': size,
       'offset': offset,
       if (type == AlbumListType.byYear) ...{'fromYear': fromYear ?? 0, 'toYear': toYear ?? 9999},
+      if (type == AlbumListType.byGenre) 'genre': genre ?? '',
     });
     final list = body['albumList2'];
     return [for (final a in asObjects(list is Map ? list['album'] : null)) Album.fromJson(a)];
+  }
+
+  @override
+  Future<List<Genre>> getGenres() async {
+    final body = await _call('getGenres');
+    final list = body['genres'];
+    return [for (final g in asObjects(list is Map ? list['genre'] : null)) Genre.fromJson(g)];
+  }
+
+  @override
+  Future<List<Track>> getSongsByGenre(String genre, {int size = 500, int offset = 0}) async {
+    final body = await _call('getSongsByGenre', {'genre': genre, 'count': size, 'offset': offset});
+    final list = body['songsByGenre'];
+    return [for (final s in asObjects(list is Map ? list['song'] : null)) Track.fromJson(s)];
   }
 
   @override

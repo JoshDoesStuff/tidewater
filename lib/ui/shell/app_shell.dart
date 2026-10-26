@@ -47,6 +47,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       location.startsWith('/album/') ||
       location.startsWith('/artist/') ||
       location.startsWith('/playlist/') ||
+      location.startsWith('/genre/') ||
       location == '/search';
 
   final _pointer = ValueNotifier<Offset>(Offset.zero);
@@ -274,8 +275,9 @@ class _AppShellState extends ConsumerState<AppShell> {
                   ),
                 ),
                 const Positioned.fill(child: WashLayer()),
-                const Positioned.fill(child: NowPlayingOverlay()),
                 const Positioned.fill(child: ToastLayer()),
+                const Positioned.fill(child: NowPlayingOverlay()),
+                const Positioned.fill(child: ToastLayer(aboveNowPlaying: true)),
                 const Positioned(left: 0, right: 0, top: 0, child: TitleBar()),
               ],
             ),

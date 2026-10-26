@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import '../lyrics/lyrics.dart';
 import '../models/album.dart';
 import '../models/artist.dart';
+import '../models/genre.dart';
 import '../models/playlist.dart';
 import '../models/search_results.dart';
 import '../models/server_play_queue.dart';
@@ -44,7 +45,8 @@ enum AlbumListType {
   alphabeticalByName('alphabeticalByName'),
   alphabeticalByArtist('alphabeticalByArtist'),
   starred('starred'),
-  byYear('byYear');
+  byYear('byYear'),
+  byGenre('byGenre');
 
   const AlbumListType(this.wire);
   final String wire;
@@ -69,7 +71,14 @@ abstract class LibraryApi {
     int offset = 0,
     int? fromYear,
     int? toYear,
+    String? genre,
   });
+
+  /// Every genre, with its album and song counts.
+  Future<List<Genre>> getGenres();
+
+  /// Songs in [genre] (OpenSubsonic `getSongsByGenre`).
+  Future<List<Track>> getSongsByGenre(String genre, {int size = 500, int offset = 0});
 
   Future<AlbumDetail> getAlbum(String id);
 
