@@ -2,8 +2,9 @@
 //
 //   flutter test tool/render_app_icon_test.dart
 //
-// assets/branding/tidewater.svg and tidewater_1024.png, and the Windows icon
-// (windows/runner/resources/app_icon.ico, PNG frames from 16 to 256 px).
+// assets/branding/tidewater_<design>.svg and .png (1024 px) for each design, and
+// the Windows icon (windows/runner/resources/app_icon.ico, PNG frames from 16 to
+// 256 px) from [windowsDesign].
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -12,9 +13,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'app_icon.dart';
 
-Future<Uint8List> _png(int size) async {
+/// The design the Windows build uses.
+const windowsDesign = IconDesign.cookie;
+
+Future<Uint8List> _png(int size, IconDesign design) async {
   final recorder = ui.PictureRecorder();
-  paintIcon(ui.Canvas(recorder), size.toDouble());
+  paintIcon(ui.Canvas(recorder), size.toDouble(), design);
   final image = await recorder.endRecording().toImage(size, size);
   final data = await image.toByteData(format: ui.ImageByteFormat.png);
   image.dispose();
@@ -50,9 +54,16 @@ void main() {
   testWidgets('render the app icon files', (tester) async {
     await tester.runAsync(() async {
       Directory('assets/branding').createSync(recursive: true);
-      File('assets/branding/tidewater.svg').writeAsStringSync(iconSvg());
-      File('assets/branding/tidewater_1024.png').writeAsBytesSync(await _png(1024));
-      final frames = <int, Uint8List>{for (final s in [16, 24, 32, 48, 64, 128, 256]) s: await _png(s)};
+      for (final f in Directory('assets/branding').listSync().whereType<File>()) {
+        f.deleteSync(); // drop files from older designs
+      }
+      for (final design in IconDesign.values) {
+        File('assets/branding/tidewater_${design.name}.svg').writeAsStringSync(iconSvg(design));
+        File('assets/branding/tidewater_${design.name}.png').writeAsBytesSync(await _png(1024, design));
+      }
+      final frames = <int, Uint8List>{
+        for (final s in [16, 24, 32, 48, 64, 128, 256]) s: await _png(s, windowsDesign),
+      };
       File('windows/runner/resources/app_icon.ico').writeAsBytesSync(_ico(frames));
     });
     expect(File('windows/runner/resources/app_icon.ico').lengthSync(), greaterThan(1000));

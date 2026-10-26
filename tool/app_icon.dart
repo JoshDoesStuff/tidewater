@@ -1,53 +1,24 @@
 // The Tidewater app icon, defined once and drawn two ways: as SVG text
-// (assets/branding/tidewater.svg) and with a Canvas (the PNGs and the Windows
-// .ico). Regenerate everything with:
+// (assets/branding/*.svg) and with a Canvas (the PNGs and the Windows .ico).
+// Regenerate everything with:
 //
 //   flutter test tool/render_app_icon_test.dart
 //
-// The picture: a scalloped "cookie" in sky blue (the album tile shape) on
-// a deep blue tile, with the wavy progress bar running through it: the squiggle played so
-// far, the pill handle, and the flat track still to come.
+// Two flat (no gradients) designs, both in blues:
+//   cookie: a scalloped sky-blue "cookie" (the album tile shape) on a blue tile,
+//           with the wavy progress bar running through it.
+//   record: a line-art vinyl record sinking into a rising tide, with the app's
+//           coral cookie as its label.
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 const iconSize = 1024.0;
 
-// Colors.
-const bgTop = 0xFF2A6BCF;
-const bgBottom = 0xFF0A2447;
-const cookieStart = 0xFFA6E3FF;
-const cookieEnd = 0xFF4C9DFF;
-const ink = 0xFF0B2A57;
+enum IconDesign { cookie, record }
 
-// Geometry (in the 1024 box).
-const _center = 512.0;
-const _cookieRadius = 372.0;
-const _lobes = 9;
-const _lobeDepth = .055;
-const _waveFrom = 228.0;
-const _waveTo = 572.0;
-const _waveAmp = 52.0;
-const _waveLength = 150.0;
-const _stroke = 44.0;
-const _handleX = 640.0;
-const _handleW = 34.0;
-const _handleH = 168.0;
-const _trackFrom = 692.0;
-const _trackTo = 800.0;
+// --- shared helpers ----------------------------------------------------------
 
-List<(double, double)> cookiePoints() => [
-      for (var i = 0; i < 240; i++)
-        () {
-          final a = 2 * math.pi * i / 240 - math.pi / 2;
-          final r = _cookieRadius * (1 + _lobeDepth * math.cos(_lobes * a));
-          return (_center + r * math.cos(a), _center + r * math.sin(a));
-        }(),
-    ];
-
-List<(double, double)> wavePoints() => [
-      for (var x = _waveFrom; x <= _waveTo + .001; x += 4)
-        (x, _center + _waveAmp * math.sin(2 * math.pi * (x - _waveFrom) / _waveLength)),
-    ];
+String _hex(int argb) => '#${(argb & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
 
 String _poly(List<(double, double)> pts, {bool close = false}) {
   final b = StringBuffer();
@@ -58,78 +29,195 @@ String _poly(List<(double, double)> pts, {bool close = false}) {
   return b.toString();
 }
 
-String _hex(int argb) => '#${(argb & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
+ui.Path _path(List<(double, double)> pts, {bool close = false}) {
+  final p = ui.Path()..moveTo(pts.first.$1, pts.first.$2);
+  for (final pt in pts.skip(1)) {
+    p.lineTo(pt.$1, pt.$2);
+  }
+  if (close) p.close();
+  return p;
+}
 
-String iconSvg() => '''<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="${_hex(bgTop)}"/>
-      <stop offset="1" stop-color="${_hex(bgBottom)}"/>
-    </linearGradient>
-    <linearGradient id="cookie" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="${_hex(cookieStart)}"/>
-      <stop offset="1" stop-color="${_hex(cookieEnd)}"/>
-    </linearGradient>
-  </defs>
-  <rect width="1024" height="1024" rx="232" fill="url(#bg)"/>
-  <path d="${_poly(cookiePoints(), close: true)}" fill="url(#cookie)"/>
-  <path d="${_poly(wavePoints())}" fill="none" stroke="${_hex(ink)}" stroke-width="$_stroke" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="${_handleX - _handleW / 2}" y="${_center - _handleH / 2}" width="$_handleW" height="$_handleH" rx="${_handleW / 2}" fill="${_hex(ink)}"/>
-  <line x1="$_trackFrom" y1="$_center" x2="$_trackTo" y2="$_center" stroke="${_hex(ink)}" stroke-opacity=".32" stroke-width="$_stroke" stroke-linecap="round"/>
+List<(double, double)> _scallop(double cx, double cy, double radius, int lobes, double depth) => [
+      for (var i = 0; i < 240; i++)
+        () {
+          final a = 2 * math.pi * i / 240 - math.pi / 2;
+          final r = radius * (1 + depth * math.cos(lobes * a));
+          return (cx + r * math.cos(a), cy + r * math.sin(a));
+        }(),
+    ];
+
+ui.Paint _stroke(int color, double width) => ui.Paint()
+  ..style = ui.PaintingStyle.stroke
+  ..strokeWidth = width
+  ..strokeCap = ui.StrokeCap.round
+  ..strokeJoin = ui.StrokeJoin.round
+  ..color = ui.Color(color);
+
+ui.Paint _fill(int color) => ui.Paint()..color = ui.Color(color);
+
+// --- cookie design -----------------------------------------------------------
+
+const _cookieBg = 0xFF1F5FC4;
+const _cookieFill = 0xFF8FCFFF;
+const _cookieInk = 0xFF0B2A57;
+const _cookieTrack = 0xFF5C9BE0; // the ink at about a third, mixed into the cookie
+
+const _cc = 512.0;
+const _cookieRadius = 372.0;
+const _waveFrom = 228.0;
+const _waveTo = 572.0;
+const _waveAmp = 52.0;
+const _waveLength = 150.0;
+const _lineW = 44.0;
+const _handleX = 640.0;
+const _handleW = 34.0;
+const _handleH = 168.0;
+const _trackFrom = 692.0;
+const _trackTo = 800.0;
+
+List<(double, double)> _cookieWave() => [
+      for (var x = _waveFrom; x <= _waveTo + .001; x += 4)
+        (x, _cc + _waveAmp * math.sin(2 * math.pi * (x - _waveFrom) / _waveLength)),
+    ];
+
+String _cookieSvg() => '''<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="232" fill="${_hex(_cookieBg)}"/>
+  <path d="${_poly(_scallop(_cc, _cc, _cookieRadius, 9, .055), close: true)}" fill="${_hex(_cookieFill)}"/>
+  <path d="${_poly(_cookieWave())}" fill="none" stroke="${_hex(_cookieInk)}" stroke-width="$_lineW" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="${_handleX - _handleW / 2}" y="${_cc - _handleH / 2}" width="$_handleW" height="$_handleH" rx="${_handleW / 2}" fill="${_hex(_cookieInk)}"/>
+  <line x1="$_trackFrom" y1="$_cc" x2="$_trackTo" y2="$_cc" stroke="${_hex(_cookieTrack)}" stroke-width="$_lineW" stroke-linecap="round"/>
 </svg>
 ''';
 
-/// Draws the icon scaled to [size] pixels square.
-void paintIcon(ui.Canvas canvas, double size) {
-  final k = size / iconSize;
-  canvas.save();
-  canvas.scale(k);
-  ui.Path poly(List<(double, double)> pts, {bool close = false}) {
-    final p = ui.Path()..moveTo(pts.first.$1, pts.first.$2);
-    for (final pt in pts.skip(1)) {
-      p.lineTo(pt.$1, pt.$2);
-    }
-    if (close) p.close();
-    return p;
-  }
-
-  final full = const ui.Rect.fromLTWH(0, 0, iconSize, iconSize);
-  canvas.drawRRect(
-    ui.RRect.fromRectAndRadius(full, const ui.Radius.circular(232)),
-    ui.Paint()
-      ..shader = ui.Gradient.linear(
-        const ui.Offset(0, 0),
-        const ui.Offset(0, iconSize),
-        [const ui.Color(bgTop), const ui.Color(bgBottom)],
-      ),
-  );
-  canvas.drawPath(
-    poly(cookiePoints(), close: true),
-    ui.Paint()
-      ..shader = ui.Gradient.linear(
-        const ui.Offset(_center - _cookieRadius, _center - _cookieRadius),
-        const ui.Offset(_center + _cookieRadius, _center + _cookieRadius),
-        [const ui.Color(cookieStart), const ui.Color(cookieEnd)],
-      ),
-  );
-  final inkPaint = ui.Paint()
-    ..color = const ui.Color(ink)
-    ..style = ui.PaintingStyle.stroke
-    ..strokeWidth = _stroke
-    ..strokeCap = ui.StrokeCap.round
-    ..strokeJoin = ui.StrokeJoin.round;
-  canvas.drawPath(poly(wavePoints()), inkPaint);
+void _paintCookie(ui.Canvas canvas) {
+  canvas.drawRect(const ui.Rect.fromLTWH(0, 0, iconSize, iconSize), _fill(_cookieBg));
+  canvas.drawPath(_path(_scallop(_cc, _cc, _cookieRadius, 9, .055), close: true), _fill(_cookieFill));
+  canvas.drawPath(_path(_cookieWave()), _stroke(_cookieInk, _lineW));
   canvas.drawRRect(
     ui.RRect.fromRectAndRadius(
-      const ui.Rect.fromLTWH(_handleX - _handleW / 2, _center - _handleH / 2, _handleW, _handleH),
+      const ui.Rect.fromLTWH(_handleX - _handleW / 2, _cc - _handleH / 2, _handleW, _handleH),
       const ui.Radius.circular(_handleW / 2),
     ),
-    ui.Paint()..color = const ui.Color(ink),
+    _fill(_cookieInk),
   );
-  canvas.drawLine(
-    const ui.Offset(_trackFrom, _center),
-    const ui.Offset(_trackTo, _center),
-    inkPaint..color = const ui.Color(ink).withValues(alpha: .32),
+  canvas.drawLine(const ui.Offset(_trackFrom, _cc), const ui.Offset(_trackTo, _cc), _stroke(_cookieTrack, _lineW));
+}
+
+// --- record design -----------------------------------------------------------
+
+const _recBg = 0xFF1B57B8;
+const _recLine = 0xFFD7F2FF;
+const _recGroove1 = 0xFF86ADE6;
+const _recGroove2 = 0xFF5F8DD6;
+const _recShine = 0xFFB5CFF3;
+const _recWater = 0xFF3F9BEE;
+const _recWaterUnder = 0xFF8FCBFF; // the record seen through the water
+const _recWaterLine = 0xFF7CC4FF;
+const _recSurface = 0xFFE4F7FF;
+const _recLabel = 0xFFFF7E5F;
+const _recHole = 0xFF123A72;
+
+const _rx = 512.0;
+const _ry = 452.0;
+const _outer = 296.0;
+const _grooves = [(214.0, 16.0), (156.0, 12.0)];
+const _labelR = 104.0;
+const _waterLevel = 640.0;
+const _tideAmp = 30.0;
+const _tideLength = 300.0;
+const _shineR = 258.0;
+const _shineFrom = 3.55;
+const _shineTo = 4.15;
+
+List<(double, double)> _tide({double drop = 0, double amp = _tideAmp, double phase = 0}) => [
+      for (var x = -8.0; x <= iconSize + 8; x += 8)
+        (x, _waterLevel + drop + amp * math.sin(2 * math.pi * x / _tideLength + phase)),
+    ];
+
+List<(double, double)> _waterShape() => [..._tide(), (iconSize + 8, iconSize + 8), (-8.0, iconSize + 8)];
+
+String _recordSvg() {
+  String arcPoint(double a) =>
+      '${(_rx + _shineR * math.cos(a)).toStringAsFixed(1)} ${(_ry + _shineR * math.sin(a)).toStringAsFixed(1)}';
+  String rings(int outer, List<int> grooves) {
+    final b = StringBuffer('<circle cx="$_rx" cy="$_ry" r="$_outer" fill="none" stroke="${_hex(outer)}" stroke-width="34"/>');
+    for (final (i, g) in _grooves.indexed) {
+      b.write('\n    <circle cx="$_rx" cy="$_ry" r="${g.$1}" fill="none" stroke="${_hex(grooves[i])}" stroke-width="${g.$2}"/>');
+    }
+    return b.toString();
+  }
+
+  return '''<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <clipPath id="tile"><rect width="1024" height="1024" rx="232"/></clipPath>
+    <clipPath id="water"><path d="${_poly(_waterShape(), close: true)}"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="1024" height="1024" fill="${_hex(_recBg)}"/>
+    ${rings(_recLine, [_recGroove1, _recGroove2])}
+    <path d="M${arcPoint(_shineFrom)} A$_shineR $_shineR 0 0 1 ${arcPoint(_shineTo)}" fill="none" stroke="${_hex(_recShine)}" stroke-width="16" stroke-linecap="round"/>
+    <path d="${_poly(_scallop(_rx, _ry, _labelR, 6, .085), close: true)}" fill="${_hex(_recLabel)}"/>
+    <circle cx="$_rx" cy="$_ry" r="22" fill="${_hex(_recHole)}"/>
+    <path d="${_poly(_waterShape(), close: true)}" fill="${_hex(_recWater)}"/>
+    <g clip-path="url(#water)">
+    ${rings(_recWaterUnder, [_recWaterUnder, _recWaterUnder])}
+    </g>
+    <path d="${_poly(_tide(drop: 96, amp: 22, phase: 1.6))}" fill="none" stroke="${_hex(_recWaterLine)}" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${_poly(_tide())}" fill="none" stroke="${_hex(_recSurface)}" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
+''';
+}
+
+void _paintRecord(ui.Canvas canvas) {
+  const center = ui.Offset(_rx, _ry);
+  void rings(int outer, List<int> grooves) {
+    canvas.drawCircle(center, _outer, _stroke(outer, 34));
+    for (final (i, g) in _grooves.indexed) {
+      canvas.drawCircle(center, g.$1, _stroke(grooves[i], g.$2));
+    }
+  }
+
+  canvas.drawRect(const ui.Rect.fromLTWH(0, 0, iconSize, iconSize), _fill(_recBg));
+  rings(_recLine, [_recGroove1, _recGroove2]);
+  canvas.drawArc(
+    ui.Rect.fromCircle(center: center, radius: _shineR),
+    _shineFrom,
+    _shineTo - _shineFrom,
+    false,
+    _stroke(_recShine, 16),
   );
+  canvas.drawPath(_path(_scallop(_rx, _ry, _labelR, 6, .085), close: true), _fill(_recLabel));
+  canvas.drawCircle(center, 22, _fill(_recHole));
+  canvas.drawPath(_path(_waterShape(), close: true), _fill(_recWater));
+  canvas.save();
+  canvas.clipPath(_path(_waterShape(), close: true));
+  rings(_recWaterUnder, [_recWaterUnder, _recWaterUnder]);
+  canvas.restore();
+  canvas.drawPath(_path(_tide(drop: 96, amp: 22, phase: 1.6)), _stroke(_recWaterLine, 12));
+  canvas.drawPath(_path(_tide()), _stroke(_recSurface, 20));
+}
+
+// --- public ------------------------------------------------------------------
+
+String iconSvg(IconDesign design) => switch (design) {
+      IconDesign.cookie => _cookieSvg(),
+      IconDesign.record => _recordSvg(),
+    };
+
+/// Draws [design] scaled to [size] pixels square, clipped to the rounded tile.
+void paintIcon(ui.Canvas canvas, double size, IconDesign design) {
+  canvas.save();
+  canvas.scale(size / iconSize);
+  canvas.clipRRect(
+    ui.RRect.fromRectAndRadius(const ui.Rect.fromLTWH(0, 0, iconSize, iconSize), const ui.Radius.circular(232)),
+  );
+  switch (design) {
+    case IconDesign.cookie:
+      _paintCookie(canvas);
+    case IconDesign.record:
+      _paintRecord(canvas);
+  }
   canvas.restore();
 }

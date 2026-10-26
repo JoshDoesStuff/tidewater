@@ -172,7 +172,8 @@ The desktop is often locked, so screen capture of the real app returns the lock 
 
 ## App icon
 
-`tool/app_icon.dart` defines the icon once (SVG text and Canvas drawing share the geometry). Regenerate
-`assets/branding/tidewater.svg`, `tidewater_1024.png` and `windows/runner/resources/app_icon.ico` with
+`tool/app_icon.dart` defines the icon designs once (SVG text and Canvas drawing share the geometry; both designs
+are flat, no gradients). Regenerate `assets/branding/tidewater_<design>.svg` / `.png` (cookie, record) and
+`windows/runner/resources/app_icon.ico` (from `windowsDesign` in the render test) with
 `flutter test tool/render_app_icon_test.dart`, then rebuild the Windows app (Windows caches icons; a new .ico may
 need the exe renamed or the icon cache cleared before the taskbar updates).
