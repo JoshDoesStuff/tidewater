@@ -21,8 +21,8 @@ The original plan was shell → server → playback → color/shapes → Now Pla
 | 4 | Dynamic color + shapes | ✅ |
 | 5 | Animated icons (sidebar, buttons, transport) | ✅ |
 | 6 | Now Playing polish | ✅ (the visualizer is still simulated until M8) |
-| 7 | Motion polish pass | 🟡 (most of the demo list is in; QA pass outstanding) |
-| 8 | Search, playlists, offline cache, settings, real visualizer | ⬜ (Settings partly ✅) |
+| 7 | Motion polish pass | ✅ |
+| 8 | Search, playlists, offline cache, settings, real visualizer | 🟡 (sidebar menu toggle done) |
 | 9 | Settings overhaul | ⬜ |
 | 10 | Casting (Chromecast, DLNA; the Windows app is feature complete after this) | ⬜ |
 | 11 | Jellyfin support (music only) | ⬜ |
@@ -37,9 +37,9 @@ The original plan was shell → server → playback → color/shapes → Now Pla
 | 15 | macOS (only once I have a Mac) | ⬜ |
 | 16 | iOS (only once I have a Mac) | ⬜ |
 
-## Next up: M7
+## Next up: M8
 
-The motion polish pass: walk the demo's behaviors list side by side and tick each off (see the M7 section).
+Search, playlists, the list cache, offline, the real visualizer and the sidebar menu toggle (the menu toggle is in).
 
 ## Stand-ins and gaps today
 
@@ -255,7 +255,7 @@ Still to do:
   on close (360 ms, symmetrical ease, the cover holds no longer), Google Sans Flex with bundled Noto Sans JP and SC and
   per-string Japanese or Chinese detection, and the new sign-in scene.
 
-## M7 — Motion polish pass
+## M7 — Motion polish pass (done)
 
 Most of the demo list is in. Remaining and review items:
 
@@ -298,6 +298,8 @@ two loops that ignored it, the visualizer and the equalizer bars; both now hold 
 - **Sidebar menu button** (the hamburger at the top of the rail, a no-op today): make it collapse and expand the rail
   by hand at any window size (icon-only vs labeled), remembered between launches; the narrow-window auto-collapse
   stays.
+  Done: the menu button collapses and expands the rail (icon-only vs labeled), remembered between launches; on album,
+  artist and playlist pages the back arrow takes its place.
 
 ## M9 — Settings overhaul
 

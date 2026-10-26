@@ -12,7 +12,14 @@ import 'rail_icon_motion.dart';
 /// pill indicator can spring between items as in the demo. [compact] drops
 /// the labels for narrow windows.
 class NavRail extends StatelessWidget {
-  const NavRail({super.key, required this.selected, required this.compact, required this.onSelected, this.onBack});
+  const NavRail({
+    super.key,
+    required this.selected,
+    required this.compact,
+    required this.onSelected,
+    this.onBack,
+    this.onMenu,
+  });
 
   static double widthFor({required bool compact}) => compact ? 72 : 96;
 
@@ -22,6 +29,9 @@ class NavRail extends StatelessWidget {
 
   /// Set on detail pages (album, artist, playlist): shows a back arrow at the top.
   final VoidCallback? onBack;
+
+  /// Collapses or expands the rail by hand (the menu button, shown when there is no back arrow).
+  final VoidCallback? onMenu;
 
   static const _main = [
     Destination.home,
@@ -39,10 +49,10 @@ class NavRail extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: 40),
-          // The menu button is hidden until it has a job; the back arrow takes its place.
+          // The menu button collapses and expands the rail; on detail pages the back arrow takes its place.
           SizedBox(
             height: 56,
-            // Pops in and out with the spring, scaling from its center.
+            // Menu and back arrow swap with a spring pop, scaling from their center.
             child: AnimatedSwitcher(
               duration: Motion.of(context, Motion.medium),
               switchInCurve: Motion.curve(context, Motion.spring),
@@ -52,7 +62,16 @@ class NavRail extends StatelessWidget {
                 child: ScaleTransition(scale: animation, child: child),
               ),
               child: onBack == null
-                  ? const SizedBox.shrink(key: ValueKey('no-back'))
+                  ? ExpressiveIconButton(
+                      key: const ValueKey('menu'),
+                      icon: Icons.menu_rounded,
+                      glyph: glyphFor(GlyphKind.menu, size: 24),
+                      size: 56,
+                      iconSize: 24,
+                      squareRadius: 16,
+                      tooltip: compact ? 'Expand menu' : 'Collapse menu',
+                      onPressed: onMenu,
+                    )
                   : ExpressiveIconButton(
                       key: const ValueKey('back'),
                       icon: Icons.arrow_back_rounded,

@@ -130,7 +130,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     return LayoutBuilder(
       builder: (context, box) {
         final width = box.maxWidth;
-        final compact = width < 900;
+        final compact = width < 900 || ref.watch(railCollapsedProvider);
         final fabExtended = width >= 1000;
         final railWidth = NavRail.widthFor(compact: compact);
         final fabWidth = fabExtended ? 192.0 : 72.0;
@@ -143,8 +143,19 @@ class _AppShellState extends ConsumerState<AppShell> {
             child: Stack(
               children: [
                 Positioned.fill(child: AmbientLayer(pointer: _pointer)),
-                Positioned.fill(left: railWidth, child: widget.child),
-                Positioned(
+                // The rail glides between its wide and icon-only widths.
+                AnimatedPositioned(
+                  duration: Motion.of(context, Motion.medium),
+                  curve: Motion.curve(context, Motion.emphasized),
+                  left: railWidth,
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: widget.child,
+                ),
+                AnimatedPositioned(
+                  duration: Motion.of(context, Motion.medium),
+                  curve: Motion.curve(context, Motion.emphasized),
                   left: 0,
                   top: 0,
                   bottom: 0,
@@ -156,6 +167,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                         : (Destination.fromLocation(widget.location) ?? Destination.library),
                     compact: compact,
                     onSelected: (d) => context.go(d.path),
+                    onMenu: ref.read(railCollapsedProvider.notifier).toggle,
                     onBack: _isDetail(widget.location) ? () => goBack(context) : null,
                   ),
                 ),

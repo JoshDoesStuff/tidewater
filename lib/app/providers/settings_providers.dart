@@ -215,3 +215,21 @@ class LiveScrubNotifier extends Notifier<bool> {
 }
 
 final liveScrubProvider = NotifierProvider<LiveScrubNotifier, bool>(LiveScrubNotifier.new);
+
+/// The sidebar collapsed to icons by hand (the menu button). Windows narrower
+/// than 900 px collapse it on their own whatever this says. Persisted.
+class RailCollapsedNotifier extends Notifier<bool> {
+  static const _key = 'rail_collapsed';
+
+  @override
+  bool build() => ref.watch(sharedPreferencesProvider).getBool(_key) ?? false;
+
+  void toggle() => set(!state);
+
+  void set(bool value) {
+    state = value;
+    ref.read(sharedPreferencesProvider).setBool(_key, value);
+  }
+}
+
+final railCollapsedProvider = NotifierProvider<RailCollapsedNotifier, bool>(RailCollapsedNotifier.new);
