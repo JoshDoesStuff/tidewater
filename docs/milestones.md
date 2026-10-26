@@ -32,8 +32,8 @@ The original plan was shell → server → playback → color/shapes → Now Pla
 | 10 | Website (after all the Windows builds are ready) | ⬜ |
 | 11 | Linux | ⬜ |
 | 12 | Android | ⬜ |
-| 13 | macOS | ⬜ |
-| 14 | iOS | ⬜ |
+| 13 | macOS | ⬜ (somewhere in the future…) |
+| 14 | iOS | ⬜ (somewhere in the future…) |
 
 ## Next up: M6
 
@@ -333,6 +333,10 @@ Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Wi
 
 ## M13 — macOS
 
+> **Somewhere in the future… when I can afford a Mac and a developer license to make one app, lol.** Until then this
+> is a plan only: macOS and iOS apps can only be built, signed and tested on Apple hardware. CI (GitHub macOS runners)
+> can build them, but testing the UI needs a Mac or a tester who has one.
+
 - Flutter's macOS target. Replace the Windows pieces: native traffic-light window controls or a custom title bar,
   media keys and Now Playing through the system media center, `media_kit` macOS libs.
 - Menu bar (App, File, View, Window), standard shortcuts (Cmd instead of Ctrl), trackpad gestures, Retina assets and a
@@ -341,6 +345,9 @@ Do this once every Windows build is ready (M1 to M9 shipped as a downloadable Wi
   the App Store. Packaging as a `.dmg`.
 
 ## M14 — iOS
+
+> **Somewhere in the future… when I can afford a Mac and a developer license to make one app, lol.** Same story as
+> M13: it needs a Mac, Xcode and the paid Apple developer program ($99 a year).
 
 - Reuses the phone layouts from M12; adds Cupertino-friendly touches only where Material feels wrong (back swipe,
   safe areas, haptics).
