@@ -134,7 +134,7 @@ void main() {
       await advance(tester, const Duration(seconds: 1));
       expect(container.read(playbackProvider).playing, isTrue);
 
-      await tester.tap(find.text('J')); // avatar initial
+      await tester.tap(find.byKey(const Key('account-avatar')));
       await advance(tester, const Duration(milliseconds: 600));
       expect(find.text('josh'), findsOneWidget);
       await tester.tap(find.text('Sign out or switch server'));

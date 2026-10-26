@@ -192,7 +192,7 @@ class _Avatar extends ConsumerWidget {
             child: Center(
               child: initial == null
                   ? Icon(Icons.person_rounded, size: 24, color: scheme.onTertiaryContainer)
-                  : _Initial(letter: initial, color: scheme.onTertiaryContainer),
+                  : _Initial(key: const Key('account-avatar'), letter: initial, color: scheme.onTertiaryContainer),
             ),
           ),
         ),
@@ -206,7 +206,7 @@ class _Avatar extends ConsumerWidget {
 /// in a circle. The baseline is placed so half the cap height sits above the
 /// middle and half below.
 class _Initial extends StatelessWidget {
-  const _Initial({required this.letter, required this.color});
+  const _Initial({super.key, required this.letter, required this.color});
 
   final String letter;
   final Color color;

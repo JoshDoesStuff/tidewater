@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart' show Key;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
 import 'package:tidewater/app/providers/session_persistence.dart';
@@ -150,7 +151,7 @@ void main() {
       final c = await pumpApp(tester, prefs: {'saved_session': _saved().encode()});
       final prefs = c.read(sharedPreferencesProvider);
       expect(prefs.getString('saved_session'), isNotNull);
-      await tester.tap(find.text('J'));
+      await tester.tap(find.byKey(const Key('account-avatar')));
       await advance(tester, const Duration(milliseconds: 600));
       await tester.tap(find.text('Sign out or switch server'));
       await advance(tester, const Duration(seconds: 2));
