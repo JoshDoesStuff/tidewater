@@ -240,13 +240,14 @@ void main() {
       await disposeApp(tester);
     });
 
-    testWidgets('Shuffle all queues random songs from the server', (tester) async {
+    testWidgets('Shuffle all queues the whole library from the server', (tester) async {
       final api = FakeLibraryApi();
       final container = await pumpApp(tester, api: api);
       await tester.tap(find.text('Shuffle all'));
       await advance(tester, const Duration(seconds: 1));
-      expect(api.calls, contains('getRandomSongs'));
-      expect(container.read(playbackProvider).queue, isNotEmpty);
+      expect(api.calls.any((c) => c.startsWith('getSongs')), isTrue, reason: 'asks for the songs, not a random few');
+      expect(container.read(playbackProvider).queue.length, fakeTracks.length);
+      expect(container.read(playbackProvider).shuffle, isTrue);
       await container.read(playbackProvider.notifier).toggle();
       await disposeApp(tester);
     });

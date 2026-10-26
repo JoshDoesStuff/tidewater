@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -13,6 +14,7 @@ import '../../core/playback/saved_session.dart';
 import '../../core/playback/simulated_engine.dart';
 import '../../core/playback/visualizer_source.dart';
 import 'cover_providers.dart';
+import 'library_providers.dart';
 import 'session_providers.dart';
 import 'ui_providers.dart';
 
@@ -92,7 +94,35 @@ class PlaybackController extends Notifier<PlaybackState> {
     );
   }
 
-  Future<void> shuffleAll() => _load(() => ref.read(apiProvider).getRandomSongs(size: 50));
+  /// Every song in the library, shuffled (not a random handful).
+  Future<void> shuffleAll() => _load(_everySong, shuffle: true);
+
+  /// The whole library as a list: the saved or already loaded list at once, or
+  /// once the pages have all arrived (a toast says so when it takes a moment).
+  /// If that fails or takes more than a minute, whatever is loaded, or 50 random songs.
+  Future<List<Track>> _everySong() async {
+    final loaded = ref.read(libraryAllSongsProvider).value;
+    if (loaded != null && loaded.complete) return loaded.songs;
+    final done = Completer<List<Track>>();
+    final waiting = Timer(const Duration(milliseconds: 700), () {
+      if (!done.isCompleted) ref.read(toastProvider.notifier).show('Loading your whole library…');
+    });
+    final sub = ref.listen(libraryAllSongsProvider, (_, next) {
+      if (done.isCompleted) return;
+      final v = next.value;
+      if (v != null && v.complete) done.complete(v.songs);
+      if (next.hasError && !next.hasValue) done.completeError(next.error!);
+    }, fireImmediately: true);
+    try {
+      return await done.future.timeout(const Duration(seconds: 60));
+    } catch (_) {
+      final partial = ref.read(libraryAllSongsProvider).value?.songs;
+      return partial != null && partial.isNotEmpty ? partial : ref.read(apiProvider).getRandomSongs(size: 50);
+    } finally {
+      waiting.cancel();
+      sub.close();
+    }
+  }
 
   /// Jump within the current queue.
   Future<void> playIndex(int index) => _engine.playIndex(index);
