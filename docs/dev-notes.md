@@ -169,3 +169,10 @@ The desktop is often locked, so screen capture of the real app returns the lock 
 - Stack children that appear and disappear (scrims, popups) need keys, or siblings shift and implicit animations
   restart from their end state (the queue popup "just appeared" because of this).
 - Gate commits on the tests (`flutter test` first), not only on `grep` of its output.
+
+## App icon
+
+`tool/app_icon.dart` defines the icon once (SVG text and Canvas drawing share the geometry). Regenerate
+`assets/branding/tidewater.svg`, `tidewater_1024.png` and `windows/runner/resources/app_icon.ico` with
+`flutter test tool/render_app_icon_test.dart`, then rebuild the Windows app (Windows caches icons; a new .ico may
+need the exe renamed or the icon cache cleared before the taskbar updates).
