@@ -27,6 +27,12 @@ class CoverCache implements CoverStore {
   final CoverFetch _fetch;
   final _inFlight = <String, Future<Uint8List>>{};
 
+  /// At most this many covers are read or downloaded at once. A screenful of new cards used to
+  /// start sixty reads, decodes and downloads in the same instant and arrive in one burst; now
+  /// they come in a steady stream, the newest requests first (those are the cards the user just
+  /// scrolled to; older ones may already be off screen).
+  final _gate = _Gate(6);
+
   /// A folder name that identifies one server (same URL -> same folder).
   static String serverFolder(Uri baseUrl) => sha1.convert(baseUrl.toString().codeUnits).toString().substring(0, 12);
 
@@ -44,6 +50,7 @@ class CoverCache implements CoverStore {
     final px = bucket(size);
     final key = '${id}_$px';
     return _inFlight.putIfAbsent(key, () async {
+      await _gate.enter();
       try {
         final dir = await directory;
         final file = _file(dir, id, px);
@@ -63,6 +70,7 @@ class CoverCache implements CoverStore {
         }
         return bytes;
       } finally {
+        _gate.leave();
         // (A block body: returning the removed future would re-raise its error.)
         scheduleMicrotask(() {
           _inFlight.remove(key);
@@ -99,5 +107,33 @@ class CoverCache implements CoverStore {
   Future<void> clear() async {
     final dir = await directory;
     if (await dir.exists()) await dir.delete(recursive: true);
+  }
+}
+
+/// Lets [limit] callers through at a time; the rest wait, newest first.
+class _Gate {
+  _Gate(this.limit);
+
+  final int limit;
+  int _inside = 0;
+  final _waiting = <Completer<void>>[];
+
+  Future<void> enter() {
+    if (_inside < limit) {
+      _inside++;
+      return Future.value();
+    }
+    final turn = Completer<void>();
+    _waiting.add(turn);
+    return turn.future;
+  }
+
+  void leave() {
+    if (_waiting.isNotEmpty) {
+      // The place passes straight to the newest waiter.
+      _waiting.removeLast().complete();
+    } else {
+      _inside--;
+    }
   }
 }

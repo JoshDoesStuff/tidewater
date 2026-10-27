@@ -14,6 +14,7 @@ import 'router.dart';
 import 'theme/album_scheme.dart';
 import 'theme/app_theme.dart';
 import 'theme/motion.dart';
+import '../ui/widgets/smooth_scroll.dart' show DeferringScrollPhysics;
 import '../ui/shell/close_guard.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -51,6 +52,8 @@ class TidewaterApp extends ConsumerWidget {
       routerConfig: ref.watch(routerProvider),
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         scrollbars: false,
+        // Windows' own physics, plus not loading covers while the page flies past them.
+        physics: const DeferringScrollPhysics(parent: ClampingScrollPhysics()),
         dragDevices: {
           PointerDeviceKind.mouse,
           PointerDeviceKind.touch,

@@ -162,3 +162,17 @@ Remember that a card is now a baked picture at rest; the fade is applied outside
 * The `SLOW FRAME` per-frame lines were replaced by the 3 s summary; do not go back to line-per-frame (the logs
   were enormous).
 * The simulated frame costs in widget tests (debug JIT) are not representative; only `--profile` numbers count.
+
+## Step 1, done (Opus)
+
+* The wheel glide now runs as a real scroll activity (`_GlideActivity`) that reports its speed, and the app's scroll
+  physics (`DeferringScrollPhysics`, set in `app.dart`) call anything above 1400 logical px/s "too fast". Flutter's
+  `Image` already wraps every provider in `ScrollAwareImageProvider`, which holds back covers that are not in memory
+  while that is true. Before this the glide's activity was idle (speed 0), so covers were loaded for every card flown
+  past.
+* `CoverCache` lets at most 6 reads/downloads run at once, newest request first (`_Gate`).
+* Covers that arrive while the page is scrolling appear without a fade; card covers use `FilterQuality.low` (no
+  mipmap pass per new cover).
+* Card pictures are made at most 3 per frame (`_BakeQueue` in `album_card.dart`).
+* Not done from step 1: decoding at the drawn size (little gain for the 300 px grid covers on these screens; worth it
+  for 44 px song-row covers later), cancel-on-dispose, and a flat placeholder while scrolling. Measure first.

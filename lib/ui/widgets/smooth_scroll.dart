@@ -62,7 +62,7 @@ class SmoothScrollPosition extends ScrollPositionWithSingleContext {
       _last = null;
       // One start and one end for the whole glide (and so one "is scrolling" for whatever
       // listens), rather than a jump, and three notifications, on every frame.
-      goIdle();
+      beginActivity(_GlideActivity(this));
       didStartScroll();
       _ticker!.start();
     }
@@ -113,6 +113,43 @@ class SmoothScrollPosition extends ScrollPositionWithSingleContext {
     _ticker = null;
     super.dispose();
   }
+}
+
+/// The activity while the wheel glides. It is "scrolling", and it reports the glide's speed, so the
+/// framework can tell when the page is moving too fast to be worth loading pictures for
+/// (`Scrollable.recommendDeferredLoadingForContext`, which every `Image` asks). With an idle
+/// activity the speed was always 0 and covers were loaded for every card flown past.
+class _GlideActivity extends ScrollActivity {
+  _GlideActivity(SmoothScrollPosition super.delegate) : _position = delegate;
+
+  final SmoothScrollPosition _position;
+
+  @override
+  bool get shouldIgnorePointer => false;
+
+  @override
+  bool get isScrolling => true;
+
+  @override
+  double get velocity => _position._velocity;
+}
+
+/// Scroll physics that call a scroll "too fast to load pictures" sooner than Flutter's default
+/// (the window's longest side in physical pixels per second, which on a 2560 px screen almost
+/// never happens with a mouse wheel). Above this speed `Image` waits before loading a cover that
+/// is not already in memory, and the cover arrives once the scroll slows.
+class DeferringScrollPhysics extends ScrollPhysics {
+  const DeferringScrollPhysics({super.parent});
+
+  /// Logical pixels per second.
+  static const deferAbove = 1400.0;
+
+  @override
+  DeferringScrollPhysics applyTo(ScrollPhysics? ancestor) => DeferringScrollPhysics(parent: buildParent(ancestor));
+
+  @override
+  bool recommendDeferredLoading(double velocity, ScrollMetrics metrics, BuildContext context) =>
+      velocity.abs() > deferAbove;
 }
 
 /// True while a page is being scrolled (by wheel, drag or scrollbar). The decoration behind the

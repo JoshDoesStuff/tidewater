@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show OffsetLayer, RenderRepaintBoundary;
+import 'package:flutter/scheduler.dart' show SchedulerBinding;
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/semantics.dart' show CustomSemanticsAction;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -427,6 +428,7 @@ class _MediaCardState extends State<MediaCard> {
 
   @override
   void dispose() {
+    _BakeQueue.remove(this);
     _bakeTimer?.cancel();
     _giveUp?.cancel();
     _sprite?.dispose();
@@ -689,7 +691,7 @@ class _MediaCardState extends State<MediaCard> {
     if (_resting && _sprite == null) {
       _bakeTimer ??= Timer(const Duration(milliseconds: 150), () {
         _bakeTimer = null;
-        _bake();
+        _BakeQueue.add(this);
       });
     } else if (!_resting) {
       _bakeTimer?.cancel();
@@ -837,5 +839,39 @@ class TrackCard extends ConsumerWidget {
       drag: TrackDrag.tracks([track]),
       onMenu: (at) => showTrackMenu(context, ref, at: at, tracks: [track]),
     );
+  }
+}
+
+/// Cards waiting to be drawn into their picture, a few per frame: drawing a screenful of
+/// pictures in one frame was a hitch of its own.
+class _BakeQueue {
+  static const perFrame = 3;
+  static final _waiting = <_MediaCardState>{};
+  static bool _scheduled = false;
+
+  static void add(_MediaCardState card) {
+    _waiting.add(card);
+    _schedule();
+  }
+
+  static void remove(_MediaCardState card) => _waiting.remove(card);
+
+  static void _schedule() {
+    if (_scheduled || _waiting.isEmpty) return;
+    _scheduled = true;
+    // After the next frame has been drawn (each card's layer must be painted to be copied).
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _scheduled = false;
+      var done = 0;
+      while (done < perFrame && _waiting.isNotEmpty) {
+        final card = _waiting.first;
+        _waiting.remove(card);
+        if (!card.mounted) continue;
+        card._bake();
+        done++;
+      }
+      _schedule();
+    });
+    SchedulerBinding.instance.scheduleFrame();
   }
 }

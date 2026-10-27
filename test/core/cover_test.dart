@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -34,6 +35,41 @@ void main() {
       fetched = [];
     });
     tearDown(() => dir.deleteSync(recursive: true));
+
+    test('no more than six covers are fetched at once, and waiting ones go newest first', () async {
+      var running = 0;
+      var most = 0;
+      final order = <String>[];
+      final gates = <Completer<void>>[];
+      final cache = CoverCache(
+        directory: () async => dir,
+        fetch: (id, size) async {
+          running++;
+          most = running > most ? running : most;
+          order.add(id);
+          final gate = Completer<void>();
+          gates.add(gate);
+          await gate.future;
+          running--;
+          return _bytes(1);
+        },
+      );
+      final all = [for (var i = 0; i < 10; i++) cache.get('c$i')];
+      // Let the first ones reach the network.
+      for (var i = 0; i < 20 && gates.length < 6; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      expect(gates.length, 6);
+      expect(most, 6);
+      // Free them one by one: the queue drains from the newest request.
+      while (gates.any((g) => !g.isCompleted)) {
+        gates.firstWhere((g) => !g.isCompleted).complete();
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      await Future.wait(all);
+      expect(most, 6);
+      expect(order.sublist(6), ['c9', 'c8', 'c7', 'c6']);
+    });
 
     test('second request is served from disk, even by a new cache object', () async {
       expect(await make().get('al-1_6600'), _bytes(3));

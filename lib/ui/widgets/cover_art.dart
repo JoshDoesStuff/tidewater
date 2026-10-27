@@ -139,12 +139,18 @@ class _CoverArtState extends ConsumerState<CoverArt> with SingleTickerProviderSt
           Image(
             image: CoverImage(ref.watch(coverCacheProvider), id, widget.resolution),
             fit: BoxFit.cover,
+            // Covers are drawn near the size they were fetched at; mipmaps (the default) cost a pass
+            // on the graphics thread the first time each new cover is drawn, for no visible gain.
+            filterQuality: FilterQuality.low,
             gaplessPlayback: true,
             excludeFromSemantics: true,
             errorBuilder: (_, _, _) => const SizedBox.shrink(),
             opacity: _fade,
             frameBuilder: (context, image, frame, sync) {
-              final fade = sync ? Duration.zero : Motion.of(context, Motion.medium);
+              // A cover arriving while the page scrolls appears at once: a fade per card, for a
+              // screenful of cards arriving together, is a lot of frames of work nobody watches.
+              final scrolling = Scrollable.maybeOf(context)?.position.isScrollingNotifier.value ?? false;
+              final fade = sync || scrolling ? Duration.zero : Motion.of(context, Motion.medium);
               if (frame != null) {
                 if (fade == Duration.zero) {
                   _fade.value = 1;

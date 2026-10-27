@@ -35,5 +35,38 @@ void main() {
     expect(position.pixels, closeTo(500, 1));
     await advance(tester, const Duration(seconds: 1));
     await disposeApp(tester);
+    });
+
+  testWidgets('a fast glide tells pictures to wait, and a slow or finished one does not', (tester) async {
+    final api = FakeLibraryApi();
+    api.playlistSongs['pl-1'] = [for (var i = 0; i < 200; i++) fakeTracks[i % fakeTracks.length]];
+    final c = await pumpApp(tester, api: api);
+    c.read(routerProvider).go('/playlist/pl-1');
+    await advance(tester, const Duration(seconds: 2));
+    final scrollable = find.byType(Scrollable).first;
+    final at = tester.getCenter(scrollable);
+    bool deferring() => Scrollable.recommendDeferredLoadingForContext(tester.element(find.byType(Text).first));
+
+    tester.binding.handlePointerEvent(PointerAddedEvent(position: at, kind: PointerDeviceKind.mouse));
+    // A small nudge: never fast enough to hold pictures back.
+    tester.binding.handlePointerEvent(PointerScrollEvent(position: at, kind: PointerDeviceKind.mouse, scrollDelta: const Offset(0, 60)));
+    var any = false;
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      any |= deferring();
+    }
+    expect(any, isFalse);
+
+    // A long fling of the wheel: the middle of the glide is too fast to load pictures.
+    tester.binding.handlePointerEvent(PointerScrollEvent(position: at, kind: PointerDeviceKind.mouse, scrollDelta: const Offset(0, 3000)));
+    any = false;
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      any |= deferring();
+    }
+    expect(any, isTrue);
+    await advance(tester, const Duration(seconds: 3));
+    expect(deferring(), isFalse, reason: 'once it has stopped, pictures load');
+    await disposeApp(tester);
   });
 }
