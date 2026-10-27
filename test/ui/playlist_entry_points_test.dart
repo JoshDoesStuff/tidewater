@@ -4,6 +4,7 @@ import 'package:tidewater/app/app.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
 import 'package:tidewater/app/providers/ui_providers.dart';
 
+import '../support/finders.dart';
 import '../support/fake_library.dart';
 import '../support/pump.dart';
 
@@ -33,7 +34,7 @@ void main() {
     final c = await pumpApp(tester, api: api);
     c.read(routerProvider).go('/album/a1');
     await advance(tester, const Duration(seconds: 2));
-    await tester.tap(find.byTooltip('More').first); // the header button, before the rows' own
+    await tester.tap(byHint('More').first); // the header button, before the rows' own
     await advance(tester, const Duration(milliseconds: 400));
     await tester.tap(find.text('Add to playlist…'));
     await advance(tester, const Duration(milliseconds: 500));
@@ -52,7 +53,7 @@ void main() {
     await advance(tester, const Duration(seconds: 2));
     await c.read(playbackProvider.notifier).playAlbum(fakeAlbums[0]);
     await advance(tester, const Duration(seconds: 1));
-    await tester.tap(find.byTooltip('More').first);
+    await tester.tap(byHint('More').first);
     await advance(tester, const Duration(milliseconds: 400));
     await tester.tap(find.text('Add to queue'));
     await advance(tester, const Duration(milliseconds: 400));

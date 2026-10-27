@@ -1,3 +1,4 @@
+import '../widgets/hint.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -176,7 +177,7 @@ class _Recent extends ConsumerWidget {
                       const SizedBox(width: 8),
                       Text(q, style: text.bodyMedium),
                       const SizedBox(width: 2),
-                      IconButton(
+                      HintIconButton(
                         tooltip: 'Remove',
                         visualDensity: VisualDensity.compact,
                         iconSize: 16,

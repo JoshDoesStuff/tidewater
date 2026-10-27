@@ -1,3 +1,4 @@
+import '../widgets/hint.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -46,7 +47,7 @@ class _VolumeSliderState extends ConsumerState<VolumeSlider> with SingleTickerPr
     final active = _hover || _drag;
     return Row(
       children: [
-        Tooltip(
+        Hint(
           message: v == 0 ? 'Unmute (M)' : 'Mute (M)',
           child: Pressable(
             onTap: () => ref.read(playbackProvider.notifier).toggleMute(),

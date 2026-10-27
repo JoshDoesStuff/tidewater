@@ -20,6 +20,7 @@ import 'package:tidewater/ui/widgets/expressive_buttons.dart';
 import 'package:tidewater/ui/widgets/heart_button.dart';
 import 'package:tidewater/ui/widgets/effects/particle_burst.dart';
 
+import '../support/finders.dart';
 import '../support/fake_library.dart';
 import '../support/pump.dart';
 import '../support/test_app.dart';
@@ -181,12 +182,12 @@ void main() {
 
     testWidgets('the mini player only appears once something is queued', (tester) async {
       final container = await pumpApp(tester);
-      expect(find.byTooltip('Next'), findsNothing);
+      expect(byHint('Next'), findsNothing);
       final card = tester.widget<AlbumCard>(find.byType(AlbumCard).first);
       await tester.tap(find.byWidget(card));
       await advance(tester, const Duration(seconds: 2));
       expect(container.read(activeAlbumIdProvider), card.album.id);
-      expect(find.byTooltip('Next'), findsOneWidget);
+      expect(byHint('Next'), findsOneWidget);
       expect(find.text('Continue listening'), findsOneWidget);
       await container.read(playbackProvider.notifier).toggle();
       await disposeApp(tester);
@@ -433,7 +434,7 @@ void main() {
       await advance(tester, const Duration(seconds: 2));
       expect(find.text('1 song'), findsOneWidget);
       expect(find.byType(SongRow), findsOneWidget);
-      await tester.tap(find.byTooltip('Show as cards'));
+      await tester.tap(byHint('Show as cards'));
       await advance(tester, const Duration(seconds: 2));
       expect(find.byType(SongRow), findsNothing);
       expect(find.byType(TrackCard), findsOneWidget);

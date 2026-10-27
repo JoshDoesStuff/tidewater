@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
 import 'package:tidewater/core/models/track.dart';
 
+import '../support/finders.dart';
 import '../support/pump.dart';
 
 Track _track(String id, String title) => Track(
@@ -19,14 +20,14 @@ void main() {
     final tracks = [_track('l', 'A very long title that cannot fit the pill'), _track('s', 'Hi')];
     await container.read(playbackProvider.notifier).playTracks(tracks);
     await advance(tester, const Duration(seconds: 1));
-    final before = tester.getCenter(find.byTooltip('Next')).dx;
+    final before = tester.getCenter(byHint('Next')).dx;
 
     await container.read(playbackProvider.notifier).next();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 80));
-    final mid = tester.getCenter(find.byTooltip('Next')).dx;
+    final mid = tester.getCenter(byHint('Next')).dx;
     await advance(tester, const Duration(seconds: 1));
-    final after = tester.getCenter(find.byTooltip('Next')).dx;
+    final after = tester.getCenter(byHint('Next')).dx;
 
     expect(after, lessThan(before), reason: 'a shorter title pulls the controls left');
     expect(mid, lessThan(before));

@@ -3,6 +3,7 @@ import 'package:tidewater/app/providers/playback_providers.dart';
 import 'package:tidewater/app/providers/ui_providers.dart';
 import 'package:tidewater/core/models/track.dart';
 
+import '../support/finders.dart';
 import '../support/pump.dart';
 
 Track _track(String id, String title) => Track(
@@ -22,11 +23,11 @@ void main() {
     await c.read(playbackProvider.notifier).toggle();
     c.read(nowPlayingOpenProvider.notifier).set(true);
     await advance(tester, const Duration(seconds: 2));
-    final short = tester.getCenter(find.byTooltip('Shuffle')).dy;
+    final short = tester.getCenter(byHint('Shuffle')).dy;
 
     await c.read(playbackProvider.notifier).next();
     await advance(tester, const Duration(seconds: 2));
-    final long = tester.getCenter(find.byTooltip('Shuffle')).dy;
+    final long = tester.getCenter(byHint('Shuffle')).dy;
     expect(long, short, reason: 'no jump between a short and a long title');
 
     c.read(nowPlayingOpenProvider.notifier).set(false);

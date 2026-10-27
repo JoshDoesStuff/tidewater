@@ -3,12 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/providers/playback_providers.dart';
 
+import 'package:tidewater/ui/widgets/hint.dart';
+
+import '../support/finders.dart';
 import '../support/fake_library.dart';
 import '../support/pump.dart';
 
 /// The tooltip of whatever button holds keyboard focus, or null.
 String? _focusedTooltip() =>
-    FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<Tooltip>()?.message;
+    FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<Hint>()?.message;
 
 void main() {
   testWidgets('Space with a button focused plays or pauses once and does not press the button', (tester) async {
@@ -24,7 +27,7 @@ void main() {
     }
     expect(_focusedTooltip(), 'Next', reason: 'Next should be reachable with Tab');
     expect(
-      find.descendant(of: find.byTooltip('Next'), matching: find.byWidgetPredicate((w) => w is CustomPaint && w.foregroundPainter != null)),
+      find.descendant(of: byHint('Next'), matching: find.byWidgetPredicate((w) => w is CustomPaint && w.foregroundPainter != null)),
       findsOneWidget,
       reason: 'a focus ring is drawn around the focused button',
     );

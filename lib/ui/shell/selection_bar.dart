@@ -1,3 +1,4 @@
+import '../widgets/hint.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -38,7 +39,7 @@ class SelectionBar extends ConsumerWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
+                  HintIconButton(
                     tooltip: 'Clear selection',
                     onPressed: ref.read(selectionProvider.notifier).clear,
                     icon: const Icon(Icons.close_rounded),
@@ -116,6 +117,6 @@ class _Action extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(tooltip: label, onPressed: onTap, icon: Icon(icon));
+    return HintIconButton(tooltip: label, onPressed: onTap, icon: Icon(icon));
   }
 }

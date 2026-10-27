@@ -1,3 +1,4 @@
+import '../widgets/hint.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -158,6 +159,13 @@ class _StationCard extends ConsumerWidget {
       onSecondaryTapUp: (d) => menu(d.globalPosition),
       child: Pressable(
         onTap: () => current ? player.toggle() : player.playStation(station),
+        single: true,
+        actions: {
+          'More options': () {
+            final box = context.findRenderObject()! as RenderBox;
+            menu(box.localToGlobal(box.size.center(Offset.zero)));
+          },
+        },
         semanticLabel: '${station.name}, ${_host(station.streamUrl)}${current ? ', playing' : ''}',
         builder: (context, s) => AnimatedContainer(
           duration: Motion.of(context, Motion.fast),
@@ -205,7 +213,7 @@ class _StationCard extends ConsumerWidget {
                 alwaysIncludeSemantics: true,
                 duration: Motion.of(context, Motion.fast),
                 child: Builder(
-                  builder: (menuContext) => IconButton(
+                  builder: (menuContext) => HintIconButton(
                     tooltip: 'More',
                     color: fg,
                     onPressed: () {

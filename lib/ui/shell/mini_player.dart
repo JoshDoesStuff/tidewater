@@ -1,4 +1,5 @@
 import '../widgets/name_text.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -44,7 +45,11 @@ class _MiniPlayerBody extends ConsumerWidget {
             color: scheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(36),
             boxShadow: [
-              BoxShadow(color: scheme.shadow.withValues(alpha: .4), blurRadius: 24, offset: const Offset(0, 8)),
+              BoxShadow(
+                color: scheme.shadow.withValues(alpha: .4),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
             ],
           ),
           // Hugs its content (up to the width the shell allows), so a short title
@@ -65,7 +70,8 @@ class _MiniPlayerBody extends ConsumerWidget {
                       // A circle at rest: the pill's end has radius 36 and the cover sits 10 in,
                       // so a 26 radius (half of 52) is what lines up with it.
                       exponent: 2,
-                      params: ShapeKind.forKey(track.albumId).params.copyWith(amp: .07),
+                      params: ShapeKind.forKey(track.albumId).params
+                          .copyWith(amp: .07),
                       morph: playing ? 1 : 0,
                       spin: playing && !reduced ? .6 : 0,
                     ),
@@ -88,13 +94,19 @@ class _MiniPlayerBody extends ConsumerWidget {
                               track.title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: text.bodyLarge?.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
+                              style: text.bodyLarge?.copyWith(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                             NameText(
                               track.artist,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: text.bodySmall?.copyWith(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                              style: text.bodySmall?.copyWith(
+                                fontSize: 12.5,
+                                color: scheme.onSurfaceVariant,
+                              ),
                             ),
                           ],
                         ),
@@ -126,25 +138,39 @@ class _MiniPlayerBody extends ConsumerWidget {
                   if (showProgress) ...[
                     const SizedBox(width: 24),
                     // A comfortable bar that gives way when the window is narrow.
-                    const Flexible(child: SizedBox(width: 260, height: 30, child: WavyScrubber())),
+                    const Flexible(
+                      child: SizedBox(
+                        width: 260,
+                        height: 30,
+                        child: WavyScrubber(),
+                      ),
+                    ),
                     const SizedBox(width: 14),
                     SizedBox(
                       width: 34,
                       child: ValueListenableBuilder<Duration>(
                         valueListenable: position,
-                        builder: (context, p, _) => Text(
-                          formatDuration(p),
-                          style: text.bodySmall?.copyWith(fontSize: 12, color: scheme.onSurfaceVariant),
+                        builder: (context, p, _) => ExcludeSemantics(
+                          child: Text(
+                            formatDuration(p),
+                            style: text.bodySmall?.copyWith(
+                              fontSize: 12,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ],
                   const SizedBox(width: 4),
                   if (!track.isRadio)
-                  HeartButton(
-                    liked: ref.watch(likedProvider.select((l) => l.contains(track.id))),
-                    onTap: () => ref.read(likedProvider.notifier).toggle(track),
-                  ),
+                    HeartButton(
+                      liked: ref.watch(
+                        likedProvider.select((l) => l.contains(track.id)),
+                      ),
+                      onTap: () =>
+                          ref.read(likedProvider.notifier).toggle(track),
+                    ),
                 ],
               );
             },
@@ -182,11 +208,19 @@ class _PlayButton extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: scheme.primary,
-              borderRadius: BorderRadius.circular(playing || s.pressed ? 16 : 24),
+              borderRadius: BorderRadius.circular(
+                playing || s.pressed ? 16 : 24,
+              ),
             ),
             child: Ripple(
               color: scheme.onPrimary,
-              child: Center(child: PlayPauseIcon(playing: playing, size: 24, color: scheme.onPrimary)),
+              child: Center(
+                child: PlayPauseIcon(
+                  playing: playing,
+                  size: 24,
+                  color: scheme.onPrimary,
+                ),
+              ),
             ),
           ),
         );
@@ -203,7 +237,9 @@ class MiniPlayer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final has = ref.watch(currentTrackProvider.select((t) => t != null));
-    return has ? const _Entrance(child: _MiniPlayerBody()) : const SizedBox.shrink();
+    return has
+        ? const _Entrance(child: _MiniPlayerBody())
+        : const SizedBox.shrink();
   }
 }
 
@@ -220,7 +256,10 @@ class _Entrance extends StatelessWidget {
       curve: Motion.curve(context, Motion.emphasized),
       builder: (context, t, child) => Opacity(
         opacity: t.clamp(0.0, 1.0),
-        child: Transform.translate(offset: Offset(0, 24 * (1 - t)), child: child),
+        child: Transform.translate(
+          offset: Offset(0, 24 * (1 - t)),
+          child: child,
+        ),
       ),
       child: child,
     );

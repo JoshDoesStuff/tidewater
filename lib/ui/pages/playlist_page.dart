@@ -1,3 +1,4 @@
+import '../widgets/hint.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -206,8 +207,8 @@ class _BodyState extends ConsumerState<_Body> {
                 isPublic: playlist.isPublic,
                 onToggle: () => ref.read(playlistActionsProvider).setPublic(playlist, !playlist.isPublic),
               ),
-              IconButton.filledTonal(tooltip: 'Rename', onPressed: _rename, icon: const Icon(Icons.edit_rounded)),
-              IconButton.filledTonal(tooltip: 'Delete playlist', onPressed: _delete, icon: const Icon(Icons.delete_outline_rounded)),
+              HintIconButton(filledTonal: true, tooltip: 'Rename', onPressed: _rename, icon: const Icon(Icons.edit_rounded)),
+              HintIconButton(filledTonal: true, tooltip: 'Delete playlist', onPressed: _delete, icon: const Icon(Icons.delete_outline_rounded)),
             ],
           ],
         ),
@@ -372,7 +373,7 @@ class _VisibilityPill extends StatelessWidget {
       hint: 'Switches who can see it',
       excludeSemantics: true,
       onTap: onToggle,
-      child: Tooltip(
+      child: Hint(
         message: isPublic
             ? 'Public: everyone on the server can see it. Tap to make it private.'
             : 'Private: only you can see it. Tap to make it public.',

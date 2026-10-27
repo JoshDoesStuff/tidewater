@@ -50,12 +50,18 @@ class _StaggerInState extends State<StaggerIn> with SingleTickerProviderStateMix
       child: widget.child,
       builder: (context, child) {
         final t = Motion.emphasized.transform(_c.value);
+        // The row stays in the accessibility tree while it fades (a node that appears and
+        // goes at every row scrolled in is what Windows trips over), and only the first
+        // screenful also rises: moving a transform makes the tree update on every frame.
         return Opacity(
           opacity: t,
-          child: Transform.translate(
-            offset: Offset(0, 22 * (1 - t)),
-            child: Transform.scale(scale: .96 + .04 * t, child: child),
-          ),
+          alwaysIncludeSemantics: true,
+          child: widget.index == 0
+              ? child
+              : Transform.translate(
+                  offset: Offset(0, 22 * (1 - t)),
+                  child: Transform.scale(scale: .96 + .04 * t, child: child),
+                ),
         );
       },
     );

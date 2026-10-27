@@ -14,6 +14,7 @@ import 'package:tidewater/core/lyrics/lrclib.dart';
 import 'package:tidewater/core/lyrics/lyrics.dart';
 import 'package:tidewater/core/lyrics/structured_lyrics.dart';
 
+import '../support/finders.dart';
 import '../support/fake_library.dart';
 import '../support/pump.dart';
 import '../support/stub_adapter.dart';
@@ -105,7 +106,7 @@ void main() {
       c.read(nowPlayingOpenProvider.notifier).set(true);
       await advance(tester, const Duration(seconds: 2));
       expect(find.text('Synced lyrics'), findsOneWidget);
-      expect(find.byTooltip('Lyrics (L)'), findsOneWidget);
+      expect(byHint('Lyrics (L)'), findsOneWidget);
       expect(find.text('LYRICS'), findsOneWidget);
       c.read(nowPlayingOpenProvider.notifier).set(false);
       await advance(tester, const Duration(seconds: 1));
@@ -119,7 +120,7 @@ void main() {
       await c.read(playbackProvider.notifier).toggle();
       c.read(nowPlayingOpenProvider.notifier).set(true);
       await advance(tester, const Duration(seconds: 2));
-      expect(find.byTooltip('Lyrics (L)'), findsNothing);
+      expect(byHint('Lyrics (L)'), findsNothing);
       expect(find.text('Synced lyrics'), findsNothing);
       c.read(nowPlayingOpenProvider.notifier).set(false);
       await advance(tester, const Duration(seconds: 1));
@@ -136,16 +137,16 @@ void main() {
       await c.read(playbackProvider.notifier).toggle();
       c.read(nowPlayingOpenProvider.notifier).set(true);
       await advance(tester, const Duration(seconds: 2));
-      expect(find.byTooltip('Lyrics (L)'), findsNothing, reason: 'first track has none');
+      expect(byHint('Lyrics (L)'), findsNothing, reason: 'first track has none');
 
       await c.read(playbackProvider.notifier).next();
       await advance(tester, const Duration(seconds: 1));
-      expect(find.byTooltip('Lyrics (L)'), findsNothing, reason: 'still loading: no flash');
+      expect(byHint('Lyrics (L)'), findsNothing, reason: 'still loading: no flash');
 
       gate.complete();
       await advance(tester, const Duration(milliseconds: 150));
       await advance(tester, const Duration(seconds: 1));
-      expect(find.byTooltip('Lyrics (L)'), findsOneWidget, reason: 'confirmed: it appears');
+      expect(byHint('Lyrics (L)'), findsOneWidget, reason: 'confirmed: it appears');
       c.read(nowPlayingOpenProvider.notifier).set(false);
       await advance(tester, const Duration(seconds: 1));
       await disposeApp(tester);
@@ -161,15 +162,15 @@ void main() {
       await c.read(playbackProvider.notifier).toggle();
       c.read(nowPlayingOpenProvider.notifier).set(true);
       await advance(tester, const Duration(seconds: 2));
-      expect(find.byTooltip('Lyrics (L)'), findsOneWidget);
+      expect(byHint('Lyrics (L)'), findsOneWidget);
 
       await c.read(playbackProvider.notifier).next();
       await advance(tester, const Duration(seconds: 1));
-      expect(find.byTooltip('Lyrics (L)'), findsOneWidget, reason: 'still loading: it stays');
+      expect(byHint('Lyrics (L)'), findsOneWidget, reason: 'still loading: it stays');
 
       gate.complete();
       await advance(tester, const Duration(seconds: 2));
-      expect(find.byTooltip('Lyrics (L)'), findsNothing, reason: 'confirmed none: it folds away');
+      expect(byHint('Lyrics (L)'), findsNothing, reason: 'confirmed none: it folds away');
       c.read(nowPlayingOpenProvider.notifier).set(false);
       await advance(tester, const Duration(seconds: 1));
       await disposeApp(tester);

@@ -7,6 +7,7 @@ import 'package:tidewater/app/providers/settings_providers.dart' show queueSideP
 import 'package:tidewater/app/providers/ui_providers.dart';
 import 'package:tidewater/core/playback/play_queue.dart';
 
+import '../support/finders.dart';
 import '../support/fake_library.dart';
 import '../support/pump.dart';
 
@@ -35,7 +36,7 @@ void main() {
   testWidgets('the queue button opens the panel with the whole queue', (tester) async {
     final c = await openNowPlaying(tester);
     expect(c.read(queueOpenProvider), isFalse);
-    await tester.tap(find.byTooltip('Queue (Q)'));
+    await tester.tap(byHint('Queue (Q)'));
     await advance(tester, const Duration(seconds: 1));
     expect(c.read(queueOpenProvider), isTrue);
     expect(find.text('Queue'), findsOneWidget);
@@ -75,7 +76,7 @@ void main() {
     final c = await openNowPlaying(tester);
     c.read(queueOpenProvider.notifier).set(true);
     await advance(tester, const Duration(seconds: 1));
-    await tester.tap(find.byTooltip('Remove from queue').at(2), warnIfMissed: false);
+    await tester.tap(byHint('Remove from queue').at(2), warnIfMissed: false);
     await advance(tester, const Duration(seconds: 1));
     expect(c.read(playbackProvider).queue.map((t) => t.id), ['t-a1', 't-a1-1']);
     await closeNowPlaying(tester, c);
@@ -98,13 +99,13 @@ void main() {
     final c = await openNowPlaying(tester);
     c.read(queueOpenProvider.notifier).set(true);
     await advance(tester, const Duration(seconds: 1));
-    await tester.tap(find.byTooltip('Repeat: off').last);
+    await tester.tap(byHint('Repeat: off').last);
     await advance(tester, const Duration(milliseconds: 300));
     expect(c.read(playbackProvider).repeat, LoopMode.all);
-    await tester.tap(find.byTooltip('Repeat: all').last);
+    await tester.tap(byHint('Repeat: all').last);
     await advance(tester, const Duration(milliseconds: 300));
     expect(c.read(playbackProvider).repeat, LoopMode.one);
-    await tester.tap(find.byTooltip('Shuffle: off'));
+    await tester.tap(byHint('Shuffle: off'));
     await advance(tester, const Duration(milliseconds: 300));
     expect(c.read(playbackProvider).shuffle, isTrue);
     await closeNowPlaying(tester, c);
@@ -137,7 +138,7 @@ void main() {
     final c = await openNowPlaying(tester);
     final cover = _playerBox();
     final before = tester.getSize(cover);
-    await tester.tap(find.byTooltip('Queue (Q)'));
+    await tester.tap(byHint('Queue (Q)'));
     await advance(tester, const Duration(seconds: 1));
     expect(tester.getSize(cover).width, lessThan(before.width), reason: 'the player gave up room');
     final panel = tester.getRect(find.text('Queue'));
@@ -150,7 +151,7 @@ void main() {
     c.read(queueSidePanelProvider.notifier).set(false);
     await advance(tester, const Duration(milliseconds: 300));
     final before = tester.getSize(_playerBox());
-    await tester.tap(find.byTooltip('Queue (Q)'));
+    await tester.tap(byHint('Queue (Q)'));
     await advance(tester, const Duration(seconds: 1));
     expect(tester.getSize(_playerBox()), before);
     expect(find.text('Queue'), findsOneWidget);
@@ -167,7 +168,7 @@ void main() {
           .opacity
           .value;
       expect(opacity(), 0);
-      await tester.tap(find.byTooltip('Queue (Q)'));
+      await tester.tap(byHint('Queue (Q)'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 120));
       expect(opacity(), allOf(greaterThan(0), lessThan(1)), reason: 'partway through the transition');
@@ -181,7 +182,7 @@ void main() {
     final handle = tester.ensureSemantics();
     final c = await openNowPlaying(tester);
     expect(find.bySemanticsLabel(RegExp('Last Tram Home 3')), findsNothing, reason: 'closed');
-    await tester.tap(find.byTooltip('Queue (Q)'));
+    await tester.tap(byHint('Queue (Q)'));
     await advance(tester, const Duration(seconds: 1));
     expect(find.bySemanticsLabel(RegExp('Last Tram Home 3')), findsWidgets, reason: 'open');
     await closeNowPlaying(tester, c);

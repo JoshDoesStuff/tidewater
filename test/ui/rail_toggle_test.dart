@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/providers/settings_providers.dart';
 
+import '../support/finders.dart';
 import '../support/pump.dart';
 
 void main() {
@@ -8,13 +9,13 @@ void main() {
     final c = await pumpApp(tester);
     expect(find.text('Library'), findsWidgets, reason: 'wide rail shows labels');
 
-    await tester.tap(find.byTooltip('Collapse menu'));
+    await tester.tap(byHint('Collapse menu'));
     await advance(tester, const Duration(milliseconds: 600));
     expect(c.read(railCollapsedProvider), isTrue);
-    expect(find.byTooltip('Expand menu'), findsOneWidget);
+    expect(byHint('Expand menu'), findsOneWidget);
     expect(find.text('Library'), findsNothing, reason: 'icon-only rail has no labels');
 
-    await tester.tap(find.byTooltip('Expand menu'));
+    await tester.tap(byHint('Expand menu'));
     await advance(tester, const Duration(milliseconds: 600));
     expect(c.read(railCollapsedProvider), isFalse);
     await disposeApp(tester);

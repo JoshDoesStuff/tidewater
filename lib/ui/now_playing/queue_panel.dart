@@ -1,3 +1,4 @@
+import '../widgets/hint.dart';
 import '../widgets/name_text.dart';
 
 import 'package:flutter/material.dart';
@@ -154,7 +155,7 @@ class _QueuePanelState extends ConsumerState<QueuePanel> {
                               ],
                             ),
                           ),
-                          IconButton(
+                          HintIconButton(
                             tooltip: 'Save the queue as a playlist',
                             onPressed: queue.isEmpty
                                 ? null
@@ -278,7 +279,7 @@ class _ToggleChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Tooltip(
+    return Hint(
       message: tooltip,
       child: Pressable(
         onTap: onTap,
@@ -342,6 +343,15 @@ class _QueueRow extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     return Pressable(
       onTap: onPlay,
+      single: true,
+      selected: picked,
+      actions: {
+        'Remove from queue': onRemove,
+        'More options': () {
+          final box = context.findRenderObject()! as RenderBox;
+          onMenu(box.localToGlobal(box.size.center(Offset.zero)));
+        },
+      },
       semanticLabel:
           '${track.title}, ${track.artist}${current ? ', playing' : ''}${picked ? ', selected' : ''}',
       builder: (context, s) => AnimatedContainer(
@@ -431,7 +441,7 @@ class _QueueRow extends StatelessWidget {
               formatDuration(track.duration),
               style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
-            Tooltip(
+            Hint(
               message: 'Remove from queue',
               child: Pressable(
                 onTap: onRemove,
@@ -478,8 +488,8 @@ class _PickBar extends StatelessWidget {
               style: TextStyle(color: scheme.onSecondaryContainer, fontWeight: FontWeight.w700),
             ),
           ),
-          IconButton(tooltip: 'Remove from queue', onPressed: onRemove, icon: const Icon(Icons.playlist_remove_rounded)),
-          IconButton(tooltip: 'Clear selection', onPressed: onClear, icon: const Icon(Icons.close_rounded)),
+          HintIconButton(tooltip: 'Remove from queue', onPressed: onRemove, icon: const Icon(Icons.playlist_remove_rounded)),
+          HintIconButton(tooltip: 'Clear selection', onPressed: onClear, icon: const Icon(Icons.close_rounded)),
         ],
       ),
     );

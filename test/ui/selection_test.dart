@@ -9,6 +9,7 @@ import 'package:tidewater/app/providers/ui_providers.dart';
 import 'package:tidewater/ui/pages/widgets/album_card.dart' show MediaCard, PlaylistCard;
 import 'package:tidewater/ui/shell/mini_player.dart';
 
+import '../support/finders.dart';
 import '../support/fake_library.dart';
 import '../support/pump.dart';
 
@@ -43,7 +44,7 @@ void main() {
     await tester.tap(find.text(first[2].title).first);
     await advance(tester, const Duration(milliseconds: 300));
 
-    await tester.tap(find.byTooltip('Add to queue'));
+    await tester.tap(byHint('Add to queue'));
     await advance(tester, const Duration(milliseconds: 400));
     expect(c.read(toastProvider)?.message, 'Added 2 songs to the queue.');
     expect(c.read(playbackProvider).queue.length, 3);
@@ -167,7 +168,7 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
     await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     await advance(tester, const Duration(milliseconds: 300));
-    await tester.tap(find.byTooltip('Remove from playlist'));
+    await tester.tap(byHint('Remove from playlist'));
     await advance(tester, const Duration(seconds: 1));
     expect(api.playlistSongs['pl-1'], isEmpty);
     expect(c.read(toastProvider)?.message, 'Removed 2 songs from "Late Night Drive".');
@@ -190,7 +191,7 @@ void main() {
     await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     await advance(tester, const Duration(milliseconds: 300));
     expect(c.read(queueSelectionProvider), {3, 4});
-    await tester.tap(find.byTooltip('Remove from queue').first);
+    await tester.tap(byHint('Remove from queue').first);
     await advance(tester, const Duration(seconds: 1));
     expect(c.read(playbackProvider).queue.length, 3);
     expect(c.read(toastProvider)?.message, 'Removed 2 songs from the queue.');
@@ -226,7 +227,7 @@ void main() {
     await _ctrlTap(tester, find.text(fakeTracks[0].title).last); // the third row only
     expect(c.read(selectionProvider).length, 1);
     await advance(tester, const Duration(milliseconds: 400));
-    await tester.tap(find.byTooltip('Remove from playlist'));
+    await tester.tap(byHint('Remove from playlist'));
     await advance(tester, const Duration(seconds: 1));
     expect([for (final t in api.playlistSongs['pl-1']!) t.id], [fakeTracks[0].id, fakeTracks[1].id]);
     await advance(tester, const Duration(seconds: 6));

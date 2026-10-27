@@ -8,6 +8,7 @@ import 'package:tidewater/core/api/api_exception.dart';
 import 'package:tidewater/ui/widgets/effects/eq_bars.dart';
 import 'package:tidewater/ui/widgets/expressive_buttons.dart';
 
+import '../support/finders.dart';
 import '../support/fake_library.dart';
 import '../support/pump.dart';
 
@@ -119,7 +120,7 @@ void main() {
       c.read(routerProvider).push('/album/a0');
       await advance(tester, const Duration(seconds: 2));
       expect(find.text('ALBUM · 2021 · INDIE'), findsOneWidget);
-      await tester.tap(find.byTooltip('Back'));
+      await tester.tap(byHint('Back'));
       await advance(tester, const Duration(seconds: 2));
       expect(find.text('12 albums'), findsOneWidget);
       await disposeApp(tester);
@@ -127,7 +128,7 @@ void main() {
 
     testWidgets('opened directly, back goes to the Library', (tester) async {
       await openAlbum(tester, 'a0');
-      await tester.tap(find.byTooltip('Back'));
+      await tester.tap(byHint('Back'));
       await advance(tester, const Duration(seconds: 2));
       expect(find.text('12 albums'), findsOneWidget);
       await disposeApp(tester);

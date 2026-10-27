@@ -1,3 +1,4 @@
+import '../../widgets/hint.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -112,6 +113,17 @@ class SongRow extends ConsumerWidget {
       onSecondaryTapUp: (d) => menu(d.globalPosition),
       child: Pressable(
         onTap: tapped,
+        single: true,
+        selected: picked,
+        actions: {
+          liked ? 'Unlike' : 'Like': () => ref.read(likedProvider.notifier).toggle(track),
+          'More options': () {
+            final box = context.findRenderObject()! as RenderBox;
+            menu(box.localToGlobal(box.size.center(Offset.zero)));
+          },
+          if (track.artistId != null) 'Go to artist': () => context.push('/artist/${track.artistId}'),
+          if (track.albumId.isNotEmpty) 'Go to album': () => context.push('/album/${track.albumId}'),
+        },
         semanticLabel:
             '${track.title}, ${track.artist}, ${formatDuration(track.duration)}${current ? ', playing' : ''}${picked ? ', selected' : ''}',
         builder: (context, s) => AnimatedContainer(
@@ -234,7 +246,7 @@ class SongRow extends ConsumerWidget {
                   alwaysIncludeSemantics: true,
                   duration: Motion.of(context, Motion.fast),
                   child: Builder(
-                    builder: (menuContext) => IconButton(
+                    builder: (menuContext) => HintIconButton(
                       tooltip: 'More',
                       iconSize: 20,
                       visualDensity: VisualDensity.compact,

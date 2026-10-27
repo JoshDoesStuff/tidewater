@@ -10,6 +10,7 @@ import 'package:tidewater/app/providers/search_providers.dart';
 import 'package:tidewater/ui/pages/search_page.dart';
 import 'package:tidewater/ui/widgets/squiggle_loader.dart';
 
+import '../support/finders.dart';
 import '../support/pump.dart';
 
 void main() {
@@ -60,7 +61,7 @@ void main() {
     await advance(tester, const Duration(milliseconds: 300));
     expect(c.read(recentSearchesProvider), ['zzzzzz']);
 
-    await tester.tap(find.byTooltip('Clear'));
+    await tester.tap(byHint('Clear'));
     await advance(tester, const Duration(milliseconds: 300));
     expect(find.text('Recent searches'), findsOneWidget);
     await tester.tap(find.text('zzzzzz'));

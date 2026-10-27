@@ -1,3 +1,4 @@
+import 'hint.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/theme/motion.dart';
@@ -78,7 +79,7 @@ class ExpressiveIconButton extends StatelessWidget {
         );
       },
     );
-    if (tooltip != null) button = Tooltip(message: tooltip!, child: button);
+    if (tooltip != null) button = Hint(message: tooltip!, child: button);
     return button;
   }
 }

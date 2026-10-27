@@ -740,8 +740,9 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
               return Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(formatDuration(p), style: style),
-                  Text(track.isRadio ? 'LIVE' : '-${formatDuration(duration - p)}', style: style),
+                  // Out of the accessibility tree: a label that changes every second is noise.
+                  ExcludeSemantics(child: Text(formatDuration(p), style: style)),
+                  ExcludeSemantics(child: Text(track.isRadio ? 'LIVE' : '-${formatDuration(duration - p)}', style: style)),
                 ],
               );
             },
@@ -832,7 +833,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
                 top: 0,
                 child: ValueListenableBuilder<Duration>(
                   valueListenable: position,
-                  builder: (context, p, _) => Text(formatDuration(p), style: style),
+                  builder: (context, p, _) => ExcludeSemantics(child: Text(formatDuration(p), style: style)),
                 ),
               ),
               Positioned(
@@ -840,7 +841,7 @@ class _NowPlayingOverlayState extends ConsumerState<NowPlayingOverlay> with Tick
                 top: 0,
                 child: ValueListenableBuilder<Duration>(
                   valueListenable: position,
-                  builder: (context, p, _) => Text(live ? 'LIVE' : '-${formatDuration(duration - p)}', style: style),
+                  builder: (context, p, _) => ExcludeSemantics(child: Text(live ? 'LIVE' : '-${formatDuration(duration - p)}', style: style)),
                 ),
               ),
             ],

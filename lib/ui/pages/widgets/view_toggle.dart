@@ -1,3 +1,4 @@
+import '../../widgets/hint.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/motion.dart';
@@ -28,7 +29,7 @@ class ViewToggle extends StatelessWidget {
     return Pressable(
       onTap: onTap,
       semanticLabel: label,
-      builder: (context, s) => Tooltip(
+      builder: (context, s) => Hint(
         message: label,
         child: AnimatedContainer(
           duration: Motion.of(context, Motion.fast),

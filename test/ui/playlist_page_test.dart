@@ -7,6 +7,7 @@ import 'package:tidewater/core/models/playlist.dart';
 import 'package:tidewater/ui/pages/widgets/song_row.dart';
 import 'package:tidewater/ui/widgets/effects/letter_reveal.dart';
 
+import '../support/finders.dart';
 import '../support/fake_library.dart';
 import '../support/pump.dart';
 
@@ -24,8 +25,8 @@ void main() {
     expect(tester.widget<LetterReveal>(find.byType(LetterReveal)).text, 'Late Night Drive');
     expect(find.byType(SongRow), findsNWidgets(2));
     expect(find.text('Private'), findsOneWidget, reason: 'new and existing playlists default to private');
-    expect(find.byTooltip('Rename'), findsOneWidget);
-    expect(find.byTooltip('Delete playlist'), findsOneWidget);
+    expect(byHint('Rename'), findsOneWidget);
+    expect(byHint('Delete playlist'), findsOneWidget);
     expect(find.byIcon(Icons.drag_indicator_rounded), findsNWidgets(2));
     expect(find.textContaining('smart playlist'), findsNothing);
     await advance(tester, const Duration(seconds: 3));
@@ -50,7 +51,7 @@ void main() {
   testWidgets('renaming asks for the new name and saves it', (tester) async {
     final api = FakeLibraryApi();
     await _open(tester, api, 'pl-1');
-    await tester.tap(find.byTooltip('Rename'));
+    await tester.tap(byHint('Rename'));
     await advance(tester, const Duration(milliseconds: 400));
     await tester.enterText(find.byType(TextField), 'Dawn Drive');
     await tester.tap(find.text('Save'));
@@ -64,14 +65,14 @@ void main() {
   testWidgets('deleting asks first, then removes it and leaves the page', (tester) async {
     final api = FakeLibraryApi();
     final c = await _open(tester, api, 'pl-1');
-    await tester.tap(find.byTooltip('Delete playlist'));
+    await tester.tap(byHint('Delete playlist'));
     await advance(tester, const Duration(milliseconds: 400));
     expect(find.textContaining('The songs stay in your library'), findsOneWidget);
     await tester.tap(find.text('Cancel'));
     await advance(tester, const Duration(milliseconds: 400));
     expect(api.playlists.any((p) => p.id == 'pl-1'), isTrue, reason: 'cancelled');
 
-    await tester.tap(find.byTooltip('Delete playlist'));
+    await tester.tap(byHint('Delete playlist'));
     await advance(tester, const Duration(milliseconds: 400));
     await tester.tap(find.text('Delete'));
     await advance(tester, const Duration(seconds: 2));
@@ -119,8 +120,8 @@ void main() {
     api.playlistSongs['smart'] = api.playlistSongs['pl-1']!;
     await _open(tester, api, 'smart');
     expect(find.textContaining('smart playlist'), findsOneWidget);
-    expect(find.byTooltip('Rename'), findsNothing);
-    expect(find.byTooltip('Delete playlist'), findsNothing);
+    expect(byHint('Rename'), findsNothing);
+    expect(byHint('Delete playlist'), findsNothing);
     expect(find.byIcon(Icons.drag_indicator_rounded), findsNothing);
     expect(find.text('Private'), findsNothing);
     await advance(tester, const Duration(seconds: 3));
@@ -133,7 +134,7 @@ void main() {
     api.playlistSongs['theirs'] = api.playlistSongs['pl-1']!;
     await _open(tester, api, 'theirs');
     expect(find.textContaining('belongs to someone'), findsOneWidget);
-    expect(find.byTooltip('Rename'), findsNothing);
+    expect(byHint('Rename'), findsNothing);
     await advance(tester, const Duration(seconds: 3));
     await disposeApp(tester);
   });
@@ -141,7 +142,7 @@ void main() {
   testWidgets('renaming to the same name sends nothing', (tester) async {
     final api = FakeLibraryApi();
     await _open(tester, api, 'pl-1');
-    await tester.tap(find.byTooltip('Rename'));
+    await tester.tap(byHint('Rename'));
     await advance(tester, const Duration(milliseconds: 400));
     await tester.enterText(find.byType(TextField), 'Late Night Drive');
     await tester.tap(find.text('Save'));

@@ -20,6 +20,7 @@ import 'package:tidewater/ui/widgets/effects/letter_reveal.dart';
 import 'package:tidewater/ui/widgets/shapes/morph_path.dart';
 import 'package:tidewater/ui/widgets/wavy_progress.dart';
 
+import '../support/finders.dart';
 import '../support/fake_library.dart';
 import '../support/test_app.dart';
 
@@ -73,7 +74,7 @@ void main() {
     await _pumpApp(tester);
     expect(find.text('Jump back in'), findsOneWidget);
     expect(find.text('Shuffle all'), findsOneWidget);
-    expect(find.byTooltip('Previous'), findsNothing, reason: 'no mini player until something plays');
+    expect(byHint('Previous'), findsNothing, reason: 'no mini player until something plays');
     for (final d in Destination.values) {
       expect(find.text(d.label), findsWidgets);
     }

@@ -1,3 +1,4 @@
+import '../widgets/hint.dart';
 import '../widgets/name_text.dart';
 import '../widgets/selection_scope.dart';
 
@@ -227,8 +228,8 @@ class _AlbumBody extends ConsumerWidget {
               ),
             ),
             Builder(
-              builder: (buttonContext) => IconButton.filledTonal(
-                tooltip: 'More',
+              builder: (buttonContext) => HintIconButton(
+                filledTonal: true, tooltip: 'More',
                 onPressed: () {
                   final box = buttonContext.findRenderObject()! as RenderBox;
                   showTrackMenu(
@@ -370,6 +371,15 @@ class _TrackRow extends ConsumerWidget {
             showTrackMenu(context, ref, at: d.globalPosition, tracks: group()),
         child: Pressable(
           onTap: tapped,
+          single: true,
+          selected: picked,
+          actions: {
+            liked ? 'Unlike' : 'Like': () => ref.read(likedProvider.notifier).toggle(track),
+            'More options': () {
+              final box = context.findRenderObject()! as RenderBox;
+              showTrackMenu(context, ref, at: box.localToGlobal(box.size.center(Offset.zero)), tracks: group());
+            },
+          },
           semanticLabel:
               '${track.title}, ${formatDuration(track.duration)}${current ? ', playing' : ''}${picked ? ', selected' : ''}',
           builder: (context, s) => AnimatedContainer(
@@ -498,7 +508,7 @@ class _RowMenu extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     return Builder(
-      builder: (buttonContext) => IconButton(
+      builder: (buttonContext) => HintIconButton(
         tooltip: 'More',
         icon: Icon(
           Icons.more_vert_rounded,

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart' show CustomSemanticsAction;
 import 'package:flutter/services.dart';
 
 typedef PressState = ({bool hovered, bool pressed, bool focused});
@@ -14,12 +15,28 @@ class Pressable extends StatefulWidget {
     this.onTap,
     this.semanticLabel,
     this.cursor,
+    this.actions,
+    this.selected,
+    this.single = false,
   });
 
   final Widget Function(BuildContext context, PressState state) builder;
   final VoidCallback? onTap;
   final String? semanticLabel;
   final MouseCursor? cursor;
+
+  /// Other things a screen reader can do with this control (the buttons inside it: like,
+  /// more...), by name; see [single].
+  final Map<String, VoidCallback>? actions;
+
+  /// Whether it is picked (announced as selected).
+  final bool? selected;
+
+  /// Makes the control one accessibility node, with [semanticLabel] and [actions] standing
+  /// in for what is inside it. For a row that holds its own buttons (like, more) that
+  /// would otherwise be a dozen nodes each; not for a control with real buttons in it
+  /// that screen readers should reach (the mini player).
+  final bool single;
 
   @override
   State<Pressable> createState() => _PressableState();
@@ -45,6 +62,11 @@ class _PressableState extends State<Pressable> {
       button: true,
       enabled: enabled,
       label: widget.semanticLabel,
+      selected: widget.selected,
+      excludeSemantics: widget.single && widget.semanticLabel != null,
+      customSemanticsActions: {
+        for (final e in (widget.actions ?? const <String, VoidCallback>{}).entries) CustomSemanticsAction(label: e.key): e.value,
+      },
       onTap: widget.onTap,
       // Hover comes from a MouseRegion, not FocusableActionDetector, whose
       // hover callback depends on the focus highlight mode.

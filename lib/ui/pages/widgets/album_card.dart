@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart' show CustomSemanticsAction;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -328,7 +329,27 @@ class _MediaCardState extends State<MediaCard> {
         ),
       ],
     );
-    return widget.size != null ? SizedBox(width: widget.size, child: card) : card;
+    // One node for the whole card, with its other doings as named actions: the cover, the
+    // title and the artist are not three or four separate things to a screen reader (and the
+    // tilt and lift animate a transform that would otherwise update the tree on every frame).
+    final node = Semantics(
+      container: true,
+      button: true,
+      label: '${widget.title}, ${widget.subtitle}${widget.active ? ', playing' : ''}',
+      onTap: widget.onTap,
+      customSemanticsActions: {
+        if (widget.onOpen != null) const CustomSemanticsAction(label: 'Open'): widget.onOpen!,
+        if (widget.onOpenSubtitle != null) CustomSemanticsAction(label: 'Go to ${widget.subtitle}'): widget.onOpenSubtitle!,
+        if (widget.onMenu != null)
+          const CustomSemanticsAction(label: 'More options'): () {
+            final box = context.findRenderObject()! as RenderBox;
+            widget.onMenu!(box.localToGlobal(box.size.center(Offset.zero)));
+          },
+      },
+      excludeSemantics: true,
+      child: card,
+    );
+    return widget.size != null ? SizedBox(width: widget.size, child: node) : node;
   }
 }
 
