@@ -1,3 +1,4 @@
+import '../../../app/perf_flags.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -142,8 +143,17 @@ class _MorphShapeState extends State<MorphShape> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    Widget shaped = ClipPath(clipper: _clipper, child: widget.child);
-    if (widget.shadow) {
+    return ListenableBuilder(listenable: PerfFlags.instance, builder: _build);
+  }
+
+  Widget _build(BuildContext context, Widget? _) {
+    final flags = PerfFlags.instance;
+    Widget shaped = ClipPath(
+      clipper: _clipper,
+      clipBehavior: flags.smoothClip ? Clip.antiAlias : Clip.hardEdge,
+      child: widget.child,
+    );
+    if (widget.shadow && flags.shadows) {
       shaped = CustomPaint(
         painter: _ShadowPainter(this, Theme.of(context).colorScheme.shadow.withValues(alpha: widget.shadowAlpha)),
         child: shaped,

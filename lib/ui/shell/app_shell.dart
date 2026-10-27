@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/perf_flags.dart';
 import '../../app/destinations.dart';
 import '../../app/providers/library_providers.dart';
 import '../../app/providers/playback_providers.dart';
@@ -123,6 +124,10 @@ class _AppShellState extends ConsumerState<AppShell> {
     final npOpen = ref.read(nowPlayingOpenProvider);
     final key = event.logicalKey;
     final ctrl = HardwareKeyboard.instance.isControlPressed;
+    if (ctrl && HardwareKeyboard.instance.isAltPressed && key.keyLabel.length == 1 && "123456".contains(key.keyLabel)) {
+      // Profiling aid (see PerfFlags): not in release builds.
+      return PerfFlags.instance.toggle(int.parse(key.keyLabel) - 1);
+    }
     if (ctrl && key == LogicalKeyboardKey.keyA) {
       if (npOpen) {
         if (!ref.read(queueOpenProvider)) return false;

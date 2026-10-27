@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app/perf_flags.dart';
+
 import '../../app/theme/app_theme.dart';
 
 /// One line of text that underlines on hover and opens something when tapped
@@ -23,6 +25,10 @@ class _LinkTextState extends State<LinkText> {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(listenable: PerfFlags.instance, builder: (context, _) => PerfFlags.instance.text ? _link(context) : const SizedBox(height: 16));
+  }
+
+  Widget _link(BuildContext context) {
     final style = widget.style?.copyWith(decoration: _hovered && widget.onTap != null ? TextDecoration.underline : null);
     final label = Text(widget.text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTheme.script(widget.text, style));
     if (widget.onTap == null) return Align(alignment: widget.alignment, widthFactor: 1, heightFactor: 1, child: label);

@@ -1,3 +1,4 @@
+import '../../app/perf_flags.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
 
@@ -116,7 +117,7 @@ class _CoverArtState extends ConsumerState<CoverArt> with SingleTickerProviderSt
       fit: StackFit.expand,
       children: [
         if (!_covered) CustomPaint(painter: _PlaceholderPainter(widget.seedKey)),
-        if (id != null)
+        if (id != null && PerfFlags.instance.covers)
           Image(
             image: CoverImage(ref.watch(coverCacheProvider), id, widget.resolution),
             fit: BoxFit.cover,
