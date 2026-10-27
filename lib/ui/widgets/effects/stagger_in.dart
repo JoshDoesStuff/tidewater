@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../app/perf_flags.dart';
 import '../../../app/theme/motion.dart';
 
 /// Page-enter for cards, heroes and chips: fade, 22 px rise and a slight
@@ -70,15 +71,31 @@ class _StaggerInState extends State<StaggerIn> with SingleTickerProviderStateMix
   }
 
   bool _firstLook = true;
+  bool _scrolledIn = false;
+  bool _offscreen = false;
 
   void _check() {
     final first = _firstLook;
     _firstLook = false;
-    if (_waitingOn == null || !mounted || !_onScreen()) return;
+    if (_waitingOn == null || !mounted) return;
+    if (!_onScreen()) {
+      // Off screen: drawn plainly while it waits, so a card can already become its resting
+      // picture before it arrives (hidden at zero opacity it was never drawn, so never pictured).
+      if (!_offscreen) setState(() => _offscreen = true);
+      return;
+    }
+    _offscreen = false;
     _waitingOn!.removeListener(_checkSoon);
     _waitingOn = null;
     // On screen from the start: the page-enter wave. Scrolled into view later: at once (its
     // place in the wave meant nothing to a row that arrives on its own).
+    if (!first) {
+      _scrolledIn = true;
+      if (!PerfFlags.instance.scrollIn) {
+        setState(() => _c.value = 1);
+        return;
+      }
+    }
     _start(wave: first);
   }
 
@@ -116,12 +133,20 @@ class _StaggerInState extends State<StaggerIn> with SingleTickerProviderStateMix
         // Done: no opacity or transform around it any more (an opacity layer, even at full, is an
         // offscreen pass for every card, and a hundred of them per screen add up). The key lets the
         // card move out of the wrappers without being rebuilt.
-        if (_c.value >= 1) return child!;
+        if (_c.value >= 1 || _offscreen) return child!;
         final t = Motion.emphasized.transform(_c.value);
+        // A row scrolled into view rises into place without fading: an opacity on a card that is
+        // still being drawn live (not yet a picture) is an offscreen pass per card per frame, and a
+        // fast scroll brings a dozen in at once. A transform alone costs next to nothing.
+        if (_scrolledIn) {
+          return Transform.translate(
+            offset: Offset(0, 18 * (1 - t)),
+            child: Transform.scale(scale: .95 + .05 * t, child: child),
+          );
+        }
         // The item stays in the accessibility tree while it fades (a node that appears and
-        // goes at every row scrolled in is what Windows trips over). Rows scrolled in later rise
-        // a little less than the first screenful.
-        final rise = widget.index == 0 ? 14.0 : 22.0;
+        // goes at every row scrolled in is what Windows trips over).
+        const rise = 22.0;
         return Opacity(
           opacity: t,
           alwaysIncludeSemantics: true,

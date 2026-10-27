@@ -185,3 +185,17 @@ Remember that a card is now a baked picture at rest; the fade is applied outside
   scroll no longer play their entrance off screen, and no longer start a timer they may never need.
   Test: `test/ui/stagger_on_view_test.dart`. There is still no exit animation (cards leaving the window are simply
   scrolled away, and disposed once past the cache extent).
+
+## After steps 1 and 5: worse (run 2026-10-26, monitor, Artists/Library fast scrolling)
+
+Raster avg rose to 15 to 30 ms (p90 25 to 42, max ~100). Two likely reasons, both from step 5's `StaggerIn` change:
+
+* Cards built ahead of the scroll waited at **opacity 0**, which is never painted, so they could not be baked into
+  their resting picture (baking copies the painted layer). Every card arrived on screen live and stayed live while
+  it animated. Fix: a waiting card is drawn plainly (it is off screen anyway), so it bakes early.
+* A row scrolling in faded with an `Opacity` over a live card: an offscreen pass per card per frame, a dozen at a
+  time. Fix: scrolled-in rows rise and scale only (a transform, no opacity). The page-load wave keeps its fade.
+
+Two switches replaced ones that had answered their question: Ctrl+Alt+6 now turns the scroll-in animation off,
+Ctrl+Alt+7 turns off holding covers back while scrolling fast (`DeferringScrollPhysics`). Next run: baseline, then
+each of those, to see whether either is still costly.

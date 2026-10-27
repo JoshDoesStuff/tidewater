@@ -1,3 +1,4 @@
+import '../../app/perf_flags.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -149,7 +150,7 @@ class DeferringScrollPhysics extends ScrollPhysics {
 
   @override
   bool recommendDeferredLoading(double velocity, ScrollMetrics metrics, BuildContext context) =>
-      velocity.abs() > deferAbove;
+      PerfFlags.instance.deferCovers && velocity.abs() > deferAbove;
 }
 
 /// True while a page is being scrolled (by wheel, drag or scrollbar). The decoration behind the

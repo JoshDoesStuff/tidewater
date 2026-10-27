@@ -8,7 +8,7 @@ import '../support/fake_library.dart';
 import '../support/pump.dart';
 
 void main() {
-  testWidgets('cards built ahead of the scroll wait off screen, and animate in when they scroll into view', (tester) async {
+  testWidgets('cards built ahead of the scroll wait off screen (drawn plainly), and rise in when they scroll into view', (tester) async {
     final albums = [
       for (var i = 0; i < 200; i++)
         Album(id: 'x$i', title: 'Album $i', artist: 'Artist $i', artistId: 'ar$i', coverArt: 'cv$i', songCount: 1, duration: const Duration(minutes: 3)),
@@ -18,28 +18,25 @@ void main() {
     await advance(tester, const Duration(seconds: 3));
 
     final viewport = tester.getRect(find.byType(Scrollable).first);
+    Finder cardOf(AlbumCard w) => find.byWidget(w, skipOffstage: false);
     // A card that is built (in the area made ahead of the scroll) but below the window.
     final offScreen = find.byType(AlbumCard, skipOffstage: false).evaluate().map((e) => e.widget as AlbumCard).firstWhere(
-          (w) => tester.getRect(find.byWidget(w, skipOffstage: false)).top > viewport.bottom,
+          (w) => tester.getRect(cardOf(w)).top > viewport.bottom,
         );
-    double opacityOf(AlbumCard w) {
-      final o = find.ancestor(of: find.byWidget(w, skipOffstage: false), matching: find.byType(Opacity, skipOffstage: false));
-      return o.evaluate().isEmpty ? 1 : tester.widget<Opacity>(o.first).opacity;
-    }
+    // Not hidden at zero opacity while it waits: drawn, so it can become its resting picture early.
+    expect(find.ancestor(of: cardOf(offScreen), matching: find.byType(Opacity, skipOffstage: false)), findsNothing);
 
-    expect(opacityOf(offScreen), 0, reason: 'its entrance has not played off screen');
-
-    // Bring it into view.
+    // Bring it into view, 100 px below the top.
     final position = tester.state<ScrollableState>(find.byType(Scrollable).first).position;
-    position.jumpTo(position.pixels + tester.getRect(find.byWidget(offScreen, skipOffstage: false)).top - viewport.top - 100);
+    position.jumpTo(position.pixels + tester.getRect(cardOf(offScreen)).top - viewport.top - 100);
     await tester.pump(const Duration(milliseconds: 16));
-    await tester.pump(const Duration(milliseconds: 200));
-    await tester.pump(const Duration(milliseconds: 150));
-    final midway = opacityOf(offScreen);
-    expect(midway, greaterThan(0));
-    expect(midway, lessThan(1), reason: 'it is animating in now');
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 120));
+    final midway = tester.getRect(cardOf(offScreen)).top - viewport.top;
+    expect(midway, greaterThan(100.5), reason: 'it is rising into place: $midway');
+    expect(midway, lessThan(120));
     await advance(tester, const Duration(seconds: 1));
-    expect(opacityOf(offScreen), 1);
+    expect(tester.getRect(cardOf(offScreen)).top - viewport.top, closeTo(100, .5));
     await disposeApp(tester);
   });
 }
