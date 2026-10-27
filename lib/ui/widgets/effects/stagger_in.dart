@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../app/perf_flags.dart';
+import '../../../app/perf_stats.dart';
 import '../../../app/theme/motion.dart';
 
 /// Page-enter for cards, heroes and chips: fade, 22 px rise and a slight
@@ -110,6 +111,7 @@ class _StaggerInState extends State<StaggerIn> with SingleTickerProviderStateMix
   }
 
   void _start({bool wave = true}) {
+    PerfStats.entrances++;
     final delay = wave ? widget.base + Duration(milliseconds: 24 * widget.index.clamp(0, 30)) : Duration.zero;
     _delay = Timer(delay, () {
       if (mounted) _c.forward();

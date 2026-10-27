@@ -1,10 +1,13 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show debugProfileLayoutsEnabled, debugProfilePaintsEnabled;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/frame_log.dart' show perfMark, perfNote;
 import '../../app/perf_flags.dart';
 import '../../app/destinations.dart';
 import '../../app/providers/library_providers.dart';
@@ -130,6 +133,20 @@ class _AppShellState extends ConsumerState<AppShell> {
     final npOpen = ref.read(nowPlayingOpenProvider);
     final key = event.logicalKey;
     final ctrl = HardwareKeyboard.instance.isControlPressed;
+    if (ctrl && HardwareKeyboard.instance.isAltPressed && key == LogicalKeyboardKey.keyM && !kReleaseMode) {
+      perfMark();
+      return true;
+    }
+    if (ctrl && HardwareKeyboard.instance.isAltPressed && key == LogicalKeyboardKey.keyT && !kReleaseMode) {
+      // Profiling aid: name every widget build, layout and paint in the DevTools timeline (costly
+      // itself, so only while recording a trace).
+      final on = !debugProfileBuildsEnabled;
+      debugProfileBuildsEnabled = on;
+      debugProfileLayoutsEnabled = on;
+      debugProfilePaintsEnabled = on;
+      perfNote('PERF detailed timeline (builds, layouts, paints): ${on ? 'ON' : 'OFF'}');
+      return true;
+    }
     if (ctrl && HardwareKeyboard.instance.isAltPressed && key.keyLabel.length == 1 && "1234567890".contains(key.keyLabel)) {
       // Profiling aid (see PerfFlags): not in release builds. 1 to 9 are the first nine, 0 the tenth.
       return PerfFlags.instance.toggle(key.keyLabel == "0" ? 9 : int.parse(key.keyLabel) - 1);

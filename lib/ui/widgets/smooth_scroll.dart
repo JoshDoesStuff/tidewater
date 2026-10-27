@@ -1,4 +1,5 @@
 import '../../app/perf_flags.dart';
+import '../../app/perf_stats.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -71,8 +72,8 @@ class SmoothScrollPosition extends ScrollPositionWithSingleContext {
 
   void _tick(Duration elapsed) {
     final target = _target;
-    // Something else moved the page (a drag, the scrollbar, a jump): let it.
-    if (target == null || (pixels - _expected).abs() > 1) {
+    // Something else moved the page, or took over (a drag, the scrollbar, a jump): let it.
+    if (target == null || activity is! _GlideActivity || (pixels - _expected).abs() > 1) {
       _stop(external: target != null);
       return;
     }
@@ -89,6 +90,7 @@ class SmoothScrollPosition extends ScrollPositionWithSingleContext {
     final done = (target - next).abs() < .5 && _velocity.abs() < 8;
     if (done) next = target;
     next = next.clamp(minScrollExtent, maxScrollExtent);
+    PerfStats.scrollSpeed = _velocity;
     final before = pixels;
     forcePixels(next);
     didUpdateScrollPositionBy(pixels - before);
@@ -100,6 +102,7 @@ class SmoothScrollPosition extends ScrollPositionWithSingleContext {
     final wasGliding = _target != null || (_ticker?.isActive ?? false);
     _target = null;
     _velocity = 0;
+    PerfStats.scrollSpeed = 0;
     _ticker?.stop();
     // When something else took over, it owns the activity and the notifications now.
     if (wasGliding && !external) {
@@ -183,8 +186,8 @@ class _SmoothScrollScopeState extends State<SmoothScrollScope> {
     return NotificationListener<ScrollNotification>(
       onNotification: (n) {
         if (n.depth == 0 && n.metrics.axis == Axis.vertical) {
-          if (n is ScrollStartNotification) pageScrolling.value = true;
-          if (n is ScrollEndNotification) pageScrolling.value = false;
+          if (n is ScrollStartNotification) pageScrolling.value = PerfStats.scrolling = true;
+          if (n is ScrollEndNotification) pageScrolling.value = PerfStats.scrolling = false;
         }
         return false;
       },

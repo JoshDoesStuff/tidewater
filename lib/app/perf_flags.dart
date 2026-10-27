@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'frame_log.dart' show perfNote;
+
 /// Switches for finding out what costs the most to draw, flipped while the app runs (in
 /// debug and profile builds only): press Ctrl+Alt+1 to 9 (0 is the ninth switch after the cards) and watch the "FRAMES" summaries.
 /// Everything is on by default; a release build never turns anything off.
@@ -49,7 +51,7 @@ class PerfFlags extends ChangeNotifier {
         return false;
     }
     notifyListeners();
-    debugPrint('PERF ${names[index]}: ${[ambient, aurora, shadows, smoothClip, covers, scrollIn, deferCovers, chrome, cards, sprites][index] ? 'ON' : 'OFF'}');
+    perfNote('PERF ${names[index]}: ${[ambient, aurora, shadows, smoothClip, covers, scrollIn, deferCovers, chrome, cards, sprites][index] ? 'ON' : 'OFF'}');
     return true;
   }
 }

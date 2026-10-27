@@ -4,6 +4,15 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 
+/// What the cover cache has done (read by the profile log; plain counters, no Flutter here).
+class CoverCacheStats {
+  static int diskReads = 0;
+  static int downloads = 0;
+  static int decodes = 0;
+  static int waiting = 0;
+  static int loading = 0;
+}
+
 typedef CoverFetch = Future<Uint8List> Function(String coverArt, int size);
 
 /// Where cover bytes come from. The disk cache is the real one; tests use an
@@ -56,8 +65,10 @@ class CoverCache implements CoverStore {
         final file = _file(dir, id, px);
         if (await file.exists()) {
           final bytes = await file.readAsBytes();
+          CoverCacheStats.diskReads++;
           if (bytes.isNotEmpty) return bytes;
         }
+        CoverCacheStats.downloads++;
         final bytes = await _fetch(id, px);
         try {
           await dir.create(recursive: true);
@@ -121,10 +132,12 @@ class _Gate {
   Future<void> enter() {
     if (_inside < limit) {
       _inside++;
+      CoverCacheStats.loading = _inside;
       return Future.value();
     }
     final turn = Completer<void>();
     _waiting.add(turn);
+    CoverCacheStats.waiting = _waiting.length;
     return turn.future;
   }
 
@@ -132,8 +145,10 @@ class _Gate {
     if (_waiting.isNotEmpty) {
       // The place passes straight to the newest waiter.
       _waiting.removeLast().complete();
+      CoverCacheStats.waiting = _waiting.length;
     } else {
       _inside--;
+      CoverCacheStats.loading = _inside;
     }
   }
 }

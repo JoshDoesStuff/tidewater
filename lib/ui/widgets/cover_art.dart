@@ -1,4 +1,5 @@
 import '../../app/perf_flags.dart';
+import '../../app/perf_stats.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
 
@@ -36,6 +37,7 @@ class CoverImage extends ImageProvider<CoverImage> {
   Future<ui.Codec> _load(ImageDecoderCallback decode) async {
     final bytes = await cache.get(coverArt, size: size);
     final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+    CoverCacheStats.decodes++;
     return decode(buffer);
   }
 
@@ -87,6 +89,7 @@ class _CoverArtState extends ConsumerState<CoverArt> with SingleTickerProviderSt
   late final AnimationController _fade = AnimationController(vsync: this);
   /// The image is completely opaque over the whole box.
   bool _covered = false;
+  bool _shownOnce = false;
   Timer? _timer;
 
   @override
@@ -152,6 +155,11 @@ class _CoverArtState extends ConsumerState<CoverArt> with SingleTickerProviderSt
               final scrolling = Scrollable.maybeOf(context)?.position.isScrollingNotifier.value ?? false;
               final fade = sync || scrolling ? Duration.zero : Motion.of(context, Motion.medium);
               if (frame != null) {
+                if (PerfStats.enabled && !_shownOnce) {
+                  _shownOnce = true;
+                  PerfStats.coversShown++;
+                  if (sync) PerfStats.coversShownFromMemory++;
+                }
                 if (fade == Duration.zero) {
                   _fade.value = 1;
                 } else if (_fade.value == 0 && !_fade.isAnimating) {

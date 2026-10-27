@@ -1,4 +1,5 @@
 import '../../../app/perf_flags.dart';
+import '../../../app/perf_stats.dart';
 
 import 'dart:async';
 import 'dart:ui' as ui;
@@ -291,6 +292,13 @@ class _MediaCardState extends State<MediaCard> {
   /// The picture reaches past the card by this much, for the shadow.
   static const _margin = 32.0;
 
+  @override
+  void initState() {
+    super.initState();
+    PerfStats.cardsBuilt++;
+    PerfStats.liveCards++;
+  }
+
   bool get _resting =>
       PerfFlags.instance.sprites &&
       !_cardHover &&
@@ -342,6 +350,10 @@ class _MediaCardState extends State<MediaCard> {
   }
 
   void _dropSprite() {
+    if (_sprite != null && PerfStats.enabled) {
+      PerfStats.pictureCards--;
+      PerfStats.liveCards++;
+    }
     _sprite?.dispose();
     _sprite = null;
   }
@@ -355,16 +367,22 @@ class _MediaCardState extends State<MediaCard> {
     if (layer is! OffsetLayer) return;
     final size = ro.size;
     try {
+      final clock = Stopwatch()..start();
       final image = layer.toImageSync(
         Rect.fromLTWH(-_margin, -_margin, size.width + 2 * _margin, size.height + 2 * _margin),
         pixelRatio: MediaQuery.devicePixelRatioOf(context),
       );
+      PerfStats.cardsBaked++;
+      PerfStats.bakeMicros += clock.elapsedMicroseconds;
+      PerfStats.pictureCards++;
+      PerfStats.liveCards--;
       setState(() {
         _sprite = image;
         _spriteSize = size;
         _spriteLook = _look;
       });
     } catch (_) {
+      PerfStats.bakesFailed++;
       // Not drawn yet, or no picture to be had: stay live.
     }
   }
@@ -448,6 +466,11 @@ class _MediaCardState extends State<MediaCard> {
 
   @override
   void dispose() {
+    if (_sprite != null) {
+      PerfStats.pictureCards--;
+    } else {
+      PerfStats.liveCards--;
+    }
     if (_coverListener != null) _coverStream?.removeListener(_coverListener!);
     _BakeQueue.remove(this);
     _bakeTimer?.cancel();
