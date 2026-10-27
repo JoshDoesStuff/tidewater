@@ -815,9 +815,11 @@ class _MediaCardState extends State<MediaCard> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _preloadCover());
     }
     if (_resting && _sprite == null) {
-      // A card whose cover is still coming waits longer: pictured now, it would be pictured again
-      // the moment the cover arrives (twice the work, in the busiest moments).
-      _bakeTimer ??= Timer(Duration(milliseconds: _coverReady ? 150 : 1200), () {
+      // A card whose cover is still coming waits a little longer (pictured now, it is pictured again
+      // when the cover arrives), but not long: on a machine whose covers are not on disk yet they
+      // can take seconds, and a card left live meanwhile cost far more (laptop log: 180+ live
+      // cards, 25 ms frames for a whole minute).
+      _bakeTimer ??= Timer(Duration(milliseconds: _coverReady ? 150 : 400), () {
         _bakeTimer = null;
         _BakeQueue.add(this);
       });
