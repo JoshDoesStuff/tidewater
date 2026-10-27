@@ -84,6 +84,15 @@ class _Screen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: (text.bodyMedium ?? const TextStyle()).copyWith(color: scheme.onSurfaceVariant),
               ),
+              const SizedBox(height: 10),
+              // Why the count is more than the number of albums: the server gives a song its own
+              // cover whenever its file has artwork embedded, even when it is the album's picture.
+              Text(
+                'More covers than albums? Songs with artwork inside the file get a cover of their own, '
+                'even when it is the same picture as the album.',
+                textAlign: TextAlign.center,
+                style: (text.bodySmall ?? const TextStyle()).copyWith(color: scheme.onSurfaceVariant),
+              ),
               const SizedBox(height: 20),
               FilledButton.tonal(onPressed: onHide, child: const Text('Keep browsing')),
             ],
