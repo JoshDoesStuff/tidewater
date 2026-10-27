@@ -213,6 +213,7 @@ class SongRow extends ConsumerWidget {
                   flex: 4,
                   child: LinkText(
                     text: track.albumTitle,
+                    alignment: Alignment.center,
                     onTap: link(track.albumId.isEmpty ? null : () => context.push('/album/${track.albumId}')),
                     style: text.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
