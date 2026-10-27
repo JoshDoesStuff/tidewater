@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import '../../../app/theme/motion.dart';
@@ -22,6 +23,7 @@ class Visualizer extends ConsumerStatefulWidget {
     this.intensity = 1,
     this.ringRect,
     this.fps = 60,
+    this.paused,
   });
 
   final VizMode mode;
@@ -32,6 +34,9 @@ class Visualizer extends ConsumerStatefulWidget {
   /// How often it is drawn at most: 60 in Now Playing, 30 behind the pages, where its slow
   /// drift does not need more and a big window is costly to fill.
   final int fps;
+
+  /// While this is true no new frames are drawn (the last one stays).
+  final ValueListenable<bool>? paused;
 
   /// Cover bounds (in this widget's coordinates) the Ring style radiates from.
   final Rect? Function()? ringRect;
@@ -91,6 +96,7 @@ class _VisualizerState extends ConsumerState<Visualizer>
   }
 
   void _onTick(Duration elapsed) {
+    if (widget.paused?.value ?? false) return;
     // Capped (60 fps even on high-refresh displays; less behind the pages).
     if ((elapsed - _lastPaint).inMicroseconds < 1000000 ~/ widget.fps - 1500) return;
     _lastPaint = elapsed;

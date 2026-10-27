@@ -325,12 +325,18 @@ class _MediaCardState extends State<MediaCard> {
               curve: reduced ? Curves.linear : (_hovered && !_pressed ? Motion.standard : Motion.spring),
               builder: (context, pose, child) => Transform(
                 alignment: Alignment.center,
-                transform: (Matrix4.identity()
-                  ..setEntry(3, 2, 1 / 520)
-                  ..translateByDouble(0, pose.lift, 0, 1)
-                  ..rotateX(pose.tilt.dy)
-                  ..rotateY(pose.tilt.dx)
-                  ..scaleByDouble(pose.scale, pose.scale, 1, 1)),
+                // A plain 2D matrix while the card is not being tilted: a perspective one on every card
+                // at rest made the compositor treat each as a 3D layer, a hundred of them per screen.
+                transform: pose.tilt == Offset.zero
+                    ? (Matrix4.identity()
+                      ..translateByDouble(0, pose.lift, 0, 1)
+                      ..scaleByDouble(pose.scale, pose.scale, 1, 1))
+                    : (Matrix4.identity()
+                      ..setEntry(3, 2, 1 / 520)
+                      ..translateByDouble(0, pose.lift, 0, 1)
+                      ..rotateX(pose.tilt.dy)
+                      ..rotateY(pose.tilt.dx)
+                      ..scaleByDouble(pose.scale, pose.scale, 1, 1)),
                 child: child,
               ),
               child: Stack(

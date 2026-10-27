@@ -115,6 +115,11 @@ class SmoothScrollPosition extends ScrollPositionWithSingleContext {
   }
 }
 
+/// True while a page is being scrolled (by wheel, drag or scrollbar). The decoration behind the
+/// pages (the drifting shapes, the aurora) stands still meanwhile: on a full-screen window its
+/// drawing alone took most of a frame, and nobody is looking at it while the page flies by.
+final pageScrolling = ValueNotifier<bool>(false);
+
 /// Gives the scroll views below it (the ones that use the primary controller, which is
 /// every plain vertical page) the gliding wheel.
 class SmoothScrollScope extends StatefulWidget {
@@ -136,5 +141,16 @@ class _SmoothScrollScopeState extends State<SmoothScrollScope> {
   }
 
   @override
-  Widget build(BuildContext context) => PrimaryScrollController(controller: _controller, child: widget.child);
+  Widget build(BuildContext context) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: (n) {
+        if (n.depth == 0 && n.metrics.axis == Axis.vertical) {
+          if (n is ScrollStartNotification) pageScrolling.value = true;
+          if (n is ScrollEndNotification) pageScrolling.value = false;
+        }
+        return false;
+      },
+      child: PrimaryScrollController(controller: _controller, child: widget.child),
+    );
+  }
 }

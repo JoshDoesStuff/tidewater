@@ -1,3 +1,4 @@
+import '../widgets/sliver_width_builder.dart';
 import '../widgets/hint.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
@@ -85,7 +86,7 @@ class RadioPage extends ConsumerWidget {
         ),
       );
     }
-    return SliverLayoutBuilder(
+    return SliverWidthBuilder(
       builder: (context, c) {
         final columns = StaggerIn.columnsFor(c.crossAxisExtent, 340, 14);
         return SliverGrid.builder(

@@ -1,3 +1,4 @@
+import '../widgets/sliver_width_builder.dart';
 import '../widgets/smooth_scroll.dart';
 import 'dart:async';
 
@@ -517,7 +518,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     return [
       SliverPadding(
         padding: const EdgeInsets.fromLTRB(24, 0, 40, PageFrame.bottomClearance),
-        sliver: SliverLayoutBuilder(
+        sliver: SliverWidthBuilder(
           builder: (context, c) {
             final columns = StaggerIn.columnsFor(c.crossAxisExtent, 280, 14);
             return SliverGrid.builder(
@@ -550,7 +551,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
   SliverPadding _grid(int count, Widget Function(int index) card) {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(24, 0, 40, PageFrame.bottomClearance),
-      sliver: SliverLayoutBuilder(
+      sliver: SliverWidthBuilder(
         builder: (context, constraints) {
           final (columns, tile) = _geometry(constraints.crossAxisExtent);
           // Cover + gap + title + subtitle.
@@ -599,7 +600,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
   Widget _skeletonGrid() {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(24, 0, 40, PageFrame.bottomClearance),
-      sliver: SliverLayoutBuilder(
+      sliver: SliverWidthBuilder(
         builder: (context, constraints) {
           final (columns, tile) = _geometry(constraints.crossAxisExtent);
           return SliverGrid.builder(

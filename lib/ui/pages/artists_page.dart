@@ -1,3 +1,4 @@
+import '../widgets/sliver_width_builder.dart';
 import '../widgets/smooth_scroll.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
@@ -130,7 +131,7 @@ class _ArtistsPageState extends ConsumerState<ArtistsPage> {
       return [
         SliverPadding(
           padding: pad,
-          sliver: SliverLayoutBuilder(
+          sliver: SliverWidthBuilder(
             builder: (context, c) {
               final (columns, tile) = _geometry(c.crossAxisExtent);
               return SliverGrid.builder(
@@ -171,7 +172,7 @@ class _ArtistsPageState extends ConsumerState<ArtistsPage> {
     return [
       SliverPadding(
         padding: pad,
-        sliver: SliverLayoutBuilder(
+        sliver: SliverWidthBuilder(
           builder: (context, c) {
             final (columns, tile) = _geometry(c.crossAxisExtent);
             _columns = columns;

@@ -1,3 +1,4 @@
+import '../widgets/sliver_width_builder.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -97,7 +98,7 @@ class ListsPage extends ConsumerWidget {
         ),
       );
     }
-    return SliverLayoutBuilder(
+    return SliverWidthBuilder(
       builder: (context, c) {
         final columns = ((c.crossAxisExtent + _gap) / (_cardWidth + _gap)).floor().clamp(2, 12);
         final tile = (c.crossAxisExtent - (columns - 1) * _gap) / columns;

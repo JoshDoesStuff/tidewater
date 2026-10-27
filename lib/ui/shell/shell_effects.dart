@@ -12,6 +12,7 @@ import '../../app/theme/motion.dart';
 import '../now_playing/visualizer/visualizer.dart';
 import '../widgets/shapes/morph_path.dart';
 import '../widgets/shapes/morph_shape.dart';
+import '../widgets/smooth_scroll.dart' show pageScrolling;
 
 /// Faint life behind the pages: three slowly drifting scalloped blobs, a
 /// mouse spotlight, and (while playing) a fainter Aurora. Never competes with
@@ -39,10 +40,21 @@ class _AmbientLayerState extends ConsumerState<AmbientLayer>
   void initState() {
     super.initState();
     _drift.repeat();
+    pageScrolling.addListener(_onPageScrolling);
+  }
+
+  /// The drift holds still while a page scrolls.
+  void _onPageScrolling() {
+    if (pageScrolling.value) {
+      _drift.stop(canceled: false);
+    } else if (!_drift.isAnimating) {
+      _drift.repeat();
+    }
   }
 
   @override
   void dispose() {
+    pageScrolling.removeListener(_onPageScrolling);
     _drift.dispose();
     super.dispose();
   }
@@ -121,10 +133,11 @@ class _AmbientLayerState extends ConsumerState<AmbientLayer>
                           setState(() => _auroraMounted = false);
                         }
                       },
-                      child: const Visualizer(
+                      child: Visualizer(
                         mode: VizMode.aurora,
                         intensity: .6,
                         fps: 30,
+                        paused: pageScrolling,
                       ),
                     ),
                   ),
