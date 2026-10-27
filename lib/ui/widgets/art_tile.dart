@@ -19,6 +19,7 @@ class ArtTile extends StatelessWidget {
     this.spin = 0,
     this.shadowAlpha = .28,
     this.child,
+    this.onSettled,
   });
 
   /// Cover-art id and placeholder key; see [CoverArt].
@@ -41,6 +42,9 @@ class ArtTile extends StatelessWidget {
   /// Painted over the art inside the clip (e.g. a [Ripple]).
   final Widget? child;
 
+  /// Called once the cover is fully in (or there is none to wait for).
+  final VoidCallback? onSettled;
+
   @override
   Widget build(BuildContext context) {
     final tile = MorphShape(
@@ -49,7 +53,7 @@ class ArtTile extends StatelessWidget {
       morph: morph,
       spin: spin,
       shadowAlpha: shadowAlpha,
-      child: CoverArt(coverArt: coverArt, seedKey: seedKey, resolution: resolution, child: child),
+      child: CoverArt(coverArt: coverArt, seedKey: seedKey, resolution: resolution, onSettled: onSettled, child: child),
     );
     return size == null ? tile : SizedBox.square(dimension: size, child: tile);
   }

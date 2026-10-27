@@ -1,8 +1,10 @@
 import '../../../app/perf_flags.dart';
 
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show OffsetLayer, RenderRepaintBoundary;
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/semantics.dart' show CustomSemanticsAction;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -271,6 +273,91 @@ class _MediaCardState extends State<MediaCard> {
   final _tileKey = GlobalKey();
   Offset _tilt = Offset.zero; // x: rotateY, y: rotateX (radians)
 
+  // A resting card is drawn as one picture (see [_bake]): a hundred cards each made of a clip, a
+  // shadow, a cover and two lines of text were most of the graphics thread's time while scrolling.
+  final _boundaryKey = GlobalKey();
+  ui.Image? _sprite;
+  Size _spriteSize = Size.zero;
+  Object? _spriteLook;
+  Object? _look;
+  bool _coverReady = false;
+  bool _cardHover = false;
+  bool _hoverMorph = false;
+  Timer? _bakeTimer;
+  Timer? _giveUp;
+
+  /// The picture reaches past the card by this much, for the shadow.
+  static const _margin = 32.0;
+
+  bool get _resting =>
+      PerfFlags.instance.sprites &&
+      _coverReady &&
+      !_cardHover &&
+      !_hovered &&
+      !_pressed &&
+      !widget.active &&
+      !_popMounted &&
+      _tilt == Offset.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    // A cover that never settles (it failed to load) must not keep the card live for ever.
+    _giveUp = Timer(const Duration(seconds: 4), () {
+      if (mounted && !_coverReady) setState(() => _coverReady = true);
+    });
+  }
+
+  @override
+  void didUpdateWidget(MediaCard old) {
+    super.didUpdateWidget(old);
+    if (old.coverArt != widget.coverArt) {
+      _coverReady = false;
+      _giveUp?.cancel();
+      _giveUp = Timer(const Duration(seconds: 4), () {
+        if (mounted && !_coverReady) setState(() => _coverReady = true);
+      });
+    }
+  }
+
+  void _dropSprite() {
+    _sprite?.dispose();
+    _sprite = null;
+  }
+
+  void _bake() {
+    if (!mounted || !_resting || _sprite != null) return;
+    final ro = _boundaryKey.currentContext?.findRenderObject();
+    if (ro is! RenderRepaintBoundary || !ro.hasSize) return;
+    // ignore: invalid_use_of_protected_member
+    final layer = ro.layer;
+    if (layer is! OffsetLayer) return;
+    final size = ro.size;
+    try {
+      final image = layer.toImageSync(
+        Rect.fromLTWH(-_margin, -_margin, size.width + 2 * _margin, size.height + 2 * _margin),
+        pixelRatio: MediaQuery.devicePixelRatioOf(context),
+      );
+      setState(() {
+        _sprite = image;
+        _spriteSize = size;
+        _spriteLook = _look;
+      });
+    } catch (_) {
+      // Not drawn yet, or no picture to be had: stay live.
+    }
+  }
+
+  void _cardEnter() {
+    if (_isScrolling || _cardHover) return;
+    setState(() => _cardHover = true);
+  }
+
+  void _cardExit() {
+    if (!_cardHover) return;
+    setState(() => _cardHover = false);
+  }
+
   /// Whether the page is scrolling under the pointer. Cards sliding past a still mouse would each
   /// spring into their hover shape (a blurred shadow, a spin, a tilt) one after another: a
   /// scrolled page is not a hovered one.
@@ -288,21 +375,26 @@ class _MediaCardState extends State<MediaCard> {
   }
 
   void _onScrolling() {
-    if (_isScrolling && _hovered && mounted) _leave();
+    if (_isScrolling && mounted) {
+      if (_hovered) _leave();
+      if (_cardHover) setState(() => _cardHover = false);
+    }
   }
 
   void _enter() {
     setState(() {
       _hovered = true;
       _popGone?.cancel();
-      if (!_popMounted) {
-        // Built hidden first, then shown a frame later, so there is a pop to animate.
-        _popMounted = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _hovered) setState(() => _popOn = true);
+      _popMounted = true;
+    });
+    // The live card is built first as it rests, and springs into its hover shape a frame later
+    // (built already hovered it would simply be there, with no spring).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _hovered) {
+        setState(() {
+          _hoverMorph = true;
+          _popOn = true;
         });
-      } else {
-        _popOn = true;
       }
     });
   }
@@ -314,6 +406,7 @@ class _MediaCardState extends State<MediaCard> {
         if (mounted && !_hovered) setState(() => _popMounted = false);
       });
       _hovered = false;
+      _hoverMorph = false;
       _popOn = false;
       _pressed = false;
       _tilt = Offset.zero;
@@ -334,6 +427,9 @@ class _MediaCardState extends State<MediaCard> {
 
   @override
   void dispose() {
+    _bakeTimer?.cancel();
+    _giveUp?.cancel();
+    _sprite?.dispose();
     _popGone?.cancel();
     _scrolling?.removeListener(_onScrolling);
     super.dispose();
@@ -354,7 +450,7 @@ class _MediaCardState extends State<MediaCard> {
     final text = Theme.of(context).textTheme;
     final active = widget.active;
     final reduced = Motion.reduced(context);
-    final morphed = _hovered || active;
+    final morphed = _hoverMorph || active;
 
     final cover = LayoutBuilder(
       builder: (context, box) {
@@ -376,16 +472,16 @@ class _MediaCardState extends State<MediaCard> {
               tween: _PoseTween(
                 end: _Pose(
                   tilt: reduced ? Offset.zero : _tilt,
-                  lift: _hovered && !reduced ? -4 : 0,
+                  lift: _hoverMorph && !reduced ? -4 : 0,
                   scale: _pressed ? .94 : 1,
                 ),
               ),
               duration: reduced
                   ? Duration.zero
-                  : (_hovered && !_pressed ? Motion.fast : Motion.medium),
+                  : (_hoverMorph && !_pressed ? Motion.fast : Motion.medium),
               curve: reduced
                   ? Curves.linear
-                  : (_hovered && !_pressed ? Motion.standard : Motion.spring),
+                  : (_hoverMorph && !_pressed ? Motion.standard : Motion.spring),
               builder: (context, pose, child) =>
                   pose.tilt == Offset.zero && pose.lift == 0 && pose.scale == 1
                   // At rest there is no transform at all (each was a layer of its own).
@@ -419,7 +515,10 @@ class _MediaCardState extends State<MediaCard> {
                         params: widget.shape.params,
                         exponent: widget.round ? 2 : 4.2,
                         morph: morphed ? 1 : 0,
-                        spin: (active || _hovered) && !reduced ? .72 : 0,
+                        spin: (active || _hoverMorph) && !reduced ? .72 : 0,
+                        onSettled: () {
+                          if (mounted && !_coverReady) setState(() => _coverReady = true);
+                        },
                         child: Ripple(
                           color: scheme.onPrimary,
                           child: const SizedBox.expand(),
@@ -449,30 +548,50 @@ class _MediaCardState extends State<MediaCard> {
       },
     );
 
-    Widget tile = cover;
-    if (widget.onMenu != null) {
-      tile = GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onSecondaryTapUp: (d) => widget.onMenu!(d.globalPosition),
-        child: tile,
-      );
-    }
-    if (widget.drag != null) {
-      tile = TrackDragSource(drag: widget.drag!, child: tile);
-    }
-    if (widget.onDrop != null) {
-      tile = TrackDropTarget(
-        radius: 30,
-        onDrop: widget.onDrop!,
-        accepts: widget.acceptsDrop,
-        child: tile,
-      );
+    // Right-click, drag and drop: around the tile, live or resting.
+    Widget decorate(Widget tile) {
+      if (widget.onMenu != null) {
+        tile = GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onSecondaryTapUp: (d) => widget.onMenu!(d.globalPosition),
+          child: tile,
+        );
+      }
+      if (widget.drag != null) {
+        tile = TrackDragSource(drag: widget.drag!, child: tile);
+      }
+      if (widget.onDrop != null) {
+        tile = TrackDropTarget(
+          radius: 30,
+          onDrop: widget.onDrop!,
+          accepts: widget.acceptsDrop,
+          child: tile,
+        );
+      }
+      return tile;
     }
 
+    final look = Object.hash(
+      widget.title,
+      widget.subtitle,
+      widget.coverArt,
+      widget.active,
+      widget.round,
+      scheme.primary,
+      scheme.onSurface,
+      scheme.onSurfaceVariant,
+    );
+    if (look != _look) {
+      // The colors are moving (a new album recolors the app for most of a second): any
+      // picture is out of date, and a new one waits until they have settled.
+      _look = look;
+      _bakeTimer?.cancel();
+      _bakeTimer = null;
+    }
     final card = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        tile,
+        decorate(cover),
         SizedBox(height: widget.large ? 14 : 12),
         LinkText(
           text: widget.title,
@@ -493,6 +612,89 @@ class _MediaCardState extends State<MediaCard> {
         ),
       ],
     );
+
+    Widget visual = MouseRegion(
+      onEnter: (_) => _cardEnter(),
+      onExit: (_) => _cardExit(),
+      child: RepaintBoundary(key: _boundaryKey, child: card),
+    );
+    final sprite = _sprite;
+    if (sprite != null && _resting && _spriteLook == look) {
+      // At rest: the whole card is one picture, and what answers the pointer is a plain box.
+      // Any hover makes the real card again (a frame later), so nothing is lost.
+      visual = LayoutBuilder(
+        builder: (context, box) {
+          if ((box.maxWidth - _spriteSize.width).abs() > .5) {
+            // The window was resized: this picture no longer fits.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              setState(_dropSprite);
+            });
+            return MouseRegion(
+              onEnter: (_) => _cardEnter(),
+              onExit: (_) => _cardExit(),
+              child: RepaintBoundary(key: _boundaryKey, child: card),
+            );
+          }
+          final w = _spriteSize.width;
+          final h = _spriteSize.height;
+          return MouseRegion(
+            onEnter: (_) => _cardEnter(),
+            onExit: (_) => _cardExit(),
+            child: SizedBox(
+              width: w,
+              height: h,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned(
+                    left: -_margin,
+                    top: -_margin,
+                    width: w + 2 * _margin,
+                    height: h + 2 * _margin,
+                    child: IgnorePointer(
+                      child: RawImage(image: sprite, fit: BoxFit.fill, filterQuality: FilterQuality.low),
+                    ),
+                  ),
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    width: w,
+                    height: w,
+                    child: decorate(
+                      MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: widget.onTap,
+                          child: const SizedBox.expand(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    } else if (_sprite != null) {
+      // Out of date (or in use): the old picture goes.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _sprite != null && !(_resting && _spriteLook == _look)) {
+          setState(_dropSprite);
+        }
+      });
+    }
+    if (_resting && _sprite == null) {
+      _bakeTimer ??= Timer(const Duration(milliseconds: 500), () {
+        _bakeTimer = null;
+        _bake();
+      });
+    } else if (!_resting) {
+      _bakeTimer?.cancel();
+      _bakeTimer = null;
+    }
     // One node for the whole card, with its other doings as named actions: the cover, the
     // title and the artist are not three or four separate things to a screen reader (and the
     // tilt and lift animate a transform that would otherwise update the tree on every frame).
@@ -515,7 +717,7 @@ class _MediaCardState extends State<MediaCard> {
           },
       },
       excludeSemantics: true,
-      child: card,
+      child: visual,
     );
     return widget.size != null
         ? SizedBox(width: widget.size, child: node)

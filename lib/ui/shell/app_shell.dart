@@ -130,9 +130,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     final npOpen = ref.read(nowPlayingOpenProvider);
     final key = event.logicalKey;
     final ctrl = HardwareKeyboard.instance.isControlPressed;
-    if (ctrl && HardwareKeyboard.instance.isAltPressed && key.keyLabel.length == 1 && "123456789".contains(key.keyLabel)) {
-      // Profiling aid (see PerfFlags): not in release builds.
-      return PerfFlags.instance.toggle(int.parse(key.keyLabel) - 1);
+    if (ctrl && HardwareKeyboard.instance.isAltPressed && key.keyLabel.length == 1 && "1234567890".contains(key.keyLabel)) {
+      // Profiling aid (see PerfFlags): not in release builds. 1 to 9 are the first nine, 0 the tenth.
+      return PerfFlags.instance.toggle(key.keyLabel == "0" ? 9 : int.parse(key.keyLabel) - 1);
     }
     if (ctrl && key == LogicalKeyboardKey.keyA) {
       if (npOpen) {

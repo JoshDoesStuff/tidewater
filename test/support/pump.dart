@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/app.dart';
+import 'package:tidewater/app/perf_flags.dart';
 import 'package:tidewater/app/playback/system_media.dart';
 import 'package:tidewater/core/api/connect.dart';
 import 'package:tidewater/core/api/list_cache.dart';
@@ -28,6 +29,9 @@ Future<ProviderContainer> pumpApp(
   ListStore? listStore,
   Duration settle = const Duration(seconds: 2),
 }) async {
+  // A resting card is a picture (see MediaCard); most tests look for its text, so it is off here.
+  PerfFlags.instance.sprites = false;
+  addTearDown(() => PerfFlags.instance.sprites = true);
   final overrides = await testOverrides(api: api, signedIn: signedIn, store: store, factory: factory, prefs: prefs, lrclib: lrclib, media: media, listStore: listStore);
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;

@@ -60,6 +60,7 @@ class CoverArt extends ConsumerStatefulWidget {
     required this.seedKey,
     this.resolution = 300,
     this.child,
+    this.onSettled,
   });
 
   /// Cover-art id from the server, or null.
@@ -72,6 +73,10 @@ class CoverArt extends ConsumerStatefulWidget {
   final int resolution;
   final Widget? child;
 
+  /// Called once the picture is completely in (the placeholder gone), or at once when the
+  /// album has no cover to wait for.
+  final VoidCallback? onSettled;
+
   @override
   ConsumerState<CoverArt> createState() => _CoverArtState();
 }
@@ -83,6 +88,16 @@ class _CoverArtState extends ConsumerState<CoverArt> with SingleTickerProviderSt
   /// The image is completely opaque over the whole box.
   bool _covered = false;
   Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.coverArt == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onSettled?.call();
+      });
+    }
+  }
 
   @override
   void didUpdateWidget(CoverArt old) {
@@ -106,7 +121,10 @@ class _CoverArtState extends ConsumerState<CoverArt> with SingleTickerProviderSt
     if (_covered || _timer != null) return;
     _timer = Timer(fade + const Duration(milliseconds: 60), () {
       _timer = null;
-      if (mounted) setState(() => _covered = true);
+      if (mounted) {
+        setState(() => _covered = true);
+        widget.onSettled?.call();
+      }
     });
   }
 
