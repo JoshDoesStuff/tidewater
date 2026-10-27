@@ -50,10 +50,10 @@ class CoverPrecache {
 /// Gentle on the disk: each cover is written once, whole, through the cache's write-then-rename
 /// (no partial rewrites); a cover already on disk is only checked for (a file lookup, nothing
 /// read or written), so later launches cost a few thousand lookups and download only what is
-/// new (and the progress shows whenever something is missing). A 5000-cover Library is roughly 150-250 MB, written once. Four downloads at a time, and
+/// new (and the progress shows whenever something is missing). A 5000-cover Library is roughly 150-250 MB, written once. Ten downloads at a time, and
 /// covers a card on screen asks for go ahead of these (the cache serves the newest request first).
 class CoverPrecacheNotifier extends Notifier<CoverPrecache> {
-  static const workers = 4;
+  static const workers = 10;
   var _generation = 0;
 
   @override

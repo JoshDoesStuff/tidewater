@@ -42,7 +42,10 @@ class CoverCache implements CoverStore {
   /// start sixty reads, decodes and downloads in the same instant and arrive in one burst; now
   /// they come in a steady stream, the newest requests first (those are the cards the user just
   /// scrolled to; older ones may already be off screen).
-  final _gate = _Gate(6);
+  // Twelve: each download waits on the server (it resizes a cover the first time it is asked
+  // for one) and the network far more than on this computer; at six the first save of a
+  // 5000-cover Library ran at about 12 covers a second (over seven minutes).
+  final _gate = _Gate(12);
 
   /// A folder name that identifies one server (same URL -> same folder).
   static String serverFolder(Uri baseUrl) => sha1.convert(baseUrl.toString().codeUnits).toString().substring(0, 12);
