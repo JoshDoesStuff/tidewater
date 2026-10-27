@@ -48,6 +48,10 @@ final perfWatchProvider = Provider<void>((ref) {
   onRoute();
 
   ref.listen(libraryTabProvider, (_, t) {
+    if (tab == 'songs' && PerfStats.songsTabCovers.isNotEmpty) {
+      perfNote('covers distinctIds=${PerfStats.songsTabCovers.length} (Songs tab, final)');
+    }
+    PerfStats.songsTabCovers.clear();
     tab = t.name;
     perfNote('TAB $tab');
     update();

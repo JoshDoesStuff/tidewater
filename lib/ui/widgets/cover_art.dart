@@ -224,6 +224,7 @@ class _CoverArtState extends ConsumerState<CoverArt> with SingleTickerProviderSt
             decodeWidth: CoverImage.decodeWidthFor(widget.resolution, box.maxWidth, dpr))
         : null;
     _holdOnly(image);
+    if (PerfStats.enabled && id != null && PerfStats.screen.contains('tab=songs')) PerfStats.songsTabCovers.add(id);
     return Stack(
       fit: StackFit.expand,
       children: [

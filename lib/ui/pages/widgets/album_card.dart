@@ -295,6 +295,9 @@ class _MediaCardState extends State<MediaCard> {
   bool _hoverMorph = false;
   Timer? _bakeTimer;
 
+  /// Pictured before its cover arrived (for the profile log's bakedTwice).
+  bool _picturedWithoutCover = false;
+
   /// Built as the real card at least once (see [_BuildBudget]).
   bool _full = false;
 
@@ -443,6 +446,8 @@ class _MediaCardState extends State<MediaCard> {
         _sprite = image;
         _spriteSize = size;
         _spriteLook = _look;
+        if (_coverReady && _picturedWithoutCover) PerfStats.bakedTwice++;
+        _picturedWithoutCover = !_coverReady;
       });
     } catch (_) {
       PerfStats.bakesFailed++;

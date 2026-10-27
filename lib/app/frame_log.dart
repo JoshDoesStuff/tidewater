@@ -30,6 +30,19 @@ void logSlowFrames() {
   } catch (_) {}
   debugPrint('PERF LOG: ${file.path}');
   WidgetsBinding.instance.addObserver(_WindowWatch());
+  // The cover queue, once a second while covers wait their turn; and the Songs tab's distinct
+  // cover ids whenever that count has changed.
+  var lastDistinct = 0;
+  Timer.periodic(const Duration(seconds: 1), (_) {
+    if (CoverCacheStats.waiting > 0) {
+      perfNote('GATE waiting=${CoverCacheStats.waiting} loading=${CoverCacheStats.loading}');
+    }
+    final distinct = PerfStats.songsTabCovers.length;
+    if (distinct != lastDistinct) {
+      lastDistinct = distinct;
+      if (distinct > 0) perfNote('covers distinctIds=$distinct');
+    }
+  });
 
   final clock = _clock..start();
   final build = <double>[];
@@ -38,6 +51,7 @@ void logSlowFrames() {
   // Totals over the 3 s window.
   var wBuilt = 0, wBaked = 0, wBakeUs = 0, wShown = 0, wDisk = 0, wDown = 0, wDecodes = 0, wDecodeUs = 0, wEntr = 0;
   var unflushed = 0;
+  var wWasted = 0, wTwice = 0;
 
   String f(double v) => v.toStringAsFixed(1);
 
@@ -47,6 +61,10 @@ void logSlowFrames() {
     final shown = PerfStats.coversShown, mem = PerfStats.coversShownFromMemory;
     final disk = CoverCacheStats.diskReads, down = CoverCacheStats.downloads, decodes = CoverCacheStats.decodes, decodeUs = PerfStats.decodeMicros;
     final dropped = CoverCacheStats.skipped + CoverCacheStats.cancelled;
+    final wasted = CoverCacheStats.downloadsWasted, twice = PerfStats.bakedTwice;
+    CoverCacheStats.downloadsWasted = 0;
+    wWasted += wasted;
+    wTwice += twice;
     CoverCacheStats.diskReads = CoverCacheStats.downloads = CoverCacheStats.decodes = 0;
     CoverCacheStats.skipped = CoverCacheStats.cancelled = 0;
     final entr = PerfStats.entrances, failed = PerfStats.bakesFailed;
@@ -79,7 +97,7 @@ void logSlowFrames() {
           ..write('| rasterCache layers=${t.layerCacheCount} (${(t.layerCacheBytes / 1048576).toStringAsFixed(1)} MB) ')
           ..write('pictures=${t.pictureCacheCount} (${(t.pictureCacheBytes / 1048576).toStringAsFixed(1)} MB) ')
           ..write('| since last: cardsBuilt=$built pictured=$baked (${f(bakeUs / 1000)} ms) bakeFailed=$failed ')
-          ..write('cardBuilds=$cardBuilds standIns=$standIns rowBuilds=$rowBuilds coversShown=$shown (fromMemory=$mem) diskReads=$disk downloads=$down decodes=$decodes (${f(decodeUs / 1000)} ms) coversDropped=$dropped coversHeldBack=$heldBack entrances=$entr ')
+          ..write('cardBuilds=$cardBuilds standIns=$standIns rowBuilds=$rowBuilds coversShown=$shown (fromMemory=$mem) diskReads=$disk downloads=$down decodes=$decodes (${f(decodeUs / 1000)} ms) coversDropped=$dropped downloadsWasted=$wasted bakedTwice=$twice coversHeldBack=$heldBack entrances=$entr ')
           ..write('| now: liveCards=${PerfStats.liveCards} pictureCards=${PerfStats.pictureCards} ')
           ..write('coversWaiting=${CoverCacheStats.waiting} coversLoading=${CoverCacheStats.loading} ')
           ..write('imageCache=${cache.currentSize} (${(cache.currentSizeBytes / 1048576).toStringAsFixed(0)} MB) live=${cache.liveImageCount} pending=${cache.pendingImageCount} ')
@@ -111,13 +129,14 @@ void logSlowFrames() {
       final where = 'memory=${ProcessInfo.currentRss ~/ 1048576}MB at: ${PerfStats.screen}';
       try {
         _out?.writeStringSync('$summary | cardsBuilt=$wBuilt pictured=$wBaked (${f(wBakeUs / 1000)} ms) coversShown=$wShown '
-            'diskReads=$wDisk downloads=$wDown decodes=$wDecodes (${f(wDecodeUs / 1000)} ms) entrances=$wEntr | $where\n');
+            'diskReads=$wDisk downloads=$wDown decodes=$wDecodes (${f(wDecodeUs / 1000)} ms) entrances=$wEntr downloadsWasted=$wWasted bakedTwice=$wTwice | $where\n');
         _out?.flushSync();
       } catch (_) {}
     }
     build.clear();
     raster.clear();
     wBuilt = wBaked = wBakeUs = wShown = wDisk = wDown = wDecodes = wDecodeUs = wEntr = 0;
+    wWasted = wTwice = 0;
   });
 }
 

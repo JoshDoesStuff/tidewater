@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/library_api.dart';
+import '../frame_log.dart' show perfNote;
 import '../../core/models/album.dart';
 import '../../core/models/artist.dart';
 import '../../core/models/genre.dart';
@@ -55,6 +56,7 @@ final libraryAlbumsProvider = StreamProvider.family<LibraryAlbums, LibrarySort>(
   final hasCache = cached != null && cached.isNotEmpty;
   if (hasCache) yield LibraryAlbums(List.unmodifiable([for (final j in cached) Album.fromJson(j)]), complete: true);
   if (hasCache && ref.read(freshListsProvider.notifier).consume(name)) return; // just refreshed
+  final fetchClock = Stopwatch()..start();
   final all = <Album>[];
   try {
     while (true) {
@@ -76,6 +78,7 @@ final libraryAlbumsProvider = StreamProvider.family<LibraryAlbums, LibrarySort>(
     if (hasCache) return; // offline or the server is down: keep what was saved
     rethrow;
   }
+  if (hasCache) perfNote('LIST $name swapped n=${all.length} ms=${fetchClock.elapsedMilliseconds}');
   if (hasCache) yield LibraryAlbums(List.unmodifiable(all), complete: true);
   unawaited(store.write(name, [for (final a in all) a.toJson()]));
 });
@@ -89,7 +92,9 @@ final artistsProvider = StreamProvider<List<Artist>>((ref) async* {
   if (hasCache) yield [for (final j in cached) Artist.fromJson(j)];
   if (hasCache && ref.read(freshListsProvider.notifier).consume('artists')) return;
   try {
+    final fetchClock = Stopwatch()..start();
     final fresh = await api.getArtists();
+    if (hasCache) perfNote('LIST artists swapped n=${fresh.length} ms=${fetchClock.elapsedMilliseconds}');
     yield fresh;
     unawaited(store.write('artists', [for (final a in fresh) a.toJson()]));
   } catch (_) {
@@ -105,7 +110,9 @@ final playlistsProvider = StreamProvider<List<Playlist>>((ref) async* {
   if (hasCache) yield [for (final j in cached) Playlist.fromJson(j)];
   if (hasCache && ref.read(freshListsProvider.notifier).consume('playlists')) return;
   try {
+    final fetchClock = Stopwatch()..start();
     final fresh = await api.getPlaylists();
+    if (hasCache) perfNote('LIST playlists swapped n=${fresh.length} ms=${fetchClock.elapsedMilliseconds}');
     yield fresh;
     unawaited(store.write('playlists', [for (final p in fresh) p.toJson()]));
   } catch (_) {
@@ -232,6 +239,7 @@ final libraryAllSongsProvider = StreamProvider<LibrarySongs>((ref) async* {
   final hasCache = cached != null && cached.isNotEmpty;
   if (hasCache) yield LibrarySongs(List.unmodifiable([for (final j in cached) Track.fromJson(j)]), complete: true);
   if (hasCache && ref.read(freshListsProvider.notifier).consume('songs')) return;
+  final fetchClock = Stopwatch()..start();
   final all = <Track>[];
   try {
     while (true) {
@@ -246,6 +254,7 @@ final libraryAllSongsProvider = StreamProvider<LibrarySongs>((ref) async* {
     if (hasCache) return;
     rethrow;
   }
+  if (hasCache) perfNote('LIST songs swapped n=${all.length} ms=${fetchClock.elapsedMilliseconds}');
   if (hasCache) yield LibrarySongs(List.unmodifiable(all), complete: true);
   unawaited(store.write('songs', [for (final t in all) t.toJson()]));
 });

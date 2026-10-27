@@ -13,6 +13,7 @@ class CoverCacheStats {
   static int loading = 0;
   static int cancelled = 0;
   static int skipped = 0;
+  static int downloadsWasted = 0; // downloads that finished after nobody wanted them any more
 }
 
 typedef CoverFetch = Future<Uint8List> Function(String coverArt, int size);
@@ -77,6 +78,7 @@ class CoverCache implements CoverStore {
         }
         CoverCacheStats.downloads++;
         final bytes = await _fetch(id, px);
+        if (wanted != null && !wanted()) CoverCacheStats.downloadsWasted++;
         try {
           await dir.create(recursive: true);
           // Write then rename so a crash never leaves a half-written image.
