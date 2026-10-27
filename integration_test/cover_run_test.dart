@@ -8,6 +8,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:tidewater/app/frame_log.dart';
 import 'package:tidewater/main.dart' as app;
 import 'package:tidewater/ui/widgets/smooth_scroll.dart';
+import 'package:window_manager/window_manager.dart';
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -49,6 +50,12 @@ void main() {
     }
 
     await app.main();
+    // Maximized, so the run sees as many cards per screen as the monitor it runs on.
+    await windowManager.maximize();
+    await wait(1);
+    final view = tester.view;
+    perfNote('RUN window ${view.physicalSize.width.round()}x${view.physicalSize.height.round()} '
+        'scale ${view.devicePixelRatio}');
     // Cold: let the first-launch cover save finish before the steps, as in the hand runs
     // (--dart-define=START_WAIT=45).
     await wait(const int.fromEnvironment('START_WAIT', defaultValue: 8).toDouble());
