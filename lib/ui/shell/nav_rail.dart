@@ -17,15 +17,20 @@ class NavRail extends StatelessWidget {
     required this.selected,
     required this.compact,
     required this.onSelected,
+    this.hidden = false,
     this.onBack,
     this.onMenu,
   });
 
-  static double widthFor({required bool compact}) => compact ? 72 : 96;
+  static double widthFor({required bool compact, bool hidden = false}) =>
+      hidden ? 64 : (compact ? 72 : 96);
 
   final Destination? selected;
   final bool compact;
   final ValueChanged<Destination> onSelected;
+
+  /// Hand-collapsed: only the menu button is left (no icons), to bring the rail back.
+  final bool hidden;
 
   /// Set on detail pages (album, artist, playlist): shows a back arrow at the top.
   final VoidCallback? onBack;
@@ -45,7 +50,7 @@ class NavRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: widthFor(compact: compact),
+      width: widthFor(compact: compact, hidden: hidden),
       child: Column(
         children: [
           const SizedBox(height: 40),
@@ -64,12 +69,13 @@ class NavRail extends StatelessWidget {
               child: onBack == null
                   ? ExpressiveIconButton(
                       key: const ValueKey('menu'),
+                      tone: ButtonTone.ghost,
                       icon: Icons.menu_rounded,
                       glyph: glyphFor(GlyphKind.menu, size: 24),
                       size: 56,
                       iconSize: 24,
                       squareRadius: 16,
-                      tooltip: compact ? 'Expand menu' : 'Collapse menu',
+                      tooltip: hidden ? 'Show menu' : 'Hide menu',
                       onPressed: onMenu,
                     )
                   : ExpressiveIconButton(
@@ -85,32 +91,62 @@ class NavRail extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 34),
-          // Scrolls when the window is too short for every item.
+          // Scrolls when the window is too short for every item. Gone, and out of reach and out of
+          // the accessibility tree, while the rail is hidden.
           Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  for (final d in _main) ...[
-                    _RailItem(
-                      destination: d,
-                      selected: d == selected,
-                      compact: compact,
-                      onTap: () => onSelected(d),
-                    ),
-                    const SizedBox(height: 12),
+            child: _Fading(
+              hidden: hidden,
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    for (final d in _main) ...[
+                      _RailItem(
+                        destination: d,
+                        selected: d == selected,
+                        compact: compact,
+                        onTap: () => onSelected(d),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
-          _RailItem(
-            destination: Destination.settings,
-            selected: Destination.settings == selected,
-            compact: compact,
-            onTap: () => onSelected(Destination.settings),
+          _Fading(
+            hidden: hidden,
+            child: _RailItem(
+              destination: Destination.settings,
+              selected: Destination.settings == selected,
+              compact: compact,
+              onTap: () => onSelected(Destination.settings),
+            ),
           ),
           const SizedBox(height: 28),
         ],
+      ),
+    );
+  }
+}
+
+/// Fades its child out and takes it out of reach (and of the accessibility tree).
+class _Fading extends StatelessWidget {
+  const _Fading({required this.hidden, required this.child});
+
+  final bool hidden;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      excluding: hidden,
+      child: IgnorePointer(
+        ignoring: hidden,
+        child: AnimatedOpacity(
+          opacity: hidden ? 0 : 1,
+          duration: Motion.of(context, Motion.medium),
+          child: child,
+        ),
       ),
     );
   }
@@ -133,10 +169,14 @@ class _RailItem extends StatefulWidget {
   State<_RailItem> createState() => _RailItemState();
 }
 
-class _RailItemState extends State<_RailItem> with SingleTickerProviderStateMixin {
+class _RailItemState extends State<_RailItem>
+    with SingleTickerProviderStateMixin {
   /// Plays once each time the item becomes the selected one, alongside the
   /// page transition: each destination has its own icon animation.
-  late final AnimationController _pop = AnimationController(vsync: this, duration: Motion.slow);
+  late final AnimationController _pop = AnimationController(
+    vsync: this,
+    duration: Motion.slow,
+  );
   LottieComposition? _composition;
 
   @override
@@ -157,7 +197,9 @@ class _RailItemState extends State<_RailItem> with SingleTickerProviderStateMixi
   @override
   void didUpdateWidget(_RailItem old) {
     super.didUpdateWidget(old);
-    if (widget.selected && !old.selected && !Motion.reduced(context)) _pop.forward(from: 0);
+    if (widget.selected && !old.selected && !Motion.reduced(context)) {
+      _pop.forward(from: 0);
+    }
   }
 
   @override
@@ -175,12 +217,16 @@ class _RailItemState extends State<_RailItem> with SingleTickerProviderStateMixi
       semanticLabel: destination.label,
       builder: (context, s) {
         final active = selected || s.hovered;
-        final fg = selected ? scheme.onSecondaryContainer : scheme.onSurfaceVariant;
+        final fg = selected
+            ? scheme.onSecondaryContainer
+            : scheme.onSurfaceVariant;
         return SizedBox(
           width: double.infinity,
           height: compact ? 56 : 72,
           child: Column(
-            mainAxisAlignment: compact ? MainAxisAlignment.center : MainAxisAlignment.start,
+            mainAxisAlignment: compact
+                ? MainAxisAlignment.center
+                : MainAxisAlignment.start,
             children: [
               SizedBox(
                 width: 56,
@@ -193,7 +239,8 @@ class _RailItemState extends State<_RailItem> with SingleTickerProviderStateMixi
                       tween: Tween(end: active ? 1 : .35),
                       duration: Motion.of(context, Motion.slow),
                       curve: Motion.curve(context, Motion.spring),
-                      builder: (context, sx, child) => Transform.scale(scaleX: sx, child: child),
+                      builder: (context, sx, child) =>
+                          Transform.scale(scaleX: sx, child: child),
                       child: AnimatedOpacity(
                         opacity: selected ? 1 : (s.hovered ? .5 : 0),
                         duration: Motion.of(context, Motion.medium),
@@ -211,7 +258,12 @@ class _RailItemState extends State<_RailItem> with SingleTickerProviderStateMixi
                       duration: Motion.of(context, Motion.fast),
                       child: AnimatedBuilder(
                         animation: _pop,
-                        builder: (context, _) => railIconMotion(destination, _pop.value, fg, composition: _composition),
+                        builder: (context, _) => railIconMotion(
+                          destination,
+                          _pop.value,
+                          fg,
+                          composition: _composition,
+                        ),
                       ),
                     ),
                   ],
@@ -224,7 +276,9 @@ class _RailItemState extends State<_RailItem> with SingleTickerProviderStateMixi
                   style: text.labelMedium?.copyWith(
                     fontSize: 12,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
+                    color: selected
+                        ? scheme.onSurface
+                        : scheme.onSurfaceVariant,
                   ),
                 ),
               ],

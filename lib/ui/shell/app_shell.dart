@@ -184,9 +184,10 @@ class _AppShellState extends ConsumerState<AppShell> {
     return LayoutBuilder(
       builder: (context, box) {
         final width = box.maxWidth;
-        final compact = width < 900 || ref.watch(railCollapsedProvider);
+        final compact = width < 900;
+        final railHidden = ref.watch(railCollapsedProvider);
         final fabExtended = width >= 1000;
-        final railWidth = NavRail.widthFor(compact: compact);
+        final railWidth = NavRail.widthFor(compact: compact, hidden: railHidden);
         final fabWidth = fabExtended ? 192.0 : 72.0;
         // Keep the pill centered in the window and clear of the FAB.
         final miniWidth = math.max(320.0, math.min(700.0, width - 2 * (32 + fabWidth + 24)));
@@ -222,6 +223,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                             ? Destination.lists
                             : (Destination.fromLocation(widget.location) ?? Destination.library),
                     compact: compact,
+                    hidden: railHidden,
                     onSelected: (d) => context.go(d.path),
                     onMenu: ref.read(railCollapsedProvider.notifier).toggle,
                     onBack: _isDetail(widget.location) ? () => goBack(context) : null,
