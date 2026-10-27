@@ -47,22 +47,42 @@ class CoverCache implements CoverStore {
   // 5000-cover Library ran at about 12 covers a second (over seven minutes).
   final _gate = _Gate(12);
 
-  /// A folder name that identifies one server (same URL -> same folder).
-  static String serverFolder(Uri baseUrl) => sha1.convert(baseUrl.toString().codeUnits).toString().substring(0, 12);
+  /// A folder name that identifies one server. Spellings of the same address share it: the
+  /// scheme, the host's case, a default port, a trailing `/` or `/rest` don't count (each spelling
+  /// used to keep its own full copy of every cover).
+  static String serverFolder(Uri baseUrl) {
+    final port = baseUrl.hasPort && baseUrl.port != 80 && baseUrl.port != 443 ? ':${baseUrl.port}' : '';
+    final path = baseUrl.path.replaceAll(RegExp(r'(/rest)?/*$'), '');
+    final identity = '${baseUrl.host.toLowerCase()}$port$path';
+    return sha1.convert(identity.codeUnits).toString().substring(0, 12);
+  }
+
+  /// The folder name before [serverFolder] ignored spellings (the whole URL), to clear it out.
+  static String legacyServerFolder(Uri baseUrl) => sha1.convert(baseUrl.toString().codeUnits).toString().substring(0, 12);
+
+  static final _hashed = RegExp(r'_([0-9a-f]{8,})$');
+
+  /// What identifies a cover's image. Navidrome ids end in a hash of the image
+  /// (`mf-<song>_<hash>`, `al-<album>_<hash>`), and every song with embedded art has its own id:
+  /// 5,192 ids held 674 hashes and 644 images in one Library, with no hash on two different
+  /// images. Keyed by the hash, each image is downloaded, saved, decoded and held once. Ids
+  /// without one keep the whole id.
+  static String contentKey(String id) => _hashed.firstMatch(id)?.group(1) ?? id;
 
   /// Sizes snap to a few buckets so the cache doesn't fill with one-off sizes.
   static int bucket(int size) => size <= 150 ? 150 : (size <= 300 ? 300 : 800);
 
   File _file(Directory dir, String id, int size) {
     // Ids are opaque strings from the server; keep file names safe.
-    final safe = id.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
+    final safe = contentKey(id).replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
     return File('${dir.path}${Platform.pathSeparator}${safe}_$size.img');
   }
 
   @override
   Future<Uint8List> get(String id, {int size = 300, bool Function()? wanted}) {
     final px = bucket(size);
-    final key = '${id}_$px';
+    // Ids holding the same image share one download.
+    final key = '${contentKey(id)}_$px';
     return _inFlight.putIfAbsent(key, () async {
       await _gate.enter();
       try {

@@ -21,7 +21,21 @@ final listStoreProvider = Provider<ListStore>((ref) {
   if (config == null) return MemoryListStore();
   final root = ref.watch(listRootProvider);
   final folder = CoverCache.serverFolder(config.baseUrl);
-  return ListCache(directory: () async => Directory('${(await root()).path}${Platform.pathSeparator}$folder'));
+  final legacy = CoverCache.legacyServerFolder(config.baseUrl);
+  return ListCache(directory: () async {
+    final base = (await root()).path;
+    final dir = Directory('$base${Platform.pathSeparator}$folder');
+    // Lists saved under the old folder name (the whole URL) move over once.
+    final old = Directory('$base${Platform.pathSeparator}$legacy');
+    if (legacy != folder && !await dir.exists() && await old.exists()) {
+      try {
+        await old.rename(dir.path);
+      } on FileSystemException {
+        // Fetched again instead.
+      }
+    }
+    return dir;
+  });
 });
 
 /// An index over the library's artists, albums and songs for autosuggest. It

@@ -107,12 +107,13 @@ class CoverImage extends ImageProvider<CoverImage> {
   bool operator ==(Object other) =>
       other is CoverImage &&
       identical(other.cache, cache) &&
-      other.coverArt == coverArt &&
+      // Ids holding the same image are one decoded image.
+      CoverCache.contentKey(other.coverArt) == CoverCache.contentKey(coverArt) &&
       other.size == size &&
       other.decodeWidth == decodeWidth;
 
   @override
-  int get hashCode => Object.hash(identityHashCode(cache), coverArt, size, decodeWidth);
+  int get hashCode => Object.hash(identityHashCode(cache), CoverCache.contentKey(coverArt), size, decodeWidth);
 }
 
 /// A cover load dropped because no widget was waiting for it any more.

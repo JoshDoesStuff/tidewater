@@ -100,10 +100,12 @@ class CoverPrecacheNotifier extends Notifier<CoverPrecache> {
       for (final a in albums?.albums ?? const []) ?a.coverArt,
       for (final s in songs?.songs ?? const []) ?s.coverArt,
     }.toList();
+    // One id per image: songs share their album's hash (5,192 ids, 674 images in one Library).
+    final images = <String, String>{for (final id in ids) CoverCache.contentKey(id): id};
     // Only what is not on disk yet (a file lookup each). Anything missing, a first launch, an
     // interrupted one or new albums since, brings the progress up.
     final missing = <String>[];
-    for (final id in ids) {
+    for (final id in images.values) {
       if (!await store.isSaved(id)) missing.add(id);
       if (_stale(generation)) return;
     }
@@ -143,7 +145,7 @@ class CoverPrecacheNotifier extends Notifier<CoverPrecache> {
   /// saved files, and `unsafeHashes` the hashes whose files differ (keying by hash would show a
   /// wrong cover). Read and hashed on another isolate.
   static Future<void> _logDuplicates(CoverCache store, List<String> ids, int saved, int ms) async {
-    final paths = [for (final id in ids) (_hashOf(id), await store.savedPath(id))];
+    final paths = [for (final id in ids) (CoverCache.contentKey(id), await store.savedPath(id))];
     final line = await Isolate.run(() {
       final byHash = <String, Set<String>>{};
       final digests = <String>{};
@@ -164,12 +166,6 @@ class CoverPrecacheNotifier extends Notifier<CoverPrecache> {
     });
     perfNote(line);
   }
-
-  static String _hashOf(String id) {
-    final i = id.lastIndexOf('_');
-    return i < 0 ? id : id.substring(i + 1);
-  }
-
   /// Waits until a list provider says it has everything (null on an error, or after five minutes).
   Future<T?> _whenComplete<T>(
     ProviderSubscription<AsyncValue<T>> Function(void Function(AsyncValue<T>) onValue) listen,

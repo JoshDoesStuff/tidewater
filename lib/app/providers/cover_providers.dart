@@ -28,8 +28,17 @@ final coverCacheProvider = Provider<CoverStore>((ref) {
   final api = ref.watch(apiProvider);
   final root = ref.watch(coverRootProvider);
   final folder = CoverCache.serverFolder(config.baseUrl);
+  final legacy = CoverCache.legacyServerFolder(config.baseUrl);
   final cache = CoverCache(
-    directory: () async => Directory('${(await root()).path}${Platform.pathSeparator}$folder'),
+    directory: () async {
+      final base = (await root()).path;
+      // Covers saved under the old folder name are named by id, not by image: never read again.
+      if (legacy != folder) {
+        final old = Directory('$base${Platform.pathSeparator}$legacy');
+        if (await old.exists()) unawaited(old.delete(recursive: true).then((_) {}, onError: (Object _) {}));
+      }
+      return Directory('$base${Platform.pathSeparator}$folder');
+    },
     fetch: (id, size) => api.getCoverArt(id, size: size),
   );
   // Keep the cache under 1 GB, dropping the least recently used covers. (512 albums
@@ -80,7 +89,7 @@ final coverSeedProvider = FutureProvider.family<CoverSeed, CoverKey>((ref, key) 
   final art = key.coverArt;
   if (art == null) return CoverSeed.fromKey(key.albumId);
   final config = ref.read(sessionProvider);
-  final storeKey = config == null ? null : '${CoverCache.serverFolder(config.baseUrl)}|$art';
+  final storeKey = config == null ? null : '${CoverCache.serverFolder(config.baseUrl)}|${CoverCache.contentKey(art)}';
   final store = ref.read(seedStoreProvider);
   if (storeKey != null) {
     final known = store.get(storeKey);

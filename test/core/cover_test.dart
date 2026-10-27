@@ -116,6 +116,32 @@ void main() {
       expect(CoverCache.serverFolder(Uri.parse('https://a.example.com')), CoverCache.serverFolder(Uri.parse('https://a.example.com')));
     });
 
+    test('spellings of one server address share a folder', () {
+      final folder = CoverCache.serverFolder(Uri.parse('https://music.example.com'));
+      for (final url in ['http://Music.Example.com/', 'https://music.example.com:443/rest', 'https://music.example.com/rest/']) {
+        expect(CoverCache.serverFolder(Uri.parse(url)), folder, reason: url);
+      }
+      expect(CoverCache.serverFolder(Uri.parse('https://music.example.com:4533')), isNot(folder));
+      expect(CoverCache.serverFolder(Uri.parse('https://music.example.com/navidrome')), isNot(folder));
+    });
+
+    test('ids ending in the same image hash share one download and one file', () async {
+      final c = make();
+      await Future.wait([c.get('mf-song1_69a1b2c3d4'), c.get('mf-song2_69a1b2c3d4'), c.get('al-9_69a1b2c3d4')]);
+      expect(fetched, hasLength(1));
+      expect(await c.get('mf-song3_69a1b2c3d4'), _bytes(3));
+      expect(fetched, hasLength(1));
+      expect(dir.listSync(), hasLength(1));
+      expect(await c.isSaved('mf-other_69a1b2c3d4'), isTrue);
+    });
+
+    test('ids without a hash keep the whole id', () {
+      expect(CoverCache.contentKey('mf-abc_69a1b2c3d4'), '69a1b2c3d4');
+      expect(CoverCache.contentKey('dc-xyz:1'), 'dc-xyz:1');
+      expect(CoverCache.contentKey('al-1_0'), 'al-1_0');
+      expect(CoverCache.contentKey('cover_ab'), 'cover_ab');
+    });
+
     test('trim drops the least recently used files first', () async {
       final c = make();
       await c.get('old');
