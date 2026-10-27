@@ -7,7 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../app/frame_log.dart' show perfMark, perfNote;
+import '../../app/frame_log.dart' show perfMark, perfNote, perfToggleRecording;
+import 'recording_badge.dart';
 import '../../app/perf_watch.dart';
 import '../../app/perf_flags.dart';
 import '../../app/destinations.dart';
@@ -136,6 +137,10 @@ class _AppShellState extends ConsumerState<AppShell> {
     final ctrl = HardwareKeyboard.instance.isControlPressed;
     if (ctrl && HardwareKeyboard.instance.isAltPressed && key == LogicalKeyboardKey.keyM && !kReleaseMode) {
       perfMark();
+      return true;
+    }
+    if (ctrl && HardwareKeyboard.instance.isAltPressed && key == LogicalKeyboardKey.keyR && !kReleaseMode) {
+      perfToggleRecording();
       return true;
     }
     if (ctrl && HardwareKeyboard.instance.isAltPressed && key == LogicalKeyboardKey.keyT && !kReleaseMode) {
@@ -313,6 +318,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                 const Positioned.fill(child: NowPlayingOverlay()),
                 const Positioned.fill(child: ToastLayer(aboveNowPlaying: true)),
                 const Positioned(left: 0, right: 0, top: 0, child: TitleBar()),
+                const Positioned.fill(child: RecordingBadge()),
               ],
             ),
           ),

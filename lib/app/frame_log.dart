@@ -161,3 +161,15 @@ class _WindowWatch with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) => perfNote('APP ${state.name}');
 }
+
+/// Seconds on the profile log's clock (the `t=` of every line).
+double get perfClockSeconds => _clock.elapsedMilliseconds / 1000;
+
+/// Whether a screen recording is marked as running (Ctrl+Alt+R); see `RecordingBadge`.
+final perfRecording = ValueNotifier<bool>(false);
+
+/// Ctrl+Alt+R: marks the start or end of a screen recording in the log (and on screen).
+void perfToggleRecording() {
+  perfRecording.value = !perfRecording.value;
+  perfNote(perfRecording.value ? 'REC start (badge on screen shows this clock)' : 'REC stop');
+}
