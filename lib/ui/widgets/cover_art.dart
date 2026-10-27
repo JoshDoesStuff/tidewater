@@ -19,11 +19,25 @@ import '../../core/color/cover_seed.dart';
 /// `ImageCache` keeps decoded images in memory by this key.
 @immutable
 class CoverImage extends ImageProvider<CoverImage> {
-  const CoverImage(this.cache, this.coverArt, this.size);
+  const CoverImage(this.cache, this.coverArt, this.size, {this.decodeWidth});
 
   final CoverStore cache;
   final String coverArt;
   final int size;
+
+  /// Pixel width to decode to, when the cover is drawn smaller than [size] (null: full size).
+  /// A 300 px cover drawn 170 px wide was decoded, uploaded to the graphics card and kept in
+  /// memory at nearly three times the pixels it needed.
+  final int? decodeWidth;
+
+  /// The decode width for a cover [logicalWidth] wide on a [dpr] screen, rounded up to 32 px so
+  /// sizes that differ by a pixel share one decoded copy; null when that is the full size anyway.
+  static int? decodeWidthFor(int size, double logicalWidth, double dpr) {
+    final px = logicalWidth * dpr;
+    if (!px.isFinite || px <= 0) return null;
+    final w = (px / 32).ceil() * 32;
+    return w >= CoverCache.bucket(size) ? null : w;
+  }
 
   @override
   Future<CoverImage> obtainKey(ImageConfiguration configuration) => SynchronousFuture(this);
@@ -42,7 +56,13 @@ class CoverImage extends ImageProvider<CoverImage> {
       if (_abandoned.contains(this)) throw const CoverAbandoned();
       final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
       CoverCacheStats.decodes++;
-      return await decode(buffer);
+      final width = decodeWidth;
+      return await decode(
+        buffer,
+        getTargetSize: width == null
+            ? null
+            : (w, h) => w > width ? ui.TargetImageSize(width: width) : const ui.TargetImageSize(),
+      );
     } on Object catch (e) {
       if (e is! CoverAbandoned && e is! CoverSkipped) rethrow;
       // A failed load stays in the image cache (as pending, for good): take it out, so the
@@ -85,10 +105,14 @@ class CoverImage extends ImageProvider<CoverImage> {
 
   @override
   bool operator ==(Object other) =>
-      other is CoverImage && identical(other.cache, cache) && other.coverArt == coverArt && other.size == size;
+      other is CoverImage &&
+      identical(other.cache, cache) &&
+      other.coverArt == coverArt &&
+      other.size == size &&
+      other.decodeWidth == decodeWidth;
 
   @override
-  int get hashCode => Object.hash(identityHashCode(cache), coverArt, size);
+  int get hashCode => Object.hash(identityHashCode(cache), coverArt, size, decodeWidth);
 }
 
 /// A cover load dropped because no widget was waiting for it any more.
@@ -192,8 +216,12 @@ class _CoverArtState extends ConsumerState<CoverArt> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     final id = widget.coverArt;
+    final store = ref.watch(coverCacheProvider);
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    return LayoutBuilder(builder: (context, box) {
     final image = id != null && PerfFlags.instance.covers
-        ? CoverImage(ref.watch(coverCacheProvider), id, widget.resolution)
+        ? CoverImage(store, id, widget.resolution,
+            decodeWidth: CoverImage.decodeWidthFor(widget.resolution, box.maxWidth, dpr))
         : null;
     _holdOnly(image);
     return Stack(
@@ -243,6 +271,7 @@ class _CoverArtState extends ConsumerState<CoverArt> with SingleTickerProviderSt
         widget.child ?? const SizedBox.expand(),
       ],
     );
+    });
   }
 }
 

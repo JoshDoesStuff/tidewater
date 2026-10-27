@@ -382,7 +382,13 @@ class _MediaCardState extends State<MediaCard> {
       return;
     }
     final store = ProviderScope.containerOf(context, listen: false).read(coverCacheProvider);
-    final image = CoverImage(store, id, 300);
+    // The same decode size the card's cover asks for, so both share one decoded copy.
+    final image = CoverImage(
+      store,
+      id,
+      300,
+      decodeWidth: CoverImage.decodeWidthFor(300, _spriteSize.width, MediaQuery.devicePixelRatioOf(context)),
+    );
     CoverImage.hold(image);
     final stream = image.resolve(ImageConfiguration.empty);
     late final ImageStreamListener listener;
