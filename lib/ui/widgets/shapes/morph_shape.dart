@@ -148,11 +148,13 @@ class _MorphShapeState extends State<MorphShape> with TickerProviderStateMixin {
 
   Widget _build(BuildContext context, Widget? _) {
     final flags = PerfFlags.instance;
-    Widget shaped = ClipPath(
-      clipper: _clipper,
-      clipBehavior: flags.smoothClip ? Clip.antiAlias : Clip.hardEdge,
-      child: widget.child,
-    );
+    Widget shaped = flags.clip
+        ? ClipPath(
+            clipper: _clipper,
+            clipBehavior: flags.smoothClip ? Clip.antiAlias : Clip.hardEdge,
+            child: widget.child,
+          )
+        : widget.child;
     if (widget.shadow && flags.shadows) {
       shaped = CustomPaint(
         painter: _ShadowPainter(this, Theme.of(context).colorScheme.shadow.withValues(alpha: widget.shadowAlpha)),

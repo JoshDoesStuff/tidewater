@@ -1,3 +1,4 @@
+import '../../../app/perf_flags.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -297,6 +298,13 @@ class _MediaCardState extends State<MediaCard> {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: PerfFlags.instance,
+      builder: (context, _) => PerfFlags.instance.cards ? _buildCard(context) : const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildCard(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final active = widget.active;

@@ -63,11 +63,17 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void initState() {
     super.initState();
+    PerfFlags.instance.addListener(_onPerfFlags);
     HardwareKeyboard.instance.addHandler(_onKey);
+  }
+
+  void _onPerfFlags() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    PerfFlags.instance.removeListener(_onPerfFlags);
     HardwareKeyboard.instance.removeHandler(_onKey);
     _pointer.dispose();
     super.dispose();
@@ -124,7 +130,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     final npOpen = ref.read(nowPlayingOpenProvider);
     final key = event.logicalKey;
     final ctrl = HardwareKeyboard.instance.isControlPressed;
-    if (ctrl && HardwareKeyboard.instance.isAltPressed && key.keyLabel.length == 1 && "123456".contains(key.keyLabel)) {
+    if (ctrl && HardwareKeyboard.instance.isAltPressed && key.keyLabel.length == 1 && "123456789".contains(key.keyLabel)) {
       // Profiling aid (see PerfFlags): not in release builds.
       return PerfFlags.instance.toggle(int.parse(key.keyLabel) - 1);
     }
@@ -242,7 +248,9 @@ class _AppShellState extends ConsumerState<AppShell> {
                     child: ConstrainedBox(
                       constraints: BoxConstraints(maxWidth: miniWidth),
                       // Drop songs on the pill to add them to the end of the queue.
-                      child: TrackDropTarget(radius: 36, onDrop: _dropOnQueue, child: const MiniPlayer()),
+                      child: PerfFlags.instance.chrome
+                          ? TrackDropTarget(radius: 36, onDrop: _dropOnQueue, child: const MiniPlayer())
+                          : const SizedBox(height: 72),
                     ),
                   ),
                 ),
@@ -257,7 +265,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                   bottom: 24,
                   child: Builder(
                     builder: (context) {
-                      final shuffle = _shuffleFor(widget.location);
+                      final shuffle = PerfFlags.instance.chrome ? _shuffleFor(widget.location) : null;
                       final d = Motion.of(context, Motion.medium);
                       return IgnorePointer(
                         ignoring: shuffle == null,
