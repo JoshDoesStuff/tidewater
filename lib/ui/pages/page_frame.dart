@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// Centers page content and caps its width on very wide windows.
+import '../widgets/smooth_scroll.dart';
+
+/// Centers page content and caps its width on very wide windows. Its scroll views glide
+/// with the mouse wheel (see [SmoothScrollScope]).
 class PageFrame extends StatelessWidget {
   const PageFrame({super.key, required this.child});
 
@@ -13,9 +16,11 @@ class PageFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: maxWidth), child: child),
+    return SmoothScrollScope(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: maxWidth), child: child),
+      ),
     );
   }
 }

@@ -1,3 +1,4 @@
+import '../widgets/smooth_scroll.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -37,7 +38,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
   static const _gap = 26.0;
   static const _cardWidth = 156.0;
 
-  final _scroll = ScrollController();
+  final _scroll = SmoothScrollController();
   final _headerKey = GlobalKey();
 
   /// Grid geometry from the last layout, for the A–Z jump.

@@ -1,3 +1,4 @@
+import '../widgets/smooth_scroll.dart';
 import '../widgets/hint.dart';
 import '../widgets/name_text.dart';
 
@@ -35,7 +36,7 @@ class QueuePanel extends ConsumerStatefulWidget {
 
 class _QueuePanelState extends ConsumerState<QueuePanel> {
   static const _rowHeight = 64.0;
-  final _scroll = ScrollController();
+  final _scroll = SmoothScrollController();
 
   @override
   void dispose() {

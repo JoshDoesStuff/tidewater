@@ -1,3 +1,4 @@
+import '../widgets/smooth_scroll.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,7 +26,7 @@ class _ArtistsPageState extends ConsumerState<ArtistsPage> {
   static const _cardWidth = 156.0;
   static const _headerHeight = 36.0 + 80.0 + 22.0;
 
-  final _scroll = ScrollController();
+  final _scroll = SmoothScrollController();
   int _columns = 1;
   double _rowExtent = 0;
 
