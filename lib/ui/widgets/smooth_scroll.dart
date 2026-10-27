@@ -163,6 +163,28 @@ class DeferringScrollPhysics extends ScrollPhysics {
   @override
   bool recommendDeferredLoading(double velocity, ScrollMetrics metrics, BuildContext context) =>
       PerfFlags.instance.deferCovers && velocity.abs() > deferAbove;
+
+  /// The fastest a drag or fling moves the page, in logical pixels per second. A trackpad moved
+  /// it 1000-1600 px a frame, a whole new screen of cards every frame; the profile log showed
+  /// 30-80 ms frames that way whatever was switched off (covers, shadows, edges, pictures), while
+  /// the mouse wheel, which tops out around 4000 px/s, stayed smooth. This is a little above it.
+  static const maxSpeed = 6000.0;
+
+  static final _clock = Stopwatch()..start();
+  static int _lastMove = 0;
+
+  @override
+  double get maxFlingVelocity => math.min(super.maxFlingVelocity, maxSpeed);
+
+  @override
+  double applyPhysicsToUserOffset(ScrollMetrics position, double offset) {
+    final now = _clock.elapsedMicroseconds;
+    // The time this step covers (trackpad steps come every few ms; a first one counts as a frame).
+    final dt = ((now - _lastMove) / 1e6).clamp(1 / 240, 1 / 30);
+    _lastMove = now;
+    final most = maxSpeed * dt;
+    return super.applyPhysicsToUserOffset(position, offset.clamp(-most, most));
+  }
 }
 
 /// True while a page is being scrolled (by wheel, drag or scrollbar). The decoration behind the

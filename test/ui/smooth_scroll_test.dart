@@ -3,11 +3,29 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/app.dart';
 import 'package:tidewater/app/perf_flags.dart';
+import 'package:tidewater/ui/widgets/smooth_scroll.dart';
 
 import '../support/fake_library.dart';
 import '../support/pump.dart';
 
 void main() {
+  test('a drag or fling never moves the page faster than the wheel can (about 6000 px/s)', () {
+    const physics = DeferringScrollPhysics(parent: ClampingScrollPhysics());
+    final metrics = FixedScrollMetrics(
+      minScrollExtent: 0,
+      maxScrollExtent: 100000,
+      pixels: 5000,
+      viewportDimension: 1300,
+      axisDirection: AxisDirection.down,
+      devicePixelRatio: 1,
+    );
+    // A trackpad step of 1500 px is cut to at most a 30th of a second at full speed.
+    expect(physics.applyPhysicsToUserOffset(metrics, 1500).abs(), lessThanOrEqualTo(DeferringScrollPhysics.maxSpeed / 30));
+    expect(physics.applyPhysicsToUserOffset(metrics, -1500).abs(), lessThanOrEqualTo(DeferringScrollPhysics.maxSpeed / 30));
+    expect(physics.applyPhysicsToUserOffset(metrics, 3), 3, reason: 'small steps pass unchanged');
+    expect(physics.maxFlingVelocity, lessThanOrEqualTo(DeferringScrollPhysics.maxSpeed));
+  });
+
   testWidgets('the mouse wheel glides to where it is going instead of jumping there', (tester) async {
     final api = FakeLibraryApi();
     api.playlistSongs['pl-1'] = [for (var i = 0; i < 60; i++) fakeTracks[i % fakeTracks.length]];

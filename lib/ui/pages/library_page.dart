@@ -1,5 +1,6 @@
 import '../widgets/sliver_width_builder.dart';
 import '../widgets/smooth_scroll.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -93,13 +94,34 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
             ?.size
             .height ??
         0;
-    final target = header + (index ~/ _columns) * (_rowExtent + _rowGap);
-    _scroll.animateTo(
-      target.clamp(0.0, _scroll.position.maxScrollExtent),
-      duration: Motion.of(context, Motion.slow),
-      curve: Motion.curve(context, Motion.emphasized),
-    );
+    final position = _scroll.position;
+    final target = (header + (index ~/ _columns) * (_rowExtent + _rowGap))
+        .clamp(0.0, position.maxScrollExtent);
+    if ((target - position.pixels).abs() <= position.viewportDimension * 2 ||
+        Motion.reduced(context)) {
+      _scroll.animateTo(
+        target,
+        duration: Motion.of(context, Motion.slow),
+        curve: Motion.curve(context, Motion.emphasized),
+      );
+      return;
+    }
+    // A far jump: the grid fades out, moves there at once, and fades back in as the new cards are
+    // built. Gliding there showed a whole new screen of cards on every frame of the way (the most
+    // expensive thing the page can do, and nothing anyone could read at that speed).
+    final jump = ++_jumps;
+    setState(() => _jumpHidden = true);
+    Future.delayed(Motion.fast, () {
+      if (!mounted || jump != _jumps || !_scroll.hasClients) return;
+      _scroll.jumpTo(target);
+      Future.delayed(const Duration(milliseconds: 120), () {
+        if (mounted && jump == _jumps) setState(() => _jumpHidden = false);
+      });
+    });
   }
+
+  bool _jumpHidden = false;
+  int _jumps = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +132,9 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     final albums = ref.watch(libraryAlbumsProvider(sort));
     final playlists = ref.watch(playlistsProvider);
     // The genre list is only fetched once its tab is opened.
-    final genreList = (tab == LibraryTab.genres) ? ref.watch(genresProvider) : null;
+    final genreList = (tab == LibraryTab.genres)
+        ? ref.watch(genresProvider)
+        : null;
     // Only the Songs tab pulls in every song (thousands of rows of metadata).
     final songSort = ref.watch(librarySongSortProvider);
     final songs = (tab == LibraryTab.songs || _shown == LibraryTab.songs)
@@ -190,127 +214,132 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     return PageFrame(
       child: Stack(
         children: [
-          CustomScrollView(
-            controller: _scroll,
-            // Build about two rows ahead, so covers are decoded before they scroll in.
-            scrollCacheExtent: const ScrollCacheExtent.pixels(1400),
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(24, 36, 40, 0),
-                sliver: SliverToBoxAdapter(
-                  child: Column(
-                    key: _headerKey,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                LetterReveal(
-                                  text: 'Library',
-                                  style: text.displaySmall,
-                                  delay: const Duration(milliseconds: 100),
-                                ),
-                                Text(
-                                  subtitle,
-                                  style: text.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                    color: scheme.onSurfaceVariant,
+          AnimatedOpacity(
+            opacity: _jumpHidden ? 0 : 1,
+            duration: _jumpHidden ? Motion.fast : Motion.medium,
+            curve: Motion.standard,
+            child: CustomScrollView(
+              controller: _scroll,
+              // Build about two rows ahead, so covers are decoded before they scroll in.
+              scrollCacheExtent: const ScrollCacheExtent.pixels(1400),
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(24, 36, 40, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      key: _headerKey,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  LetterReveal(
+                                    text: 'Library',
+                                    style: text.displaySmall,
+                                    delay: const Duration(milliseconds: 100),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (tab == LibraryTab.albums) ...[
-                            _MenuPill<LibrarySort>(
-                              glyph: GlyphKind.sort,
-                              label: sort.label,
-                              semanticLabel: 'Sort: ${sort.label}',
-                              value: sort,
-                              entries: [
-                                for (final s in LibrarySort.values)
-                                  (s, s.label),
-                              ],
-                              onSelected: ref
-                                  .read(librarySortProvider.notifier)
-                                  .set,
-                            ),
-                            const SizedBox(width: 6),
-                            GenrePill(
-                              genres: genres,
-                              selected: genre,
-                              onSelected: ref
-                                  .read(libraryGenreProvider.notifier)
-                                  .set,
-                            ),
-                          ],
-                          if (tab == LibraryTab.songs) ...[
-                            _MenuPill<SongSort>(
-                              glyph: GlyphKind.sort,
-                              label: songSort.label,
-                              semanticLabel: 'Sort songs: ${songSort.label}',
-                              value: songSort,
-                              entries: [
-                                for (final s in SongSort.values) (s, s.label),
-                              ],
-                              onSelected: ref
-                                  .read(librarySongSortProvider.notifier)
-                                  .set,
-                            ),
-                            const SizedBox(width: 6),
-                            ViewToggle(
-                              cards: ref.watch(likedAsCardsProvider),
-                              onChanged: ref
-                                  .read(likedAsCardsProvider.notifier)
-                                  .set,
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 22),
-                      Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
-                        children: [
-                          for (final (i, t) in LibraryTab.values.indexed)
-                            StaggerIn(
-                              index: i,
-                              child: ExpressiveChip(
-                                label: t.label,
-                                selected: t == tab,
-                                onTap: () => ref
-                                    .read(libraryTabProvider.notifier)
-                                    .set(t),
+                                  Text(
+                                    subtitle,
+                                    style: text.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: 22),
-                    ],
+                            if (tab == LibraryTab.albums) ...[
+                              _MenuPill<LibrarySort>(
+                                glyph: GlyphKind.sort,
+                                label: sort.label,
+                                semanticLabel: 'Sort: ${sort.label}',
+                                value: sort,
+                                entries: [
+                                  for (final s in LibrarySort.values)
+                                    (s, s.label),
+                                ],
+                                onSelected: ref
+                                    .read(librarySortProvider.notifier)
+                                    .set,
+                              ),
+                              const SizedBox(width: 6),
+                              GenrePill(
+                                genres: genres,
+                                selected: genre,
+                                onSelected: ref
+                                    .read(libraryGenreProvider.notifier)
+                                    .set,
+                              ),
+                            ],
+                            if (tab == LibraryTab.songs) ...[
+                              _MenuPill<SongSort>(
+                                glyph: GlyphKind.sort,
+                                label: songSort.label,
+                                semanticLabel: 'Sort songs: ${songSort.label}',
+                                value: songSort,
+                                entries: [
+                                  for (final s in SongSort.values) (s, s.label),
+                                ],
+                                onSelected: ref
+                                    .read(librarySongSortProvider.notifier)
+                                    .set,
+                              ),
+                              const SizedBox(width: 6),
+                              ViewToggle(
+                                cards: ref.watch(likedAsCardsProvider),
+                                onChanged: ref
+                                    .read(likedAsCardsProvider.notifier)
+                                    .set,
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 22),
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: [
+                            for (final (i, t) in LibraryTab.values.indexed)
+                              StaggerIn(
+                                index: i,
+                                child: ExpressiveChip(
+                                  label: t.label,
+                                  selected: t == tab,
+                                  onTap: () => ref
+                                      .read(libraryTabProvider.notifier)
+                                      .set(t),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              // The old tab fades out before the new one is built (and staggers
-              // in); without this the content vanished the instant a tab was picked.
-              SliverAnimatedOpacity(
-                opacity: _leaving ? 0 : 1,
-                duration: Motion.of(context, _fadeOut),
-                curve: Curves.easeOut,
-                sliver: SliverMainAxisGroup(
-                  slivers: _body(
-                    _shown,
-                    sort,
-                    albums,
-                    shownAlbums,
-                    playlists,
-                    songs,
+                // The old tab fades out before the new one is built (and staggers
+                // in); without this the content vanished the instant a tab was picked.
+                SliverAnimatedOpacity(
+                  opacity: _leaving ? 0 : 1,
+                  duration: Motion.of(context, _fadeOut),
+                  curve: Curves.easeOut,
+                  sliver: SliverMainAxisGroup(
+                    slivers: _body(
+                      _shown,
+                      sort,
+                      albums,
+                      shownAlbums,
+                      playlists,
+                      songs,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           if (alphabetical)
             Positioned(
@@ -497,7 +526,14 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
 
   List<Widget> _genreSlivers(AsyncValue<List<Genre>> genres) {
     if (genres.hasError && !genres.hasValue) {
-      return [_message(ErrorPanel(error: genres.error!, onRetry: () => ref.invalidate(genresProvider)))];
+      return [
+        _message(
+          ErrorPanel(
+            error: genres.error!,
+            onRetry: () => ref.invalidate(genresProvider),
+          ),
+        ),
+      ];
     }
     if (!genres.hasValue) return [_skeletonGrid()];
     final list = genres.requireValue;
@@ -517,7 +553,12 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     _rowGap = 0;
     return [
       SliverPadding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 40, PageFrame.bottomClearance),
+        padding: const EdgeInsets.fromLTRB(
+          24,
+          0,
+          40,
+          PageFrame.bottomClearance,
+        ),
         sliver: SliverWidthBuilder(
           builder: (context, c) {
             final columns = StaggerIn.columnsFor(c.crossAxisExtent, 280, 14);
@@ -529,8 +570,10 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                 crossAxisSpacing: 14,
               ),
               itemCount: list.length,
-              itemBuilder: (context, i) =>
-                  StaggerIn(index: StaggerIn.wave(i, columns), child: GenreCard(genre: list[i], index: i)),
+              itemBuilder: (context, i) => StaggerIn(
+                index: StaggerIn.wave(i, columns),
+                child: GenreCard(genre: list[i], index: i),
+              ),
             );
           },
         ),
