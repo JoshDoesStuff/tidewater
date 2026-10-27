@@ -99,19 +99,23 @@ class TrackDropTarget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return DragTarget<TrackDrag>(
       onWillAcceptWithDetails: (_) => accepts?.call() ?? true,
       onAcceptWithDetails: (d) => onDrop(d.data),
-      builder: (context, over, _) => AnimatedContainer(
-        duration: Motion.of(context, Motion.fast),
-        foregroundDecoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(radius),
-          color: over.isEmpty ? Colors.transparent : scheme.primary.withValues(alpha: .14),
-          border: Border.all(color: over.isEmpty ? Colors.transparent : scheme.primary, width: 2),
-        ),
-        child: child,
-      ),
+      builder: (context, over, _) {
+        // The theme is only looked up while something is dragged over: a page of drop targets
+        // otherwise all rebuilt on every frame of a recolor.
+        final primary = over.isEmpty ? Colors.transparent : Theme.of(context).colorScheme.primary;
+        return AnimatedContainer(
+          duration: Motion.of(context, Motion.fast),
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(radius),
+            color: primary.withValues(alpha: over.isEmpty ? 0 : .14),
+            border: Border.all(color: primary, width: 2),
+          ),
+          child: child,
+        );
+      },
     );
   }
 }

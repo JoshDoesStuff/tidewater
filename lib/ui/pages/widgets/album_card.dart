@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/providers/playback_providers.dart';
 import '../../../app/theme/motion.dart';
+import '../../../app/theme/settled_theme.dart';
 import '../../../core/models/album.dart';
 import '../../../core/models/artist.dart';
 import '../../../core/models/playlist.dart';
@@ -491,8 +492,10 @@ class _MediaCardState extends State<MediaCard> {
   }
 
   Widget _buildCard(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
+    // The settled colors: a recolor redraws the card once, not on every frame of it.
+    final theme = SettledTheme.of(context);
+    final scheme = theme.colorScheme;
+    final text = theme.textTheme;
     final active = widget.active;
     final reduced = Motion.reduced(context);
     final morphed = _hoverMorph || active;

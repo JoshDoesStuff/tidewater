@@ -14,6 +14,7 @@ import 'router.dart';
 import 'theme/album_scheme.dart';
 import 'theme/app_theme.dart';
 import 'theme/motion.dart';
+import 'theme/settled_theme.dart';
 import '../ui/widgets/smooth_scroll.dart' show DeferringScrollPhysics;
 import '../ui/shell/close_guard.dart';
 
@@ -69,19 +70,23 @@ class TidewaterApp extends ConsumerWidget {
           // Frameless window: the edges resize it (see main.dart).
           child: CloseGuard(
             child: _resizable(
-              TweenAnimationBuilder<ColorScheme>(
-                tween: ColorSchemeTween(end: scheme),
-                duration: reduced ? Duration.zero : Motion.recolor,
-                curve: Curves.easeInOut,
-                builder: (context, animated, child) => Theme(
-                  data: _themeMemo.of(animated, AppTheme.fromScheme),
-                  child: child!,
-                ),
-                child: Listener(
-                  behavior: HitTestBehavior.translucent,
-                  onPointerDown: (e) =>
-                      ref.read(pointerOriginProvider).value = e.position,
-                  child: child!,
+              // (Here, inside MaterialApp, Theme.of is the target theme, not the animated one.)
+              SettledTheme(
+                data: Theme.of(context),
+                child: TweenAnimationBuilder<ColorScheme>(
+                  tween: ColorSchemeTween(end: scheme),
+                  duration: reduced ? Duration.zero : Motion.recolor,
+                  curve: Curves.easeInOut,
+                  builder: (context, animated, child) => Theme(
+                    data: _themeMemo.of(animated, AppTheme.fromScheme),
+                    child: child!,
+                  ),
+                  child: Listener(
+                    behavior: HitTestBehavior.translucent,
+                    onPointerDown: (e) =>
+                        ref.read(pointerOriginProvider).value = e.position,
+                    child: child!,
+                  ),
                 ),
               ),
             ),
