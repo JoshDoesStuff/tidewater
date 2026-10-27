@@ -21,12 +21,17 @@ class Visualizer extends ConsumerStatefulWidget {
     required this.mode,
     this.intensity = 1,
     this.ringRect,
+    this.fps = 60,
   });
 
   final VizMode mode;
 
   /// 1 in Now Playing, about .6 behind the pages.
   final double intensity;
+
+  /// How often it is drawn at most: 60 in Now Playing, 30 behind the pages, where its slow
+  /// drift does not need more and a big window is costly to fill.
+  final int fps;
 
   /// Cover bounds (in this widget's coordinates) the Ring style radiates from.
   final Rect? Function()? ringRect;
@@ -86,8 +91,8 @@ class _VisualizerState extends ConsumerState<Visualizer>
   }
 
   void _onTick(Duration elapsed) {
-    // Cap at ~60 fps even on high-refresh displays.
-    if ((elapsed - _lastPaint).inMicroseconds < 15000) return;
+    // Capped (60 fps even on high-refresh displays; less behind the pages).
+    if ((elapsed - _lastPaint).inMicroseconds < 1000000 ~/ widget.fps - 1500) return;
     _lastPaint = elapsed;
     final playing = ref.read(playbackProvider).playing;
     ref.read(visualizerSourceProvider).update(playing: playing);

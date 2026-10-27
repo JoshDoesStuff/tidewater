@@ -69,7 +69,7 @@ class GenrePage extends ConsumerWidget {
                 runSpacing: 26,
                 children: [
                   for (final (i, a) in albums.requireValue.indexed)
-                    StaggerIn(index: i < 24 ? i : 0, child: AlbumCard(album: a, size: 156, large: true)),
+                    StaggerIn(index: i, child: AlbumCard(album: a, size: 156, large: true)),
                 ],
               ),
           ],

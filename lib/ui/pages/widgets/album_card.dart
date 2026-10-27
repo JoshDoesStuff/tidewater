@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart' show CustomSemanticsAction;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -216,6 +218,12 @@ class _MediaCardState extends State<MediaCard> {
 
   bool _hovered = false;
   bool _pressed = false;
+  /// The hover play button is only built from the first hover until a moment after the pointer
+  /// leaves: it is four animated widgets, and a big grid of cards each holding an invisible one
+  /// was a lot of idle work.
+  bool _popMounted = false;
+  bool _popOn = false;
+  Timer? _popGone;
   Offset _tilt = Offset.zero; // x: rotateY, y: rotateX (radians)
 
   void _onHover(PointerEvent e, Size size) {
@@ -223,6 +231,12 @@ class _MediaCardState extends State<MediaCard> {
     final py = (e.localPosition.dy / size.height - .5).clamp(-.5, .5);
     const k = _maxTiltDeg * 2 * 0.0174533; // ±.5 → ±6°
     setState(() => _tilt = Offset(px * k, -py * k));
+  }
+
+  @override
+  void dispose() {
+    _popGone?.cancel();
+    super.dispose();
   }
 
   @override
@@ -238,9 +252,26 @@ class _MediaCardState extends State<MediaCard> {
         final tileSize = Size(box.maxWidth, box.maxWidth);
         return MouseRegion(
           cursor: SystemMouseCursors.click,
-          onEnter: (_) => setState(() => _hovered = true),
+          onEnter: (_) => setState(() {
+            _hovered = true;
+            _popGone?.cancel();
+            if (!_popMounted) {
+              // Built hidden first, then shown a frame later, so there is a pop to animate.
+              _popMounted = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && _hovered) setState(() => _popOn = true);
+              });
+            } else {
+              _popOn = true;
+            }
+          }),
           onExit: (_) => setState(() {
+            _popGone?.cancel();
+            _popGone = Timer(Motion.slow + const Duration(milliseconds: 100), () {
+              if (mounted && !_hovered) setState(() => _popMounted = false);
+            });
             _hovered = false;
+            _popOn = false;
             _pressed = false;
             _tilt = Offset.zero;
           }),
@@ -284,11 +315,12 @@ class _MediaCardState extends State<MediaCard> {
                     Positioned.fill(
                       child: IgnorePointer(child: Center(child: EqBadge(animating: widget.playing))),
                     ),
-                  Positioned(
-                    right: -6,
-                    bottom: -6,
-                    child: _PlayPop(visible: widget.showPlay && _hovered && !active),
-                  ),
+                  if (_popMounted && widget.showPlay)
+                    Positioned(
+                      right: -6,
+                      bottom: -6,
+                      child: _PlayPop(visible: _popOn && !active),
+                    ),
                 ],
               ),
             ),

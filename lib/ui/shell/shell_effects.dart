@@ -69,28 +69,35 @@ class _AmbientLayerState extends ConsumerState<AmbientLayer>
           bool right = false,
         }) {
           final s = size * k;
-          return AnimatedBuilder(
-            animation: _drift,
-            builder: (context, child) {
-              final t = _drift.value * 2 * math.pi + phase;
-              return Positioned(
-                left: right
-                    ? null
-                    : left * k + (reduced ? 0 : math.sin(t) * 22),
-                right: right ? -left * k : null,
-                top: top * k + (reduced ? 0 : math.cos(t) * 16),
-                child: child!,
-              );
-            },
-            child: SizedBox.square(
-              dimension: s,
-              child: MorphShape(
-                params: ShapeParams(lobes: lobes, amp: .09, base: .95),
-                morph: 1,
-                squareBase: false,
-                shadow: false,
-                spin: reduced ? 0 : spin,
-                child: ColoredBox(color: blob),
+          // Drawn once and then only moved and turned by the compositor: a blob that is
+          // re-clipped and repainted on every frame, at up to a thousand pixels wide, was
+          // a steady cost on big windows.
+          return Positioned(
+            left: right ? null : left * k,
+            right: right ? -left * k : null,
+            top: top * k,
+            child: AnimatedBuilder(
+              animation: _drift,
+              builder: (context, child) {
+                final t = _drift.value * 2 * math.pi + phase;
+                // A whole number of turns per 60 s cycle, so it does not jump when the cycle restarts.
+                final turns = math.max(1, (spin.abs() * 60 / (2 * math.pi)).round()) * (spin < 0 ? -1 : 1);
+                return Transform.translate(
+                  offset: reduced ? Offset.zero : Offset(math.sin(t) * 22, math.cos(t) * 16),
+                  child: Transform.rotate(angle: reduced ? 0 : turns * 2 * math.pi * _drift.value, child: child),
+                );
+              },
+              child: RepaintBoundary(
+                child: SizedBox.square(
+                  dimension: s,
+                  child: MorphShape(
+                    params: ShapeParams(lobes: lobes, amp: .09, base: .95),
+                    morph: 1,
+                    squareBase: false,
+                    shadow: false,
+                    child: ColoredBox(color: blob),
+                  ),
+                ),
               ),
             ),
           );
@@ -117,13 +124,27 @@ class _AmbientLayerState extends ConsumerState<AmbientLayer>
                       child: const Visualizer(
                         mode: VizMode.aurora,
                         intensity: .6,
+                        fps: 30,
                       ),
                     ),
                   ),
-                Positioned.fill(
-                  child: RepaintBoundary(
-                    child: CustomPaint(
-                      painter: _SpotPainter(widget.pointer, scheme.primary),
+                // The spotlight is one small picture, drawn once and moved by the compositor as the
+                // pointer moves. (It used to be a gradient over the whole window, repainted on every
+                // pointer event: on a big window that alone made moving the mouse lag.)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  child: ValueListenableBuilder<Offset>(
+                    valueListenable: widget.pointer,
+                    builder: (context, p, child) => Transform.translate(
+                      offset: p == Offset.zero ? const Offset(-4000, -4000) : p - const Offset(_SpotPainter.radius, _SpotPainter.radius),
+                      child: child,
+                    ),
+                    child: RepaintBoundary(
+                      child: CustomPaint(
+                        size: const Size.square(_SpotPainter.radius * 2),
+                        painter: _SpotPainter(scheme.primary),
+                      ),
                     ),
                   ),
                 ),
@@ -137,22 +158,23 @@ class _AmbientLayerState extends ConsumerState<AmbientLayer>
 }
 
 class _SpotPainter extends CustomPainter {
-  _SpotPainter(this.pointer, this.color) : super(repaint: pointer);
+  _SpotPainter(this.color);
 
-  final ValueNotifier<Offset> pointer;
+  static const radius = 300.0;
+
   final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final c = pointer.value;
-    if (c == Offset.zero) return;
-    canvas.drawRect(
-      Offset.zero & size,
+    const rect = Rect.fromLTWH(0, 0, radius * 2, radius * 2);
+    canvas.drawCircle(
+      rect.center,
+      radius,
       Paint()
         ..shader = RadialGradient(
           colors: [color.withValues(alpha: .11), color.withValues(alpha: 0)],
           stops: const [0, .62],
-        ).createShader(Rect.fromCircle(center: c, radius: 300)),
+        ).createShader(Rect.fromCircle(center: rect.center, radius: radius)),
     );
   }
 

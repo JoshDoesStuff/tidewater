@@ -59,9 +59,12 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     void show() {
       if (!mounted) return;
       if (_scroll.hasClients) _scroll.jumpTo(0);
-      setState(() {
-        _shown = next;
-        _leaving = false;
+      // The new tab is built while still invisible, and only fades in once that (heavy) frame
+      // is over: started in the same frame, the animation lost its first moments to the
+      // build and the content just appeared.
+      setState(() => _shown = next);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _shown == next) setState(() => _leaving = false);
       });
     }
 
@@ -70,7 +73,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
       return;
     }
     setState(() => _leaving = true);
-    _swap = Timer(_fadeOut, show);
+    _swap = Timer(_fadeOut + const Duration(milliseconds: 50), show);
   }
 
   @override
@@ -293,7 +296,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
               SliverAnimatedOpacity(
                 opacity: _leaving ? 0 : 1,
                 duration: Motion.of(context, _fadeOut),
-                curve: Curves.easeIn,
+                curve: Curves.easeOut,
                 sliver: SliverMainAxisGroup(
                   slivers: _body(
                     _shown,
@@ -513,15 +516,21 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     return [
       SliverPadding(
         padding: const EdgeInsets.fromLTRB(24, 0, 40, PageFrame.bottomClearance),
-        sliver: SliverGrid.builder(
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 280,
-            mainAxisExtent: 88,
-            mainAxisSpacing: 14,
-            crossAxisSpacing: 14,
-          ),
-          itemCount: list.length,
-          itemBuilder: (context, i) => StaggerIn(index: i < 24 ? i : 0, child: GenreCard(genre: list[i], index: i)),
+        sliver: SliverLayoutBuilder(
+          builder: (context, c) {
+            final columns = StaggerIn.columnsFor(c.crossAxisExtent, 280, 14);
+            return SliverGrid.builder(
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 280,
+                mainAxisExtent: 88,
+                mainAxisSpacing: 14,
+                crossAxisSpacing: 14,
+              ),
+              itemCount: list.length,
+              itemBuilder: (context, i) =>
+                  StaggerIn(index: StaggerIn.wave(i, columns), child: GenreCard(genre: list[i], index: i)),
+            );
+          },
         ),
       ),
     ];

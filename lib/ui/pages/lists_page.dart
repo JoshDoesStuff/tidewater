@@ -110,7 +110,7 @@ class ListsPage extends ConsumerWidget {
           ),
           itemCount: list.length,
           itemBuilder: (context, i) => StaggerIn(
-            index: i < 24 ? i : 0,
+            index: StaggerIn.wave(i, columns),
             child: PlaylistCard(playlist: list[i], large: true),
           ),
         );

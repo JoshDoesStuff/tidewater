@@ -85,15 +85,21 @@ class RadioPage extends ConsumerWidget {
         ),
       );
     }
-    return SliverGrid.builder(
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 340,
-        mainAxisExtent: 96,
-        mainAxisSpacing: 14,
-        crossAxisSpacing: 14,
-      ),
-      itemCount: list.length,
-      itemBuilder: (context, i) => StaggerIn(index: i < 24 ? i : 0, child: _StationCard(station: list[i], index: i)),
+    return SliverLayoutBuilder(
+      builder: (context, c) {
+        final columns = StaggerIn.columnsFor(c.crossAxisExtent, 340, 14);
+        return SliverGrid.builder(
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 340,
+            mainAxisExtent: 96,
+            mainAxisSpacing: 14,
+            crossAxisSpacing: 14,
+          ),
+          itemCount: list.length,
+          itemBuilder: (context, i) =>
+              StaggerIn(index: StaggerIn.wave(i, columns), child: _StationCard(station: list[i], index: i)),
+        );
+      },
     );
   }
 }

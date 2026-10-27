@@ -146,7 +146,7 @@ class LikedPage extends ConsumerWidget {
                 itemCount: songs.length,
                 itemBuilder: (context, i) => StaggerIn(
                   key: ValueKey(songs[i].id),
-                  index: i < 24 ? i : 0,
+                  index: StaggerIn.wave(i, columns),
                   child: TrackCard(tracks: songs, index: i, large: true),
                 ),
               );

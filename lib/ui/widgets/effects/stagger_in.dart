@@ -13,6 +13,16 @@ class StaggerIn extends StatefulWidget {
   final Duration base;
   final Widget child;
 
+  /// The delay index for item `i` of a grid with `columns` columns: a diagonal wave across
+  /// the first eight rows, so the whole screen animates in (not just the first couple of
+  /// rows), and 0 (a plain fade) for rows scrolled in later.
+  static int wave(int i, int columns) => i < columns * 8 ? i ~/ columns + i % columns : 0;
+
+  /// How many columns a grid with a maximum cell width has (what Flutter's
+  /// `SliverGridDelegateWithMaxCrossAxisExtent` picks).
+  static int columnsFor(double extent, double maxCellExtent, double spacing) =>
+      (extent / (maxCellExtent + spacing)).ceil().clamp(1, 200);
+
   @override
   State<StaggerIn> createState() => _StaggerInState();
 }
