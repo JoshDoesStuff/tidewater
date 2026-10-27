@@ -1,3 +1,4 @@
+import '../smooth_scroll.dart' show pageFlying;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -111,6 +112,11 @@ class _StaggerInState extends State<StaggerIn> with SingleTickerProviderStateMix
   }
 
   void _start({bool wave = true}) {
+    if (pageFlying) {
+      // Flying past: it will be gone in a few frames, so it simply appears.
+      _c.value = 1;
+      return;
+    }
     PerfStats.entrances++;
     final delay = wave ? widget.base + Duration(milliseconds: 24 * widget.index.clamp(0, 30)) : Duration.zero;
     _delay = Timer(delay, () {

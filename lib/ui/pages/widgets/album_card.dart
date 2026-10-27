@@ -1008,6 +1008,11 @@ class _BakeQueue {
     // After the next frame has been drawn (each card's layer must be painted to be copied).
     SchedulerBinding.instance.addPostFrameCallback((_) {
       _scheduled = false;
+      if (pageFlying) {
+        // Cards flying past are gone before a picture of them would pay off: wait until it slows.
+        _schedule();
+        return;
+      }
       var done = 0;
       while (done < perFrame && _waiting.isNotEmpty) {
         final card = _waiting.first;
