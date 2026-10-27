@@ -176,3 +176,12 @@ Remember that a card is now a baked picture at rest; the fade is applied outside
 * Card pictures are made at most 3 per frame (`_BakeQueue` in `album_card.dart`).
 * Not done from step 1: decoding at the drawn size (little gain for the 300 px grid covers on these screens; worth it
   for 44 px song-row covers later), cancel-on-dispose, and a flat placeholder while scrolling. Measure first.
+
+## Step 5, done (Opus)
+
+* `StaggerIn` now waits until its item is on screen (it listens to the scroll position and checks the item's rect
+  against the scrollable's once each frame is laid out). Items on screen at page load run the diagonal wave as
+  before; items scrolled into view later animate at once (fade, 14 px rise, slight scale). Items built ahead of the
+  scroll no longer play their entrance off screen, and no longer start a timer they may never need.
+  Test: `test/ui/stagger_on_view_test.dart`. There is still no exit animation (cards leaving the window are simply
+  scrolled away, and disposed once past the cache extent).
