@@ -809,7 +809,9 @@ class _MediaCardState extends State<MediaCard> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _preloadCover());
     }
     if (_resting && _sprite == null) {
-      _bakeTimer ??= Timer(const Duration(milliseconds: 150), () {
+      // A card whose cover is still coming waits longer: pictured now, it would be pictured again
+      // the moment the cover arrives (twice the work, in the busiest moments).
+      _bakeTimer ??= Timer(Duration(milliseconds: _coverReady ? 150 : 1200), () {
         _bakeTimer = null;
         _BakeQueue.add(this);
       });
@@ -962,8 +964,6 @@ class TrackCard extends ConsumerWidget {
   }
 }
 
-/// Cards waiting to be drawn into their picture, a few per frame: drawing a screenful of
-/// pictures in one frame was a hitch of its own.
 /// How many cards may be built for the first time in one frame. A card is about a third of a
 /// millisecond to build; a letter jump or a trackpad fling replaced the whole screen (200+
 /// cards) in one frame, 50-90 ms of building and then as long again drawing them. Past the
@@ -990,8 +990,11 @@ class _BuildBudget {
   }
 }
 
+/// Cards waiting to be drawn into their picture, two per frame. Each picture is the card drawn
+/// once more into an image of its own, on the graphics thread: after a jump or a tab change six a
+/// frame were 35-75 ms frames with nothing else going on (profile log and video, round 6).
 class _BakeQueue {
-  static const perFrame = 6;
+  static const perFrame = 2;
   static final _waiting = <_MediaCardState>{};
   static bool _scheduled = false;
 

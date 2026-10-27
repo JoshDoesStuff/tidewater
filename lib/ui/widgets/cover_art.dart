@@ -342,7 +342,7 @@ class _PlaceholderPainter extends CustomPainter {
 /// same frame: 40-70 ms frames with nothing else going on. Covers already shown before (from
 /// memory) are not counted.
 class _FirstDraws {
-  static const perFrame = 12;
+  static const perFrame = 8;
   static Duration? _frame;
   static int _left = 0;
 
