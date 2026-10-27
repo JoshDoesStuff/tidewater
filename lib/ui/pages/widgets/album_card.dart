@@ -27,6 +27,7 @@ import '../../widgets/effects/ripple.dart';
 import '../../widgets/link_text.dart';
 import '../../widgets/shapes/morph_path.dart';
 import '../../widgets/track_drag.dart';
+import '../../widgets/smooth_scroll.dart' show pageFlying;
 import '../../widgets/track_menu.dart';
 import '../../widgets/playlist_flow.dart';
 import '../../../app/providers/session_providers.dart';
@@ -967,7 +968,8 @@ class TrackCard extends ConsumerWidget {
 /// millisecond to build; a letter jump or a trackpad fling replaced the whole screen (200+
 /// cards) in one frame, 50-90 ms of building and then as long again drawing them. Past the
 /// budget a card shows a stand-in and is built in the next frames, top to bottom. Ordinary
-/// scrolling brings in fewer cards than this per frame and never sees a stand-in.
+/// scrolling brings in fewer cards than this per frame and never sees a stand-in. While the page
+/// is flying (see [pageFlying]) every new card is a stand-in until it slows down.
 class _BuildBudget {
   static int get perFrame => MediaCard.firstBuildsPerFrame;
   static Duration? _frame;
@@ -975,6 +977,8 @@ class _BuildBudget {
 
   static bool take() {
     if (!PerfFlags.instance.cardBudget) return true;
+    // Flying past: this card would be gone again in a few frames.
+    if (pageFlying) return false;
     final now = SchedulerBinding.instance.currentFrameTimeStamp;
     if (now != _frame) {
       _frame = now;

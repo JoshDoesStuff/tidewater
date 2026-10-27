@@ -24,6 +24,7 @@ class PerfStats {
   static int cardBuilds = 0; // every build of a card, not only new ones
   static int rowBuilds = 0;
   static int standIns = 0; // cards shown as a stand-in, over the frame's build budget
+  static int coversHeldBack = 0; // new covers waiting a frame (frame share used up)
 
   // Running totals / current state.
   static int coversWaiting = 0;
@@ -62,6 +63,7 @@ class PerfStats {
     cardBuilds = 0;
     rowBuilds = 0;
     standIns = 0;
+    coversHeldBack = 0;
     moved = 0;
     biggestMove = 0;
   }

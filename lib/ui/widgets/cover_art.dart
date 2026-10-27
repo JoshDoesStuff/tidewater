@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show SchedulerBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_color_utilities/material_color_utilities.dart' show Hct;
 
@@ -215,6 +216,14 @@ class _CoverArtState extends ConsumerState<CoverArt> with SingleTickerProviderSt
               // screenful of cards arriving together, is a lot of frames of work nobody watches.
               final scrolling = Scrollable.maybeOf(context)?.position.isScrollingNotifier.value ?? false;
               final fade = sync || scrolling ? Duration.zero : Motion.of(context, Motion.medium);
+              if (frame != null && !sync && !_shownOnce && !_FirstDraws.take()) {
+                // Over this frame's share of new covers: the gradient stays a frame longer.
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) setState(() {});
+                });
+                PerfStats.coversHeldBack++;
+                return const SizedBox.expand();
+              }
               if (frame != null) {
                 if (PerfStats.enabled && !_shownOnce) {
                   _shownOnce = true;
@@ -326,4 +335,26 @@ class _PlaceholderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_PlaceholderPainter old) => old.key != key;
+}
+
+/// How many newly decoded covers may appear in one frame. Each is drawn for the first time
+/// there (and sent to the graphics card), and after a fling or a jump 50 to 150 arrived in the
+/// same frame: 40-70 ms frames with nothing else going on. Covers already shown before (from
+/// memory) are not counted.
+class _FirstDraws {
+  static const perFrame = 12;
+  static Duration? _frame;
+  static int _left = 0;
+
+  static bool take() {
+    if (!PerfFlags.instance.cardBudget) return true;
+    final now = SchedulerBinding.instance.currentFrameTimeStamp;
+    if (now != _frame) {
+      _frame = now;
+      _left = perFrame;
+    }
+    if (_left <= 0) return false;
+    _left--;
+    return true;
+  }
 }

@@ -51,7 +51,7 @@ void logSlowFrames() {
     CoverCacheStats.skipped = CoverCacheStats.cancelled = 0;
     final entr = PerfStats.entrances, failed = PerfStats.bakesFailed;
     final moved = PerfStats.moved, biggestMove = PerfStats.biggestMove;
-    final cardBuilds = PerfStats.cardBuilds, rowBuilds = PerfStats.rowBuilds, standIns = PerfStats.standIns;
+    final cardBuilds = PerfStats.cardBuilds, rowBuilds = PerfStats.rowBuilds, standIns = PerfStats.standIns, heldBack = PerfStats.coversHeldBack;
     PerfStats.reset();
     wBuilt += built;
     wBaked += baked;
@@ -79,7 +79,7 @@ void logSlowFrames() {
           ..write('| rasterCache layers=${t.layerCacheCount} (${(t.layerCacheBytes / 1048576).toStringAsFixed(1)} MB) ')
           ..write('pictures=${t.pictureCacheCount} (${(t.pictureCacheBytes / 1048576).toStringAsFixed(1)} MB) ')
           ..write('| since last: cardsBuilt=$built pictured=$baked (${f(bakeUs / 1000)} ms) bakeFailed=$failed ')
-          ..write('cardBuilds=$cardBuilds standIns=$standIns rowBuilds=$rowBuilds coversShown=$shown (fromMemory=$mem) diskReads=$disk downloads=$down decodes=$decodes (${f(decodeUs / 1000)} ms) coversDropped=$dropped entrances=$entr ')
+          ..write('cardBuilds=$cardBuilds standIns=$standIns rowBuilds=$rowBuilds coversShown=$shown (fromMemory=$mem) diskReads=$disk downloads=$down decodes=$decodes (${f(decodeUs / 1000)} ms) coversDropped=$dropped coversHeldBack=$heldBack entrances=$entr ')
           ..write('| now: liveCards=${PerfStats.liveCards} pictureCards=${PerfStats.pictureCards} ')
           ..write('coversWaiting=${CoverCacheStats.waiting} coversLoading=${CoverCacheStats.loading} ')
           ..write('imageCache=${cache.currentSize} (${(cache.currentSizeBytes / 1048576).toStringAsFixed(0)} MB) live=${cache.liveImageCount} pending=${cache.pendingImageCount} ')

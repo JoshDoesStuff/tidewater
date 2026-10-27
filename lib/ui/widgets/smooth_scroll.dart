@@ -170,6 +170,34 @@ class DeferringScrollPhysics extends ScrollPhysics {
 /// drawing alone took most of a frame, and nobody is looking at it while the page flies by.
 final pageScrolling = ValueNotifier<bool>(false);
 
+/// Whether the page is moving so fast that a card coming into view will be gone again within a
+/// few frames: more than 40% of the screen in the last 25 ms. A trackpad fling or a jump to a
+/// letter moved 500 to 3700 px per frame on a 5000-song list; building and drawing each card
+/// that flashes past was most of those frames. Cards built meanwhile show a stand-in.
+bool get pageFlying => _Flight.flying;
+
+class _Flight {
+  static final _clock = Stopwatch()..start();
+  static final _steps = <(int, double)>[];
+  static double _viewport = 1000;
+
+  static void add(double delta, double viewport) {
+    final now = _clock.elapsedMicroseconds;
+    _viewport = viewport;
+    _steps.add((now, delta.abs()));
+    _steps.removeWhere((s) => now - s.$1 > 25000);
+  }
+
+  static bool get flying {
+    final now = _clock.elapsedMicroseconds;
+    var sum = 0.0;
+    for (final (at, d) in _steps) {
+      if (now - at <= 25000) sum += d;
+    }
+    return sum > _viewport * .4;
+  }
+}
+
 /// Gives the scroll views below it (the ones that use the primary controller, which is
 /// every plain vertical page) the gliding wheel.
 class SmoothScrollScope extends StatefulWidget {
@@ -197,13 +225,14 @@ class _SmoothScrollScopeState extends State<SmoothScrollScope> {
         if (n.depth == 0 && n.metrics.axis == Axis.vertical) {
           if (n is ScrollStartNotification) pageScrolling.value = PerfStats.scrolling = true;
           if (n is ScrollEndNotification) pageScrolling.value = PerfStats.scrolling = false;
+          if (n is ScrollUpdateNotification) _Flight.add(n.scrollDelta ?? 0, n.metrics.viewportDimension);
           if (PerfStats.enabled && n is ScrollUpdateNotification) {
             // For the profile log: how far the page moved and by what (the wheel glide reports
             // its own speed; a drag, a trackpad fling or a jump to a letter did not show at all).
             final delta = (n.scrollDelta ?? 0).abs();
             if (delta > PerfStats.biggestMove) PerfStats.biggestMove = delta;
             PerfStats.moved += delta;
-            final position = _controller.hasClients ? _controller.positions.last : null;
+            final position = n.context == null ? null : Scrollable.maybeOf(n.context!)?.position;
             PerfStats.scrollBy = n.dragDetails != null
                 ? 'drag'
                 : position is SmoothScrollPosition
