@@ -30,13 +30,11 @@ class AmbientLayer extends ConsumerStatefulWidget {
   ConsumerState<AmbientLayer> createState() => _AmbientLayerState();
 }
 
-class _AmbientLayerState extends ConsumerState<AmbientLayer>
-    with SingleTickerProviderStateMixin {
-  // Very slow drift: one full cycle every 60 s.
-  late final AnimationController _drift = AnimationController(
-    vsync: this,
-    duration: const Duration(seconds: 60),
-  );
+class _AmbientLayerState extends ConsumerState<AmbientLayer> {
+  // Very slow drift: one full cycle every 60 s. Driven by a timer at about 25 frames a
+  // second, not by an animation: on a 144 or 180 Hz screen an animation made the whole window
+  // be drawn again 180 times a second, for a drift nobody can see move that fast.
+  final _drift = _Drift();
   bool _auroraMounted = false;
 
   @override
@@ -333,4 +331,36 @@ class _WashPainter extends CustomPainter {
   @override
   bool shouldRepaint(_WashPainter old) =>
       old.origin != origin || old.color != color || old.radius != radius;
+}
+
+/// A 0..1 value that goes round once every 60 seconds, updated 25 times a second.
+class _Drift extends ChangeNotifier {
+  final _clock = Stopwatch();
+  Timer? _timer;
+  double _base = 0;
+
+  double get value => (_base + _clock.elapsedMicroseconds / 60e6) % 1;
+  bool get isAnimating => _timer != null;
+
+  void repeat() {
+    if (_timer != null) return;
+    _clock
+      ..reset()
+      ..start();
+    _timer = Timer.periodic(const Duration(milliseconds: 40), (_) => notifyListeners());
+  }
+
+  void stop({bool canceled = false}) {
+    if (_timer == null) return;
+    _base = value;
+    _clock.stop();
+    _timer!.cancel();
+    _timer = null;
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 }

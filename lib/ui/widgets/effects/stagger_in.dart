@@ -30,6 +30,7 @@ class StaggerIn extends StatefulWidget {
 class _StaggerInState extends State<StaggerIn> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 560));
   Timer? _delay;
+  final _childKey = GlobalKey();
   bool _started = false;
 
   @override
@@ -57,8 +58,12 @@ class _StaggerInState extends State<StaggerIn> with SingleTickerProviderStateMix
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _c,
-      child: widget.child,
+      child: KeyedSubtree(key: _childKey, child: widget.child),
       builder: (context, child) {
+        // Done: no opacity or transform around it any more (an opacity layer, even at full, is an
+        // offscreen pass for every card, and a hundred of them per screen add up). The key lets the
+        // card move out of the wrappers without being rebuilt.
+        if (_c.value >= 1) return child!;
         final t = Motion.emphasized.transform(_c.value);
         // The row stays in the accessibility tree while it fades (a node that appears and
         // goes at every row scrolled in is what Windows trips over), and only the first

@@ -1,4 +1,5 @@
 import '../../../app/perf_flags.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -26,7 +27,12 @@ import '../../../app/providers/ui_providers.dart';
 
 /// An album: squircle cover with title and artist underneath.
 class AlbumCard extends ConsumerWidget {
-  const AlbumCard({super.key, required this.album, this.size, this.large = false});
+  const AlbumCard({
+    super.key,
+    required this.album,
+    this.size,
+    this.large = false,
+  });
 
   final Album album;
 
@@ -39,7 +45,8 @@ class AlbumCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final active = ref.watch(activeAlbumIdProvider) == album.id;
-    final playing = active && ref.watch(playbackProvider.select((s) => s.playing));
+    final playing =
+        active && ref.watch(playbackProvider.select((s) => s.playing));
     return MediaCard(
       title: album.title,
       subtitle: album.artist,
@@ -52,8 +59,13 @@ class AlbumCard extends ConsumerWidget {
       large: large,
       onTap: () => ref.read(playbackProvider.notifier).playAlbum(album),
       onOpen: () => context.push('/album/${album.id}'),
-      onOpenSubtitle: album.artistId == null ? null : () => context.push('/artist/${album.artistId}'),
-      drag: TrackDrag(label: album.title, load: () => ref.read(playbackProvider.notifier).albumTracks(album)),
+      onOpenSubtitle: album.artistId == null
+          ? null
+          : () => context.push('/artist/${album.artistId}'),
+      drag: TrackDrag(
+        label: album.title,
+        load: () => ref.read(playbackProvider.notifier).albumTracks(album),
+      ),
       onMenu: (at) => showCollectionMenu(
         context,
         ref,
@@ -61,7 +73,9 @@ class AlbumCard extends ConsumerWidget {
         load: () => ref.read(playbackProvider.notifier).albumTracks(album),
         openLabel: 'Open album',
         openRoute: '/album/${album.id}',
-        artistRoute: album.artistId == null ? null : '/artist/${album.artistId}',
+        artistRoute: album.artistId == null
+            ? null
+            : '/artist/${album.artistId}',
       ),
     );
   }
@@ -69,7 +83,12 @@ class AlbumCard extends ConsumerWidget {
 
 /// An artist: round cover that springs into a scalloped shape on hover.
 class ArtistCard extends ConsumerWidget {
-  const ArtistCard({super.key, required this.artist, this.size, this.large = false});
+  const ArtistCard({
+    super.key,
+    required this.artist,
+    this.size,
+    this.large = false,
+  });
 
   final Artist artist;
   final double? size;
@@ -79,7 +98,9 @@ class ArtistCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return MediaCard(
       title: artist.name,
-      subtitle: artist.albumCount == 1 ? '1 album' : '${artist.albumCount} albums',
+      subtitle: artist.albumCount == 1
+          ? '1 album'
+          : '${artist.albumCount} albums',
       coverArt: artist.coverArt,
       seedKey: artist.id,
       shape: ShapeKind.forKey(artist.id),
@@ -90,7 +111,10 @@ class ArtistCard extends ConsumerWidget {
       onTap: () => context.push('/artist/${artist.id}'),
       showPlay: false,
       onOpen: () => context.push('/artist/${artist.id}'),
-      drag: TrackDrag(label: artist.name, load: () => ref.read(playbackProvider.notifier).artistTracks(artist)),
+      drag: TrackDrag(
+        label: artist.name,
+        load: () => ref.read(playbackProvider.notifier).artistTracks(artist),
+      ),
       onMenu: (at) => showCollectionMenu(
         context,
         ref,
@@ -105,7 +129,12 @@ class ArtistCard extends ConsumerWidget {
 
 /// A playlist: squircle cover with its name and song count.
 class PlaylistCard extends ConsumerWidget {
-  const PlaylistCard({super.key, required this.playlist, this.size, this.large = false});
+  const PlaylistCard({
+    super.key,
+    required this.playlist,
+    this.size,
+    this.large = false,
+  });
 
   final Playlist playlist;
   final double? size;
@@ -115,7 +144,9 @@ class PlaylistCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return MediaCard(
       title: playlist.name,
-      subtitle: playlist.songCount == 1 ? '1 song' : '${playlist.songCount} songs',
+      subtitle: playlist.songCount == 1
+          ? '1 song'
+          : '${playlist.songCount} songs',
       coverArt: playlist.coverArt,
       seedKey: playlist.id,
       shape: ShapeKind.forKey(playlist.id),
@@ -125,25 +156,35 @@ class PlaylistCard extends ConsumerWidget {
       onTap: () => context.push('/playlist/${playlist.id}'),
       showPlay: false,
       onOpen: () => context.push('/playlist/${playlist.id}'),
-      drag: TrackDrag(label: playlist.name, load: () => ref.read(playbackProvider.notifier).playlistTracks(playlist)),
+      drag: TrackDrag(
+        label: playlist.name,
+        load: () =>
+            ref.read(playbackProvider.notifier).playlistTracks(playlist),
+      ),
       onMenu: (at) => showCollectionMenu(
         context,
         ref,
         at: at,
-        load: () => ref.read(playbackProvider.notifier).playlistTracks(playlist),
+        load: () =>
+            ref.read(playbackProvider.notifier).playlistTracks(playlist),
         openLabel: 'Open playlist',
         openRoute: '/playlist/${playlist.id}',
       ),
-      acceptsDrop: () => playlist.canEdit(ref.read(sessionProvider)?.username ?? ''),
+      acceptsDrop: () =>
+          playlist.canEdit(ref.read(sessionProvider)?.username ?? ''),
       onDrop: (drag) async {
         final List<Track> tracks;
         try {
           tracks = await drag.load();
         } catch (_) {
-          ref.read(toastProvider.notifier).show('Couldn\'t get those songs from the server.', error: true);
+          ref
+              .read(toastProvider.notifier)
+              .show('Couldn\'t get those songs from the server.', error: true);
           return;
         }
-        if (context.mounted) await addToExistingPlaylist(context, ref, playlist, tracks);
+        if (context.mounted) {
+          await addToExistingPlaylist(context, ref, playlist, tracks);
+        }
       },
     );
   }
@@ -220,12 +261,14 @@ class _MediaCardState extends State<MediaCard> {
 
   bool _hovered = false;
   bool _pressed = false;
+
   /// The hover play button is only built from the first hover until a moment after the pointer
   /// leaves: it is four animated widgets, and a big grid of cards each holding an invisible one
   /// was a lot of idle work.
   bool _popMounted = false;
   bool _popOn = false;
   Timer? _popGone;
+  final _tileKey = GlobalKey();
   Offset _tilt = Offset.zero; // x: rotateY, y: rotateX (radians)
 
   /// Whether the page is scrolling under the pointer. Cards sliding past a still mouse would each
@@ -300,7 +343,9 @@ class _MediaCardState extends State<MediaCard> {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: PerfFlags.instance,
-      builder: (context, _) => PerfFlags.instance.cards ? _buildCard(context) : const SizedBox.shrink(),
+      builder: (context, _) => PerfFlags.instance.cards
+          ? _buildCard(context)
+          : const SizedBox.shrink(),
     );
   }
 
@@ -328,51 +373,75 @@ class _MediaCardState extends State<MediaCard> {
             onTapCancel: () => setState(() => _pressed = false),
             onTap: widget.onTap,
             child: TweenAnimationBuilder<_Pose>(
-              tween: _PoseTween(end: _Pose(tilt: reduced ? Offset.zero : _tilt, lift: _hovered && !reduced ? -4 : 0, scale: _pressed ? .94 : 1)),
-              duration: reduced ? Duration.zero : (_hovered && !_pressed ? Motion.fast : Motion.medium),
-              curve: reduced ? Curves.linear : (_hovered && !_pressed ? Motion.standard : Motion.spring),
-              builder: (context, pose, child) => Transform(
-                alignment: Alignment.center,
-                // A plain 2D matrix while the card is not being tilted: a perspective one on every card
-                // at rest made the compositor treat each as a 3D layer, a hundred of them per screen.
-                transform: pose.tilt == Offset.zero
-                    ? (Matrix4.identity()
-                      ..translateByDouble(0, pose.lift, 0, 1)
-                      ..scaleByDouble(pose.scale, pose.scale, 1, 1))
-                    : (Matrix4.identity()
-                      ..setEntry(3, 2, 1 / 520)
-                      ..translateByDouble(0, pose.lift, 0, 1)
-                      ..rotateX(pose.tilt.dy)
-                      ..rotateY(pose.tilt.dx)
-                      ..scaleByDouble(pose.scale, pose.scale, 1, 1)),
-                child: child,
+              tween: _PoseTween(
+                end: _Pose(
+                  tilt: reduced ? Offset.zero : _tilt,
+                  lift: _hovered && !reduced ? -4 : 0,
+                  scale: _pressed ? .94 : 1,
+                ),
               ),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  AspectRatio(
-                    aspectRatio: 1,
-                    child: ArtTile(
-                      coverArt: widget.coverArt,
-                      seedKey: widget.seedKey,
-                      params: widget.shape.params,
-                      exponent: widget.round ? 2 : 4.2,
-                      morph: morphed ? 1 : 0,
-                      spin: (active || _hovered) && !reduced ? .72 : 0,
-                      child: Ripple(color: scheme.onPrimary, child: const SizedBox.expand()),
+              duration: reduced
+                  ? Duration.zero
+                  : (_hovered && !_pressed ? Motion.fast : Motion.medium),
+              curve: reduced
+                  ? Curves.linear
+                  : (_hovered && !_pressed ? Motion.standard : Motion.spring),
+              builder: (context, pose, child) =>
+                  pose.tilt == Offset.zero && pose.lift == 0 && pose.scale == 1
+                  // At rest there is no transform at all (each was a layer of its own).
+                  ? child!
+                  : Transform(
+                      alignment: Alignment.center,
+                      // A plain 2D matrix while the card is not being tilted: a perspective one on every card
+                      // at rest made the compositor treat each as a 3D layer, a hundred of them per screen.
+                      transform: pose.tilt == Offset.zero
+                          ? (Matrix4.identity()
+                              ..translateByDouble(0, pose.lift, 0, 1)
+                              ..scaleByDouble(pose.scale, pose.scale, 1, 1))
+                          : (Matrix4.identity()
+                              ..setEntry(3, 2, 1 / 520)
+                              ..translateByDouble(0, pose.lift, 0, 1)
+                              ..rotateX(pose.tilt.dy)
+                              ..rotateY(pose.tilt.dx)
+                              ..scaleByDouble(pose.scale, pose.scale, 1, 1)),
+                      child: child,
                     ),
-                  ),
-                  if (active)
-                    Positioned.fill(
-                      child: IgnorePointer(child: Center(child: EqBadge(animating: widget.playing))),
+              child: KeyedSubtree(
+                key: _tileKey,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    AspectRatio(
+                      aspectRatio: 1,
+                      child: ArtTile(
+                        coverArt: widget.coverArt,
+                        seedKey: widget.seedKey,
+                        params: widget.shape.params,
+                        exponent: widget.round ? 2 : 4.2,
+                        morph: morphed ? 1 : 0,
+                        spin: (active || _hovered) && !reduced ? .72 : 0,
+                        child: Ripple(
+                          color: scheme.onPrimary,
+                          child: const SizedBox.expand(),
+                        ),
+                      ),
                     ),
-                  if (_popMounted && widget.showPlay)
-                    Positioned(
-                      right: -6,
-                      bottom: -6,
-                      child: _PlayPop(visible: _popOn && !active),
-                    ),
-                ],
+                    if (active)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: Center(
+                            child: EqBadge(animating: widget.playing),
+                          ),
+                        ),
+                      ),
+                    if (_popMounted && widget.showPlay)
+                      Positioned(
+                        right: -6,
+                        bottom: -6,
+                        child: _PlayPop(visible: _popOn && !active),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -388,8 +457,17 @@ class _MediaCardState extends State<MediaCard> {
         child: tile,
       );
     }
-    if (widget.drag != null) tile = TrackDragSource(drag: widget.drag!, child: tile);
-    if (widget.onDrop != null) tile = TrackDropTarget(radius: 30, onDrop: widget.onDrop!, accepts: widget.acceptsDrop, child: tile);
+    if (widget.drag != null) {
+      tile = TrackDragSource(drag: widget.drag!, child: tile);
+    }
+    if (widget.onDrop != null) {
+      tile = TrackDropTarget(
+        radius: 30,
+        onDrop: widget.onDrop!,
+        accepts: widget.acceptsDrop,
+        child: tile,
+      );
+    }
 
     final card = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -408,7 +486,10 @@ class _MediaCardState extends State<MediaCard> {
         LinkText(
           text: widget.subtitle,
           onTap: widget.onOpenSubtitle,
-          style: text.bodySmall?.copyWith(fontSize: widget.large ? 12.5 : 12, color: scheme.onSurfaceVariant),
+          style: text.bodySmall?.copyWith(
+            fontSize: widget.large ? 12.5 : 12,
+            color: scheme.onSurfaceVariant,
+          ),
         ),
       ],
     );
@@ -418,11 +499,15 @@ class _MediaCardState extends State<MediaCard> {
     final node = Semantics(
       container: true,
       button: true,
-      label: '${widget.title}, ${widget.subtitle}${widget.active ? ', playing' : ''}',
+      label:
+          '${widget.title}, ${widget.subtitle}${widget.active ? ', playing' : ''}',
       onTap: widget.onTap,
       customSemanticsActions: {
-        if (widget.onOpen != null) const CustomSemanticsAction(label: 'Open'): widget.onOpen!,
-        if (widget.onOpenSubtitle != null) CustomSemanticsAction(label: 'Go to ${widget.subtitle}'): widget.onOpenSubtitle!,
+        if (widget.onOpen != null)
+          const CustomSemanticsAction(label: 'Open'): widget.onOpen!,
+        if (widget.onOpenSubtitle != null)
+          CustomSemanticsAction(label: 'Go to ${widget.subtitle}'):
+              widget.onOpenSubtitle!,
         if (widget.onMenu != null)
           const CustomSemanticsAction(label: 'More options'): () {
             final box = context.findRenderObject()! as RenderBox;
@@ -432,7 +517,9 @@ class _MediaCardState extends State<MediaCard> {
       excludeSemantics: true,
       child: card,
     );
-    return widget.size != null ? SizedBox(width: widget.size, child: node) : node;
+    return widget.size != null
+        ? SizedBox(width: widget.size, child: node)
+        : node;
   }
 }
 
@@ -470,9 +557,19 @@ class _PlayPop extends StatelessWidget {
               decoration: BoxDecoration(
                 color: scheme.primary,
                 borderRadius: BorderRadius.circular(visible ? 16 : 23),
-                boxShadow: [BoxShadow(color: scheme.shadow.withValues(alpha: .35), blurRadius: 14, offset: const Offset(0, 6))],
+                boxShadow: [
+                  BoxShadow(
+                    color: scheme.shadow.withValues(alpha: .35),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
-              child: Icon(Icons.play_arrow_rounded, size: 24, color: scheme.onPrimary),
+              child: Icon(
+                Icons.play_arrow_rounded,
+                size: 24,
+                color: scheme.onPrimary,
+              ),
             ),
           ),
         ),
@@ -506,7 +603,13 @@ class _PoseTween extends Tween<_Pose> {
 
 /// A song as a card (Liked songs). Tapping plays [tracks] from this one.
 class TrackCard extends ConsumerWidget {
-  const TrackCard({super.key, required this.tracks, required this.index, this.size, this.large = false});
+  const TrackCard({
+    super.key,
+    required this.tracks,
+    required this.index,
+    this.size,
+    this.large = false,
+  });
 
   final List<Track> tracks;
   final int index;
@@ -527,7 +630,8 @@ class TrackCard extends ConsumerWidget {
       large: large,
       active: current,
       playing: current && ref.watch(playbackProvider.select((s) => s.playing)),
-      onTap: () => ref.read(playbackProvider.notifier).playTracks(tracks, index: index),
+      onTap: () =>
+          ref.read(playbackProvider.notifier).playTracks(tracks, index: index),
       drag: TrackDrag.tracks([track]),
       onMenu: (at) => showTrackMenu(context, ref, at: at, tracks: [track]),
     );
