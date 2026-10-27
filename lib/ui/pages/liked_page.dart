@@ -44,7 +44,7 @@ class LikedPage extends ConsumerWidget {
 
     return PageFrame(
       child: CustomScrollView(
-        scrollCacheExtent: const ScrollCacheExtent.pixels(700),
+        scrollCacheExtent: const ScrollCacheExtent.pixels(1400),
         slivers: [
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(24, 36, 40, 22),

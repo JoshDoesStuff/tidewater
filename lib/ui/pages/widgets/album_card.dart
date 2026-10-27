@@ -687,7 +687,7 @@ class _MediaCardState extends State<MediaCard> {
       });
     }
     if (_resting && _sprite == null) {
-      _bakeTimer ??= Timer(const Duration(milliseconds: 500), () {
+      _bakeTimer ??= Timer(const Duration(milliseconds: 150), () {
         _bakeTimer = null;
         _bake();
       });

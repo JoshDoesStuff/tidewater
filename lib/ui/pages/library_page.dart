@@ -193,7 +193,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
           CustomScrollView(
             controller: _scroll,
             // Build about two rows ahead, so covers are decoded before they scroll in.
-            scrollCacheExtent: const ScrollCacheExtent.pixels(700),
+            scrollCacheExtent: const ScrollCacheExtent.pixels(1400),
             slivers: [
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(24, 36, 40, 0),
