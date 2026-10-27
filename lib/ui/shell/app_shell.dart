@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/frame_log.dart' show perfMark, perfNote, perfToggleRecording;
 import 'recording_badge.dart';
+import 'cover_precache_view.dart';
 import '../../app/perf_watch.dart';
 import '../../app/perf_flags.dart';
 import '../../app/destinations.dart';
@@ -317,6 +318,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                 const Positioned.fill(child: ToastLayer()),
                 const Positioned.fill(child: NowPlayingOverlay()),
                 const Positioned.fill(child: ToastLayer(aboveNowPlaying: true)),
+                const Positioned.fill(child: CoverPrecacheView()),
                 const Positioned(left: 0, right: 0, top: 0, child: TitleBar()),
                 const Positioned.fill(child: RecordingBadge()),
               ],
