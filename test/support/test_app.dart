@@ -66,6 +66,6 @@ Future<List<Override>> testOverrides({
 /// completes under fake async).
 class NoCovers implements CoverStore {
   @override
-  Future<Uint8List> get(String id, {int size = 300}) =>
+  Future<Uint8List> get(String id, {int size = 300, bool Function()? wanted}) =>
       Future.error(const ApiException(ApiErrorKind.notFound, 'no cover in tests'));
 }

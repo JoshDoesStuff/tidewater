@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -17,8 +18,24 @@ class _Covers implements CoverStore {
   final bool has;
 
   @override
-  Future<Uint8List> get(String id, {int size = 300}) async {
+  Future<Uint8List> get(String id, {int size = 300, bool Function()? wanted}) async {
     if (!has) throw StateError('no cover');
+    return Uint8List.fromList(_png);
+  }
+}
+
+/// Holds every load until [open], then asks `wanted` like the disk cache does at its turn.
+class _Gated implements CoverStore {
+  final _gate = Completer<void>();
+  var reads = 0;
+
+  void open() => _gate.complete();
+
+  @override
+  Future<Uint8List> get(String id, {int size = 300, bool Function()? wanted}) async {
+    await _gate.future;
+    if (wanted != null && !wanted()) throw const CoverSkipped();
+    reads++;
     return Uint8List.fromList(_png);
   }
 }
@@ -60,6 +77,35 @@ void main() {
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
     await tester.pump(const Duration(seconds: 1));
     expect(placeholder, findsOneWidget);
+  });
+
+  testWidgets('a cover whose card is gone before its turn is not read, and loads again later', (tester) async {
+    final store = _Gated();
+    await tester.pumpWidget(app(store, 'cv'));
+    // The card scrolls away while its load waits.
+    await tester.pumpWidget(ProviderScope(
+      overrides: [coverCacheProvider.overrideWithValue(store)],
+      child: const MaterialApp(home: SizedBox()),
+    ));
+    store.open();
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await tester.pump();
+    expect(store.reads, 0, reason: 'nobody wanted it any more');
+    expect(PaintingBinding.instance.imageCache.statusForKey(CoverImage(store, 'cv', 150)).untracked, isTrue,
+        reason: 'a dropped load must not stay in the image cache as a failure');
+
+    // Shown again: it loads normally.
+    await tester.pumpWidget(app(store, 'cv'));
+    await tester.runAsync(() async {
+      for (var i = 0; i < 20; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(store.reads, 1);
+    expect(placeholder, findsNothing);
   });
 
   test('placeholder colors are stable per key and differ between keys', () {

@@ -314,14 +314,21 @@ class _MediaCardState extends State<MediaCard> {
     super.didUpdateWidget(old);
     if (old.coverArt != widget.coverArt) {
       _coverReady = false;
-      if (_coverListener != null) _coverStream?.removeListener(_coverListener!);
-      _coverStream = null;
-      _coverListener = null;
+      _stopPreload();
     }
   }
 
   ImageStream? _coverStream;
   ImageStreamListener? _coverListener;
+  CoverImage? _preloading;
+
+  void _stopPreload() {
+    if (_coverListener != null) _coverStream?.removeListener(_coverListener!);
+    if (_preloading != null) CoverImage.letGo(_preloading!);
+    _preloading = null;
+    _coverStream = null;
+    _coverListener = null;
+  }
 
   void _preloadCover() {
     if (!mounted || _coverReady || _coverStream != null) return;
@@ -331,10 +338,14 @@ class _MediaCardState extends State<MediaCard> {
       return;
     }
     final store = ProviderScope.containerOf(context, listen: false).read(coverCacheProvider);
-    final stream = CoverImage(store, id, 300).resolve(ImageConfiguration.empty);
+    final image = CoverImage(store, id, 300);
+    CoverImage.hold(image);
+    final stream = image.resolve(ImageConfiguration.empty);
     late final ImageStreamListener listener;
     void done() {
       stream.removeListener(listener);
+      CoverImage.letGo(image);
+      _preloading = null;
       _coverStream = null;
       _coverListener = null;
       // (Can be called at once, from inside this frame, when the cover is already in memory.)
@@ -347,6 +358,7 @@ class _MediaCardState extends State<MediaCard> {
     listener = ImageStreamListener((_, _) => done(), onError: (_, _) => done());
     _coverStream = stream;
     _coverListener = listener;
+    _preloading = image;
     stream.addListener(listener);
   }
 
@@ -472,7 +484,7 @@ class _MediaCardState extends State<MediaCard> {
     } else {
       PerfStats.liveCards--;
     }
-    if (_coverListener != null) _coverStream?.removeListener(_coverListener!);
+    _stopPreload();
     _BakeQueue.remove(this);
     _bakeTimer?.cancel();
     _sprite?.dispose();

@@ -42,7 +42,7 @@ class _NoCovers implements CoverStore {
   const _NoCovers();
 
   @override
-  Future<Uint8List> get(String id, {int size = 300}) async => throw StateError('Not signed in');
+  Future<Uint8List> get(String id, {int size = 300, bool Function()? wanted}) async => throw StateError('Not signed in');
 }
 
 /// Identifies one album's cover for scheme generation.

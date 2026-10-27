@@ -11,6 +11,8 @@ class CoverCacheStats {
   static int decodes = 0;
   static int waiting = 0;
   static int loading = 0;
+  static int cancelled = 0;
+  static int skipped = 0;
 }
 
 typedef CoverFetch = Future<Uint8List> Function(String coverArt, int size);
@@ -18,7 +20,7 @@ typedef CoverFetch = Future<Uint8List> Function(String coverArt, int size);
 /// Where cover bytes come from. The disk cache is the real one; tests use an
 /// in-memory stand-in (file IO never completes under fake async).
 abstract class CoverStore {
-  Future<Uint8List> get(String id, {int size = 300});
+  Future<Uint8List> get(String id, {int size = 300, bool Function()? wanted});
 }
 
 /// Cover art on disk, keyed by `coverArt` id and pixel size (the same cover at
@@ -55,12 +57,17 @@ class CoverCache implements CoverStore {
   }
 
   @override
-  Future<Uint8List> get(String id, {int size = 300}) {
+  Future<Uint8List> get(String id, {int size = 300, bool Function()? wanted}) {
     final px = bucket(size);
     final key = '${id}_$px';
     return _inFlight.putIfAbsent(key, () async {
       await _gate.enter();
       try {
+        if (wanted != null && !wanted()) {
+          // Nobody is waiting for it any more (the card scrolled away while it queued).
+          CoverCacheStats.skipped++;
+          throw const CoverSkipped();
+        }
         final dir = await directory;
         final file = _file(dir, id, px);
         if (await file.exists()) {
@@ -119,6 +126,11 @@ class CoverCache implements CoverStore {
     final dir = await directory;
     if (await dir.exists()) await dir.delete(recursive: true);
   }
+}
+
+/// A load given up before it began: [CoverStore.get]'s `wanted` said no.
+class CoverSkipped implements Exception {
+  const CoverSkipped();
 }
 
 /// Lets [limit] callers through at a time; the rest wait, newest first.

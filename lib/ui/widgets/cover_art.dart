@@ -35,10 +35,51 @@ class CoverImage extends ImageProvider<CoverImage> {
       );
 
   Future<ui.Codec> _load(ImageDecoderCallback decode) async {
-    final bytes = await cache.get(coverArt, size: size);
-    final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
-    CoverCacheStats.decodes++;
-    return decode(buffer);
+    _loading.add(this);
+    try {
+      final bytes = await cache.get(coverArt, size: size, wanted: () => !_abandoned.contains(this));
+      if (_abandoned.contains(this)) throw const CoverAbandoned();
+      final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+      CoverCacheStats.decodes++;
+      return await decode(buffer);
+    } on Object catch (e) {
+      if (e is! CoverAbandoned && e is! CoverSkipped) rethrow;
+      // A failed load stays in the image cache (as pending, for good): take it out, so the
+      // cover loads normally the next time a card shows it.
+      PaintingBinding.instance.imageCache.evict(this);
+      CoverCacheStats.cancelled++;
+      throw const CoverAbandoned();
+    } finally {
+      _loading.remove(this);
+      _abandoned.remove(this);
+    }
+  }
+
+  // Covers nobody is waiting for any more. A jump down a long list (a letter in the index, a
+  // trackpad fling) passes hundreds of cards in a frame or two; each asked for its cover, and
+  // all of them were read and decoded after the cards were gone (700 in one burst in the
+  // profile log, 100-180 ms frames). Widgets showing a cover hold it while they wait; a load
+  // whose last holder lets go before it starts is dropped. Loads nobody holds (the Now Playing
+  // prefetch) always run.
+  static final _holds = <CoverImage, int>{};
+  static final _loading = <CoverImage>{};
+  static final _abandoned = <CoverImage>{};
+
+  /// A widget is waiting for this cover.
+  static void hold(CoverImage image) {
+    _holds[image] = (_holds[image] ?? 0) + 1;
+    _abandoned.remove(image);
+  }
+
+  /// It no longer is (gone, or showing another cover).
+  static void letGo(CoverImage image) {
+    final n = (_holds[image] ?? 0) - 1;
+    if (n > 0) {
+      _holds[image] = n;
+      return;
+    }
+    _holds.remove(image);
+    if (_loading.contains(image)) _abandoned.add(image);
   }
 
   @override
@@ -47,6 +88,11 @@ class CoverImage extends ImageProvider<CoverImage> {
 
   @override
   int get hashCode => Object.hash(identityHashCode(cache), coverArt, size);
+}
+
+/// A cover load dropped because no widget was waiting for it any more.
+class CoverAbandoned implements Exception {
+  const CoverAbandoned();
 }
 
 /// A cover filling its box. While the image loads (or if the album has none)
@@ -92,6 +138,16 @@ class _CoverArtState extends ConsumerState<CoverArt> with SingleTickerProviderSt
   bool _shownOnce = false;
   Timer? _timer;
 
+  /// The cover this widget is waiting for or showing (see [CoverImage.hold]).
+  CoverImage? _held;
+
+  void _holdOnly(CoverImage? image) {
+    if (image == _held) return;
+    if (image != null) CoverImage.hold(image);
+    if (_held != null) CoverImage.letGo(_held!);
+    _held = image;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -115,6 +171,7 @@ class _CoverArtState extends ConsumerState<CoverArt> with SingleTickerProviderSt
 
   @override
   void dispose() {
+    if (_held != null) CoverImage.letGo(_held!);
     _timer?.cancel();
     _fade.dispose();
     super.dispose();
@@ -134,13 +191,17 @@ class _CoverArtState extends ConsumerState<CoverArt> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     final id = widget.coverArt;
+    final image = id != null && PerfFlags.instance.covers
+        ? CoverImage(ref.watch(coverCacheProvider), id, widget.resolution)
+        : null;
+    _holdOnly(image);
     return Stack(
       fit: StackFit.expand,
       children: [
         if (!_covered) CustomPaint(painter: _PlaceholderPainter(widget.seedKey)),
-        if (id != null && PerfFlags.instance.covers)
+        if (image != null)
           Image(
-            image: CoverImage(ref.watch(coverCacheProvider), id, widget.resolution),
+            image: image,
             fit: BoxFit.cover,
             // Covers are drawn near the size they were fetched at; mipmaps (the default) cost a pass
             // on the graphics thread the first time each new cover is drawn, for no visible gain.
