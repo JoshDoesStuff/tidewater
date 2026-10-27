@@ -106,6 +106,9 @@ class CoverCache implements CoverStore {
     return file.exists();
   }
 
+  /// Where the cover is (or would be) saved on disk.
+  Future<String> savedPath(String id, {int size = 300}) async => _file(await directory, id, bucket(size)).path;
+
   /// Deletes the oldest files until the folder is under [maxBytes].
   Future<void> trim(int maxBytes) async {
     final dir = await directory;

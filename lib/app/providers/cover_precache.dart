@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:isolate';
 
+import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/cover_cache.dart';
+import '../frame_log.dart';
 import 'cover_providers.dart';
 import 'library_providers.dart';
 import 'session_providers.dart';
@@ -125,9 +130,44 @@ class CoverPrecacheNotifier extends Notifier<CoverPrecache> {
       }
     }
 
+    final saving = Stopwatch()..start();
     await Future.wait([for (var i = 0; i < workers; i++) worker()]);
     if (_stale(generation)) return;
     state = state.copyWith(done: todo.length, running: false, finished: true);
+    if (kProfileMode) unawaited(_logDuplicates(store, ids, todo.length, saving.elapsedMilliseconds));
+  }
+
+  /// Profile log, measuring only: how many of the saved covers are really different images.
+  /// Navidrome ids end in a content hash (`mf-<song>_<hash>`, `al-<album>_<hash>`); `hashes`
+  /// counts those (the full id when there is no `_`), `distinctBytes` the different md5s of the
+  /// saved files, and `unsafeHashes` the hashes whose files differ (keying by hash would show a
+  /// wrong cover). Read and hashed on another isolate.
+  static Future<void> _logDuplicates(CoverCache store, List<String> ids, int saved, int ms) async {
+    final paths = [for (final id in ids) (_hashOf(id), await store.savedPath(id))];
+    final line = await Isolate.run(() {
+      final byHash = <String, Set<String>>{};
+      final digests = <String>{};
+      var missing = 0;
+      for (final (hash, path) in paths) {
+        final file = File(path);
+        if (!file.existsSync()) {
+          missing++;
+          continue;
+        }
+        final digest = md5.convert(file.readAsBytesSync()).toString();
+        digests.add(digest);
+        (byHash[hash] ??= {}).add(digest);
+      }
+      final unsafe = byHash.values.where((d) => d.length > 1).length;
+      return 'PRECACHE ids=${paths.length} hashes=${byHash.length} distinctBytes=${digests.length} '
+          'unsafeHashes=$unsafe missing=$missing saved=$saved saveMs=$ms';
+    });
+    perfNote(line);
+  }
+
+  static String _hashOf(String id) {
+    final i = id.lastIndexOf('_');
+    return i < 0 ? id : id.substring(i + 1);
   }
 
   /// Waits until a list provider says it has everything (null on an error, or after five minutes).
