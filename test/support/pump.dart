@@ -32,6 +32,8 @@ Future<ProviderContainer> pumpApp(
   // A resting card is a picture (see MediaCard); most tests look for its text, so it is off here.
   PerfFlags.instance.sprites = false;
   addTearDown(() => PerfFlags.instance.sprites = true);
+  PerfFlags.instance.cardBudget = false;
+  addTearDown(() => PerfFlags.instance.cardBudget = true);
   final overrides = await testOverrides(api: api, signedIn: signedIn, store: store, factory: factory, prefs: prefs, lrclib: lrclib, media: media, listStore: listStore);
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;

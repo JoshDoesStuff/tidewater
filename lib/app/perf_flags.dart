@@ -21,6 +21,8 @@ class PerfFlags extends ChangeNotifier {
   bool chrome = true;
   bool cards = true;
   bool sprites = true;
+  // At most a couple of dozen cards built for the first time per frame (stand-ins for the rest).
+  bool cardBudget = true;
 
   static const names = ['ambient shapes + spotlight', 'aurora', 'card shadows', 'smooth card edges', 'cover pictures', 'rows animating in as they scroll into view', 'holding covers back while scrolling fast', 'mini player + shuffle button', 'the cards altogether', 'resting cards as one picture'];
 

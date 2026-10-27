@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/app.dart';
 import 'package:tidewater/app/perf_flags.dart';
 import 'package:tidewater/ui/pages/widgets/album_card.dart';
+import 'package:tidewater/ui/widgets/art_tile.dart';
 import 'package:tidewater/ui/widgets/shapes/morph_shape.dart';
 
 import '../support/fake_library.dart';
@@ -35,6 +36,26 @@ void main() {
     await advance(tester, const Duration(seconds: 3));
     expect(find.descendant(of: card, matching: find.byType(RawImage)), findsOneWidget, reason: 'and it rests again');
     await mouse.removePointer();
+    await disposeApp(tester);
+  });
+
+  testWidgets('cards past the frame budget show a stand-in and are built over the next frames', (tester) async {
+    final c = await pumpApp(tester);
+    PerfFlags.instance.cardBudget = true;
+    MediaCard.firstBuildsPerFrame = 2;
+    addTearDown(() => MediaCard.firstBuildsPerFrame = 24);
+    c.read(routerProvider).go('/library');
+    await tester.pump();
+    await tester.pump();
+    final cards = find.byType(AlbumCard).evaluate().length;
+    final real = find.descendant(of: find.byType(AlbumCard), matching: find.byType(ArtTile)).evaluate().length;
+    expect(cards, greaterThan(4));
+    expect(real, lessThan(cards), reason: 'some are still stand-ins');
+    expect(find.text(fakeAlbums.first.title), findsWidgets, reason: 'a stand-in already shows the title');
+    await advance(tester, const Duration(seconds: 2));
+    expect(find.descendant(of: find.byType(AlbumCard), matching: find.byType(ArtTile)).evaluate().length,
+        find.byType(AlbumCard).evaluate().length,
+        reason: 'all built by now');
     await disposeApp(tester);
   });
 }

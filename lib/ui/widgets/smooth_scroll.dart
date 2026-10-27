@@ -111,6 +111,15 @@ class SmoothScrollPosition extends ScrollPositionWithSingleContext {
     }
   }
 
+  /// What is moving the page, for the profile log.
+  String get activityKind => switch (activity) {
+        _GlideActivity() => 'wheel',
+        BallisticScrollActivity() => 'fling',
+        DrivenScrollActivity() => 'animated jump',
+        DragScrollActivity() => 'drag',
+        _ => 'jump',
+      };
+
   @override
   void dispose() {
     _ticker?.dispose();
@@ -188,6 +197,19 @@ class _SmoothScrollScopeState extends State<SmoothScrollScope> {
         if (n.depth == 0 && n.metrics.axis == Axis.vertical) {
           if (n is ScrollStartNotification) pageScrolling.value = PerfStats.scrolling = true;
           if (n is ScrollEndNotification) pageScrolling.value = PerfStats.scrolling = false;
+          if (PerfStats.enabled && n is ScrollUpdateNotification) {
+            // For the profile log: how far the page moved and by what (the wheel glide reports
+            // its own speed; a drag, a trackpad fling or a jump to a letter did not show at all).
+            final delta = (n.scrollDelta ?? 0).abs();
+            if (delta > PerfStats.biggestMove) PerfStats.biggestMove = delta;
+            PerfStats.moved += delta;
+            final position = _controller.hasClients ? _controller.positions.last : null;
+            PerfStats.scrollBy = n.dragDetails != null
+                ? 'drag'
+                : position is SmoothScrollPosition
+                    ? position.activityKind
+                    : 'other';
+          }
         }
         return false;
       },

@@ -20,7 +20,7 @@ import '../../../core/models/artist.dart';
 import '../../../core/models/playlist.dart';
 import '../../../core/models/track.dart';
 import '../../widgets/art_tile.dart';
-import '../../widgets/cover_art.dart' show CoverImage;
+import '../../widgets/cover_art.dart' show CoverImage, placeholderColors;
 import '../../../app/providers/cover_providers.dart' show coverCacheProvider;
 import '../../widgets/effects/eq_bars.dart';
 import '../../widgets/effects/ripple.dart';
@@ -204,6 +204,10 @@ class PlaylistCard extends ConsumerWidget {
 /// [active] card stays morphed, slowly spins and (while [playing]) shows the
 /// EQ badge.
 class MediaCard extends StatefulWidget {
+  /// How many cards are built for the first time in one frame; the rest show a stand-in until
+  /// the next frames (see `_BuildBudget`).
+  static int firstBuildsPerFrame = 24;
+
   const MediaCard({
     super.key,
     required this.title,
@@ -289,6 +293,45 @@ class _MediaCardState extends State<MediaCard> {
   bool _cardHover = false;
   bool _hoverMorph = false;
   Timer? _bakeTimer;
+
+  /// Built as the real card at least once (see [_BuildBudget]).
+  bool _full = false;
+
+  /// What a card shows until its turn to be built: its placeholder colors in roughly its shape,
+  /// and its title and subtitle as plain text, laid out at the same size as the real card.
+  Widget _standIn(TextTheme text) {
+    final (a, b) = placeholderColors(widget.seedKey);
+    final standIn = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AspectRatio(
+          aspectRatio: 1,
+          child: LayoutBuilder(
+            builder: (context, box) => DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [a, b]),
+                borderRadius: BorderRadius.circular(widget.round ? box.maxWidth / 2 : box.maxWidth * .3),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: widget.large ? 14 : 12),
+        Text(
+          widget.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: text.bodyMedium?.copyWith(fontSize: widget.large ? 14.5 : 13, fontWeight: FontWeight.w700),
+        ),
+        Text(
+          widget.subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: text.bodySmall?.copyWith(fontSize: widget.large ? 12.5 : 12),
+        ),
+      ],
+    );
+    return widget.size != null ? SizedBox(width: widget.size, child: standIn) : standIn;
+  }
 
   /// The picture reaches past the card by this much, for the shadow.
   static const _margin = 32.0;
@@ -505,10 +548,21 @@ class _MediaCardState extends State<MediaCard> {
 
   Widget _buildCard(BuildContext context) {
     // The settled colors: a recolor redraws the card once, not on every frame of it.
-    PerfStats.cardBuilds++;
     final theme = SettledTheme.of(context);
     final scheme = theme.colorScheme;
     final text = theme.textTheme;
+    if (!_full) {
+      if (!_BuildBudget.take()) {
+        // Over this frame's budget: a stand-in now, the real card in a frame or two.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() {});
+        });
+        PerfStats.standIns++;
+        return _standIn(text);
+      }
+      _full = true;
+    }
+    PerfStats.cardBuilds++;
     final active = widget.active;
     final reduced = Motion.reduced(context);
     final morphed = _hoverMorph || active;
@@ -909,6 +963,29 @@ class TrackCard extends ConsumerWidget {
 
 /// Cards waiting to be drawn into their picture, a few per frame: drawing a screenful of
 /// pictures in one frame was a hitch of its own.
+/// How many cards may be built for the first time in one frame. A card is about a third of a
+/// millisecond to build; a letter jump or a trackpad fling replaced the whole screen (200+
+/// cards) in one frame, 50-90 ms of building and then as long again drawing them. Past the
+/// budget a card shows a stand-in and is built in the next frames, top to bottom. Ordinary
+/// scrolling brings in fewer cards than this per frame and never sees a stand-in.
+class _BuildBudget {
+  static int get perFrame => MediaCard.firstBuildsPerFrame;
+  static Duration? _frame;
+  static int _left = 0;
+
+  static bool take() {
+    if (!PerfFlags.instance.cardBudget) return true;
+    final now = SchedulerBinding.instance.currentFrameTimeStamp;
+    if (now != _frame) {
+      _frame = now;
+      _left = perFrame;
+    }
+    if (_left <= 0) return false;
+    _left--;
+    return true;
+  }
+}
+
 class _BakeQueue {
   static const perFrame = 6;
   static final _waiting = <_MediaCardState>{};

@@ -46,9 +46,12 @@ void logSlowFrames() {
     final built = PerfStats.cardsBuilt, baked = PerfStats.cardsBaked, bakeUs = PerfStats.bakeMicros;
     final shown = PerfStats.coversShown, mem = PerfStats.coversShownFromMemory;
     final disk = CoverCacheStats.diskReads, down = CoverCacheStats.downloads, decodes = CoverCacheStats.decodes, decodeUs = PerfStats.decodeMicros;
+    final dropped = CoverCacheStats.skipped + CoverCacheStats.cancelled;
     CoverCacheStats.diskReads = CoverCacheStats.downloads = CoverCacheStats.decodes = 0;
+    CoverCacheStats.skipped = CoverCacheStats.cancelled = 0;
     final entr = PerfStats.entrances, failed = PerfStats.bakesFailed;
-    final cardBuilds = PerfStats.cardBuilds, rowBuilds = PerfStats.rowBuilds;
+    final moved = PerfStats.moved, biggestMove = PerfStats.biggestMove;
+    final cardBuilds = PerfStats.cardBuilds, rowBuilds = PerfStats.rowBuilds, standIns = PerfStats.standIns;
     PerfStats.reset();
     wBuilt += built;
     wBaked += baked;
@@ -76,11 +79,11 @@ void logSlowFrames() {
           ..write('| rasterCache layers=${t.layerCacheCount} (${(t.layerCacheBytes / 1048576).toStringAsFixed(1)} MB) ')
           ..write('pictures=${t.pictureCacheCount} (${(t.pictureCacheBytes / 1048576).toStringAsFixed(1)} MB) ')
           ..write('| since last: cardsBuilt=$built pictured=$baked (${f(bakeUs / 1000)} ms) bakeFailed=$failed ')
-          ..write('cardBuilds=$cardBuilds rowBuilds=$rowBuilds coversShown=$shown (fromMemory=$mem) diskReads=$disk downloads=$down decodes=$decodes (${f(decodeUs / 1000)} ms) entrances=$entr ')
+          ..write('cardBuilds=$cardBuilds standIns=$standIns rowBuilds=$rowBuilds coversShown=$shown (fromMemory=$mem) diskReads=$disk downloads=$down decodes=$decodes (${f(decodeUs / 1000)} ms) coversDropped=$dropped entrances=$entr ')
           ..write('| now: liveCards=${PerfStats.liveCards} pictureCards=${PerfStats.pictureCards} ')
           ..write('coversWaiting=${CoverCacheStats.waiting} coversLoading=${CoverCacheStats.loading} ')
           ..write('imageCache=${cache.currentSize} (${(cache.currentSizeBytes / 1048576).toStringAsFixed(0)} MB) live=${cache.liveImageCount} pending=${cache.pendingImageCount} ')
-          ..write('scrolling=${PerfStats.scrolling} speed=${PerfStats.scrollSpeed.toStringAsFixed(0)}px/s ')
+          ..write('scrolling=${PerfStats.scrolling} speed=${PerfStats.scrollSpeed.toStringAsFixed(0)}px/s moved=${moved.toStringAsFixed(0)}px (biggest step ${biggestMove.toStringAsFixed(0)}) by=${PerfStats.scrollBy} ')
           ..write('memory=${rss}MB (${rssDelta >= 0 ? '+' : ''}$rssDelta)${PerfStats.recoloring ? ' RECOLORING' : ''} | at: ${PerfStats.screen} | ${_sinceNote.elapsedMilliseconds} ms after: $_lastNote');
         try {
           _out!.writeStringSync('$line\n');

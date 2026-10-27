@@ -23,6 +23,7 @@ class PerfStats {
   static int entrances = 0;
   static int cardBuilds = 0; // every build of a card, not only new ones
   static int rowBuilds = 0;
+  static int standIns = 0; // cards shown as a stand-in, over the frame's build budget
 
   // Running totals / current state.
   static int coversWaiting = 0;
@@ -31,6 +32,11 @@ class PerfStats {
   static int pictureCards = 0;
   static double scrollSpeed = 0;
   static bool scrolling = false;
+
+  // Page movement since the last frame (any cause), and what moved it last.
+  static double moved = 0;
+  static double biggestMove = 0;
+  static String scrollBy = '-';
 
   /// Where the user is (page, tab, Now Playing...), kept by `perf_watch.dart`.
   static String screen = '?';
@@ -55,5 +61,8 @@ class PerfStats {
     entrances = 0;
     cardBuilds = 0;
     rowBuilds = 0;
+    standIns = 0;
+    moved = 0;
+    biggestMove = 0;
   }
 }
