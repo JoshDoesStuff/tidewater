@@ -6,17 +6,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers/cover_precache.dart';
 import '../../app/theme/motion.dart';
 
-/// The first launch on a server saves the Library's covers to disk (see [CoverPrecacheNotifier]):
+/// Launches save the Library's covers to disk (see [CoverPrecacheNotifier]):
 /// a screen like "Wrapping up" with a squiggle that fills as they arrive, and "Keep browsing",
-/// which shrinks it to a small pill in the corner while it carries on. Later launches top the
-/// cache up quietly, with nothing on screen.
+/// which shrinks it to a small pill in the corner while it carries on. It shows on any launch
+/// that finds covers missing (interrupted last time, or new albums); none missing, nothing shows.
 class CoverPrecacheView extends ConsumerWidget {
   const CoverPrecacheView({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = ref.watch(coverPrecacheProvider);
-    final show = p.firstRun && p.running && p.total > 0;
+    final show = p.hasWork && p.running && p.total > 0;
     final big = show && !p.hidden;
     final small = show && p.hidden;
     return Stack(

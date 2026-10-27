@@ -6,7 +6,6 @@ import '../../core/api/cover_cache.dart';
 import 'cover_providers.dart';
 import 'library_providers.dart';
 import 'session_providers.dart';
-import 'settings_providers.dart';
 
 /// How far saving the Library's covers to disk has got.
 class CoverPrecache {
@@ -15,7 +14,7 @@ class CoverPrecache {
     this.done = 0,
     this.running = false,
     this.finished = false,
-    this.firstRun = false,
+    this.hasWork = false,
     this.hidden = false,
   });
 
@@ -24,21 +23,22 @@ class CoverPrecache {
   final bool running;
   final bool finished;
 
-  /// No covers were saved for this server before: the progress shows (the first launch).
-  final bool firstRun;
+  /// Some covers are not on disk yet (a first launch, an interrupted one, new albums): the
+  /// progress shows.
+  final bool hasWork;
 
   /// The user sent it to the background.
   final bool hidden;
 
   double get fraction => total == 0 ? 0 : (done / total).clamp(0, 1);
 
-  CoverPrecache copyWith({int? total, int? done, bool? running, bool? finished, bool? firstRun, bool? hidden}) =>
+  CoverPrecache copyWith({int? total, int? done, bool? running, bool? finished, bool? hasWork, bool? hidden}) =>
       CoverPrecache(
         total: total ?? this.total,
         done: done ?? this.done,
         running: running ?? this.running,
         finished: finished ?? this.finished,
-        firstRun: firstRun ?? this.firstRun,
+        hasWork: hasWork ?? this.hasWork,
         hidden: hidden ?? this.hidden,
       );
 }
@@ -50,7 +50,7 @@ class CoverPrecache {
 /// Gentle on the disk: each cover is written once, whole, through the cache's write-then-rename
 /// (no partial rewrites); a cover already on disk is only checked for (a file lookup, nothing
 /// read or written), so later launches cost a few thousand lookups and download only what is
-/// new. A 5000-cover Library is roughly 150-250 MB, written once. Four downloads at a time, and
+/// new (and the progress shows whenever something is missing). A 5000-cover Library is roughly 150-250 MB, written once. Four downloads at a time, and
 /// covers a card on screen asks for go ahead of these (the cache serves the newest request first).
 class CoverPrecacheNotifier extends Notifier<CoverPrecache> {
   static const workers = 4;
@@ -61,10 +61,7 @@ class CoverPrecacheNotifier extends Notifier<CoverPrecache> {
     final config = ref.watch(sessionProvider);
     final generation = ++_generation;
     if (config != null) {
-      final key = 'covers_saved_${CoverCache.serverFolder(config.baseUrl)}';
-      final prefs = ref.read(sharedPreferencesProvider);
-      final firstRun = !(prefs.getBool(key) ?? false);
-      Future.microtask(() => _run(generation, key, firstRun));
+      Future.microtask(() => _run(generation));
     }
     return const CoverPrecache();
   }
@@ -74,10 +71,10 @@ class CoverPrecacheNotifier extends Notifier<CoverPrecache> {
 
   bool _stale(int generation) => !ref.mounted || generation != _generation;
 
-  Future<void> _run(int generation, String key, bool firstRun) async {
+  Future<void> _run(int generation) async {
     final store = ref.read(coverCacheProvider);
     if (store is! CoverCache) return;
-    state = CoverPrecache(running: true, firstRun: firstRun);
+    state = const CoverPrecache(running: true);
 
     // The full lists, as the Library pages load them (from the saved copy first).
     final albums = await _whenComplete<LibraryAlbums>(
@@ -98,22 +95,30 @@ class CoverPrecacheNotifier extends Notifier<CoverPrecache> {
       for (final a in albums?.albums ?? const []) ?a.coverArt,
       for (final s in songs?.songs ?? const []) ?s.coverArt,
     }.toList();
-    state = state.copyWith(total: ids.length, done: 0);
+    // Only what is not on disk yet (a file lookup each). Anything missing, a first launch, an
+    // interrupted one or new albums since, brings the progress up.
+    final missing = <String>[];
+    for (final id in ids) {
+      if (!await store.isSaved(id)) missing.add(id);
+      if (_stale(generation)) return;
+    }
+    state = state.copyWith(total: missing.length, done: 0, hasWork: missing.isNotEmpty);
+    final todo = missing;
 
     var next = 0;
     var done = 0;
     Future<void> worker() async {
-      while (next < ids.length) {
+      while (next < todo.length) {
         if (_stale(generation)) return;
-        final id = ids[next++];
+        final id = todo[next++];
         try {
-          if (!await store.isSaved(id)) await store.get(id);
+          await store.get(id);
         } catch (_) {
           // A cover the server cannot give: skipped, tried again next launch.
         }
         done++;
         // Progress at most every 25 covers (each update rebuilds the progress).
-        if (done % 25 == 0 || done == ids.length) {
+        if (done % 25 == 0 || done == todo.length) {
           if (_stale(generation)) return;
           state = state.copyWith(done: done);
         }
@@ -122,9 +127,7 @@ class CoverPrecacheNotifier extends Notifier<CoverPrecache> {
 
     await Future.wait([for (var i = 0; i < workers; i++) worker()]);
     if (_stale(generation)) return;
-    await ref.read(sharedPreferencesProvider).setBool(key, true);
-    if (_stale(generation)) return;
-    state = state.copyWith(done: ids.length, running: false, finished: true);
+    state = state.copyWith(done: todo.length, running: false, finished: true);
   }
 
   /// Waits until a list provider says it has everything (null on an error, or after five minutes).
