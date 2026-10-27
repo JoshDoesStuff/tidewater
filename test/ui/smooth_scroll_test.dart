@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tidewater/app/app.dart';
+import 'package:tidewater/app/perf_flags.dart';
 
 import '../support/fake_library.dart';
 import '../support/pump.dart';
@@ -38,6 +39,9 @@ void main() {
     });
 
   testWidgets('a fast glide tells pictures to wait, and a slow or finished one does not', (tester) async {
+    // Off by default (it measured worse), but the mechanism should still work.
+    PerfFlags.instance.deferCovers = true;
+    addTearDown(() => PerfFlags.instance.deferCovers = false);
     final api = FakeLibraryApi();
     api.playlistSongs['pl-1'] = [for (var i = 0; i < 200; i++) fakeTracks[i % fakeTracks.length]];
     final c = await pumpApp(tester, api: api);

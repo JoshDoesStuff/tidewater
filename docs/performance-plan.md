@@ -199,3 +199,16 @@ Raster avg rose to 15 to 30 ms (p90 25 to 42, max ~100). Two likely reasons, bot
 Two switches replaced ones that had answered their question: Ctrl+Alt+6 now turns the scroll-in animation off,
 Ctrl+Alt+7 turns off holding covers back while scrolling fast (`DeferringScrollPhysics`). Next run: baseline, then
 each of those, to see whether either is still costly.
+
+## Run after that (monitor): what each switch did
+
+* Baseline: good stretches (4 to 6 ms) but sustained blocks of 28 to 30 ms avg while scrolling into unseen rows.
+* Scroll-in animation off: blocks shrank to 9 to 17 ms. (Its cost was mostly that cards were still live.)
+* **Holding covers back off: mostly 3.5 to 5 ms for a long stretch**, one bad block at the end. Holding covers back
+  kept cards waiting for their cover, so not pictured, so live and expensive. It is now **off by default**
+  (`PerfFlags.deferCovers`, Ctrl+Alt+7 turns it on for comparison).
+
+Changes from this: a card is pictured soon after it is built even if its cover has not arrived (the picture shows
+the placeholder); it keeps fetching the cover through an `ImageStream` (`_preloadCover`) and is pictured again once
+the cover is in (`_coverReady` is part of the picture's "look"). The 4 s give-up timer is gone. Pictures are made up
+to 6 per frame (was 3).

@@ -14,7 +14,8 @@ class PerfFlags extends ChangeNotifier {
   bool smoothClip = true;
   bool covers = true;
   bool scrollIn = true;
-  bool deferCovers = true;
+  // Off: measured worse (covers held back meant cards stayed live, unpictured, while scrolling).
+  bool deferCovers = false;
   bool chrome = true;
   bool cards = true;
   bool sprites = true;

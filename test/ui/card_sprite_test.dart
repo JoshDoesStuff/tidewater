@@ -17,9 +17,8 @@ void main() {
     await advance(tester, const Duration(seconds: 2));
     final card = find.byType(AlbumCard).first;
     final title = fakeAlbums.first.title;
-    // A new card is real while its cover loads; once it has settled it is drawn once.
-    expect(find.descendant(of: card, matching: find.byType(RawImage)), findsNothing);
-    await advance(tester, const Duration(seconds: 7));
+    // A card becomes one picture soon after it is built (even before its cover is in).
+    await advance(tester, const Duration(seconds: 2));
     expect(find.descendant(of: card, matching: find.byType(RawImage)), findsOneWidget, reason: 'it rests as a picture');
     expect(find.descendant(of: card, matching: find.byType(MorphShape)), findsNothing);
     expect(tester.getSize(card).width, greaterThan(100), reason: 'and is the same size as before');

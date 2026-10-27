@@ -18,6 +18,8 @@ import '../../../core/models/artist.dart';
 import '../../../core/models/playlist.dart';
 import '../../../core/models/track.dart';
 import '../../widgets/art_tile.dart';
+import '../../widgets/cover_art.dart' show CoverImage;
+import '../../../app/providers/cover_providers.dart' show coverCacheProvider;
 import '../../widgets/effects/eq_bars.dart';
 import '../../widgets/effects/ripple.dart';
 import '../../widgets/link_text.dart';
@@ -285,14 +287,12 @@ class _MediaCardState extends State<MediaCard> {
   bool _cardHover = false;
   bool _hoverMorph = false;
   Timer? _bakeTimer;
-  Timer? _giveUp;
 
   /// The picture reaches past the card by this much, for the shadow.
   static const _margin = 32.0;
 
   bool get _resting =>
       PerfFlags.instance.sprites &&
-      _coverReady &&
       !_cardHover &&
       !_hovered &&
       !_pressed &&
@@ -301,24 +301,44 @@ class _MediaCardState extends State<MediaCard> {
       _tilt == Offset.zero;
 
   @override
-  void initState() {
-    super.initState();
-    // A cover that never settles (it failed to load) must not keep the card live for ever.
-    _giveUp = Timer(const Duration(seconds: 4), () {
-      if (mounted && !_coverReady) setState(() => _coverReady = true);
-    });
-  }
-
-  @override
   void didUpdateWidget(MediaCard old) {
     super.didUpdateWidget(old);
     if (old.coverArt != widget.coverArt) {
       _coverReady = false;
-      _giveUp?.cancel();
-      _giveUp = Timer(const Duration(seconds: 4), () {
+      if (_coverListener != null) _coverStream?.removeListener(_coverListener!);
+      _coverStream = null;
+      _coverListener = null;
+    }
+  }
+
+  ImageStream? _coverStream;
+  ImageStreamListener? _coverListener;
+
+  void _preloadCover() {
+    if (!mounted || _coverReady || _coverStream != null) return;
+    final id = widget.coverArt;
+    if (id == null) {
+      setState(() => _coverReady = true);
+      return;
+    }
+    final store = ProviderScope.containerOf(context, listen: false).read(coverCacheProvider);
+    final stream = CoverImage(store, id, 300).resolve(ImageConfiguration.empty);
+    late final ImageStreamListener listener;
+    void done() {
+      stream.removeListener(listener);
+      _coverStream = null;
+      _coverListener = null;
+      // (Can be called at once, from inside this frame, when the cover is already in memory.)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !_coverReady) setState(() => _coverReady = true);
       });
+      SchedulerBinding.instance.scheduleFrame();
     }
+
+    listener = ImageStreamListener((_, _) => done(), onError: (_, _) => done());
+    _coverStream = stream;
+    _coverListener = listener;
+    stream.addListener(listener);
   }
 
   void _dropSprite() {
@@ -428,9 +448,9 @@ class _MediaCardState extends State<MediaCard> {
 
   @override
   void dispose() {
+    if (_coverListener != null) _coverStream?.removeListener(_coverListener!);
     _BakeQueue.remove(this);
     _bakeTimer?.cancel();
-    _giveUp?.cancel();
     _sprite?.dispose();
     _popGone?.cancel();
     _scrolling?.removeListener(_onScrolling);
@@ -577,6 +597,7 @@ class _MediaCardState extends State<MediaCard> {
       widget.title,
       widget.subtitle,
       widget.coverArt,
+      _coverReady,
       widget.active,
       widget.round,
       scheme.primary,
@@ -687,6 +708,11 @@ class _MediaCardState extends State<MediaCard> {
           setState(_dropSprite);
         }
       });
+    }
+    if (_sprite != null && !_coverReady && _coverStream == null) {
+      // Pictured while its cover was still on its way: keep fetching it, and draw the card
+      // again (with its cover) once it is in.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _preloadCover());
     }
     if (_resting && _sprite == null) {
       _bakeTimer ??= Timer(const Duration(milliseconds: 150), () {
@@ -845,7 +871,7 @@ class TrackCard extends ConsumerWidget {
 /// Cards waiting to be drawn into their picture, a few per frame: drawing a screenful of
 /// pictures in one frame was a hitch of its own.
 class _BakeQueue {
-  static const perFrame = 3;
+  static const perFrame = 6;
   static final _waiting = <_MediaCardState>{};
   static bool _scheduled = false;
 
