@@ -4,6 +4,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'app/frame_log.dart';
 import 'app/image_cache_config.dart';
 import 'app/app.dart';
 import 'app/playback/real_engine.dart';
@@ -17,6 +18,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
   configureImageCache();
+  logSlowFrames();
   // Media keys and the Windows media overlay; the app runs without them if this fails.
   final smtc = await SmtcControls.create();
   await windowManager.ensureInitialized();

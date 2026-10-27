@@ -32,8 +32,12 @@ class SmoothScrollPosition extends ScrollPositionWithSingleContext {
     super.debugLabel,
   });
 
-  /// How quickly it settles: the time constant of the ease, in seconds.
-  static const _settle = .075;
+  /// Roughly how long a glide takes to arrive, in seconds. It is a critically damped spring
+  /// (so it starts gently, speeds up and lands softly, and keeps its speed from one wheel
+  /// notch to the next), not a plain ease-out that leaps at the first frame.
+  static const _smoothTime = .2;
+
+  double _velocity = 0;
 
   Ticker? _ticker;
   double? _target;
@@ -56,6 +60,10 @@ class SmoothScrollPosition extends ScrollPositionWithSingleContext {
     _ticker ??= context.vsync.createTicker(_tick);
     if (!_ticker!.isActive) {
       _last = null;
+      // One start and one end for the whole glide (and so one "is scrolling" for whatever
+      // listens), rather than a jump, and three notifications, on every frame.
+      goIdle();
+      didStartScroll();
       _ticker!.start();
     }
   }
@@ -64,24 +72,39 @@ class SmoothScrollPosition extends ScrollPositionWithSingleContext {
     final target = _target;
     // Something else moved the page (a drag, the scrollbar, a jump): let it.
     if (target == null || (pixels - _expected).abs() > 1) {
-      _stop();
+      _stop(external: target != null);
       return;
     }
-    final dt = _last == null ? 1 / 60 : (elapsed - _last!).inMicroseconds / 1e6;
+    // A long frame must not throw it past the target.
+    final dt = _last == null ? 1 / 60 : math.min((elapsed - _last!).inMicroseconds / 1e6, .05);
     _last = elapsed;
-    final k = 1 - math.exp(-dt / _settle);
-    var next = pixels + (target - pixels) * k;
-    final done = (target - next).abs() < .5;
+    const omega = 2 / _smoothTime;
+    final x = omega * dt;
+    final damp = 1 / (1 + x + .48 * x * x + .235 * x * x * x);
+    final change = pixels - target;
+    final temp = (_velocity + omega * change) * dt;
+    _velocity = (_velocity - omega * temp) * damp;
+    var next = target + (change + temp) * damp;
+    final done = (target - next).abs() < .5 && _velocity.abs() < 8;
     if (done) next = target;
     next = next.clamp(minScrollExtent, maxScrollExtent);
-    jumpTo(next);
+    final before = pixels;
+    forcePixels(next);
+    didUpdateScrollPositionBy(pixels - before);
     _expected = pixels;
     if (done) _stop();
   }
 
-  void _stop() {
+  void _stop({bool external = false}) {
+    final wasGliding = _target != null || (_ticker?.isActive ?? false);
     _target = null;
+    _velocity = 0;
     _ticker?.stop();
+    // When something else took over, it owns the activity and the notifications now.
+    if (wasGliding && !external) {
+      didEndScroll();
+      goBallistic(0);
+    }
   }
 
   @override

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/semantics.dart' show CustomSemanticsAction;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -226,7 +227,61 @@ class _MediaCardState extends State<MediaCard> {
   Timer? _popGone;
   Offset _tilt = Offset.zero; // x: rotateY, y: rotateX (radians)
 
+  /// Whether the page is scrolling under the pointer. Cards sliding past a still mouse would each
+  /// spring into their hover shape (a blurred shadow, a spin, a tilt) one after another: a
+  /// scrolled page is not a hovered one.
+  ValueListenable<bool>? _scrolling;
+  bool get _isScrolling => _scrolling?.value ?? false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final next = Scrollable.maybeOf(context)?.position.isScrollingNotifier;
+    if (next != _scrolling) {
+      _scrolling?.removeListener(_onScrolling);
+      _scrolling = next?..addListener(_onScrolling);
+    }
+  }
+
+  void _onScrolling() {
+    if (_isScrolling && _hovered && mounted) _leave();
+  }
+
+  void _enter() {
+    setState(() {
+      _hovered = true;
+      _popGone?.cancel();
+      if (!_popMounted) {
+        // Built hidden first, then shown a frame later, so there is a pop to animate.
+        _popMounted = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _hovered) setState(() => _popOn = true);
+        });
+      } else {
+        _popOn = true;
+      }
+    });
+  }
+
+  void _leave() {
+    setState(() {
+      _popGone?.cancel();
+      _popGone = Timer(Motion.slow + const Duration(milliseconds: 100), () {
+        if (mounted && !_hovered) setState(() => _popMounted = false);
+      });
+      _hovered = false;
+      _popOn = false;
+      _pressed = false;
+      _tilt = Offset.zero;
+    });
+  }
+
   void _onHover(PointerEvent e, Size size) {
+    if (_isScrolling) return;
+    if (!_hovered) {
+      // Scrolling has stopped with the pointer resting on this card.
+      _enter();
+    }
     final px = (e.localPosition.dx / size.width - .5).clamp(-.5, .5);
     final py = (e.localPosition.dy / size.height - .5).clamp(-.5, .5);
     const k = _maxTiltDeg * 2 * 0.0174533; // ±.5 → ±6°
@@ -236,6 +291,7 @@ class _MediaCardState extends State<MediaCard> {
   @override
   void dispose() {
     _popGone?.cancel();
+    _scrolling?.removeListener(_onScrolling);
     super.dispose();
   }
 
@@ -252,29 +308,10 @@ class _MediaCardState extends State<MediaCard> {
         final tileSize = Size(box.maxWidth, box.maxWidth);
         return MouseRegion(
           cursor: SystemMouseCursors.click,
-          onEnter: (_) => setState(() {
-            _hovered = true;
-            _popGone?.cancel();
-            if (!_popMounted) {
-              // Built hidden first, then shown a frame later, so there is a pop to animate.
-              _popMounted = true;
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted && _hovered) setState(() => _popOn = true);
-              });
-            } else {
-              _popOn = true;
-            }
-          }),
-          onExit: (_) => setState(() {
-            _popGone?.cancel();
-            _popGone = Timer(Motion.slow + const Duration(milliseconds: 100), () {
-              if (mounted && !_hovered) setState(() => _popMounted = false);
-            });
-            _hovered = false;
-            _popOn = false;
-            _pressed = false;
-            _tilt = Offset.zero;
-          }),
+          onEnter: (_) {
+            if (!_isScrolling) _enter();
+          },
+          onExit: (_) => _leave(),
           onHover: (e) => _onHover(e, tileSize),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,

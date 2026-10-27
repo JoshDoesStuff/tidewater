@@ -24,14 +24,14 @@ void main() {
     final early = position.pixels;
     expect(early, greaterThan(0), reason: 'it has started');
     expect(early, lessThan(300), reason: 'but has not jumped the whole way');
-    await tester.pump(const Duration(milliseconds: 600));
+    await advance(tester, const Duration(milliseconds: 3000));
     expect(position.pixels, closeTo(300, 1), reason: 'and gets there');
 
     // Notches in a row add up.
     tester.binding.handlePointerEvent(PointerScrollEvent(position: at, kind: PointerDeviceKind.mouse, scrollDelta: const Offset(0, 100)));
     tester.binding.handlePointerEvent(PointerScrollEvent(position: at, kind: PointerDeviceKind.mouse, scrollDelta: const Offset(0, 100)));
     await tester.pump(const Duration(milliseconds: 16));
-    await tester.pump(const Duration(milliseconds: 600));
+    await advance(tester, const Duration(milliseconds: 3000));
     expect(position.pixels, closeTo(500, 1));
     await advance(tester, const Duration(seconds: 1));
     await disposeApp(tester);

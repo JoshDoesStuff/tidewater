@@ -174,12 +174,19 @@ class _ShadowPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final k = size.shortestSide / 112;
-    canvas.drawPath(
-      _state._pathFor(size).shift(Offset(0, 8 * k)),
-      Paint()
-        ..color = _color
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 7 * k),
-    );
+    final paint = Paint()
+      ..color = _color
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 7 * k);
+    final w = _state.widget;
+    if (_state._m.value.abs() < .01 && w.squareBase) {
+      // At rest the shape is a squircle, which a rounded rectangle matches closely, and a
+      // blurred rounded rectangle has a fast path where a blurred arbitrary path does not:
+      // this was the dearest part of drawing each new card scrolled into view.
+      final r = size.shortestSide * (.5 - ((w.exponent - 2) * .09).clamp(0.0, .2));
+      canvas.drawRRect(RRect.fromRectAndRadius(Offset(0, 8 * k) & size, Radius.circular(r)), paint);
+      return;
+    }
+    canvas.drawPath(_state._pathFor(size).shift(Offset(0, 8 * k)), paint);
   }
 
   @override
