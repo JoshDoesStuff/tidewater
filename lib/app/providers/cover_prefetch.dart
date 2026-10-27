@@ -20,10 +20,13 @@ final coverPrefetchProvider = Provider<void>((ref) {
     for (final size in const [300, 800]) {
       final stream = CoverImage(store, art, size).resolve(ImageConfiguration.empty);
       late final ImageStreamListener listener;
-      listener = ImageStreamListener(
-        (_, _) => stream.removeListener(listener), // decoded and in the image cache: done
-        onError: (_, _) => stream.removeListener(listener),
-      );
+      // Decoded and in the image cache (or failed): done, and out of the map.
+      void done() {
+        stream.removeListener(listener);
+        held.remove(stream);
+      }
+
+      listener = ImageStreamListener((_, _) => done(), onError: (_, _) => done());
       held[stream] = listener;
       stream.addListener(listener);
     }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -155,13 +156,13 @@ class OpenSubsonicClient implements LibraryApi {
         data: body,
         options: Options(contentType: Headers.formUrlEncodedContentType, responseType: ResponseType.plain),
       );
-      return _answer(res);
+      return await _answer(res);
     } on DioException catch (e) {
       throw _mapDioError(e);
     }
   }
 
-  Map<String, dynamic> _answer(Response<String> res) {
+  Future<Map<String, dynamic>> _answer(Response<String> res) async {
     final status = res.statusCode ?? 0;
     if (status == 401 || status == 403) {
       throw const ApiException(ApiErrorKind.badCredentials, 'The server refused the login.');
@@ -169,7 +170,12 @@ class OpenSubsonicClient implements LibraryApi {
     if (status >= 500) {
       throw ApiException(ApiErrorKind.server, 'The server had a problem (HTTP $status).');
     }
-    final body = _decode(res.data);
+    final text = res.data;
+    // A big answer (a page of 500 songs is about half a megabyte) is decoded on another thread,
+    // so a library load does not hold up the frames on this one.
+    final body = text != null && text.length > _offThreadBytes
+        ? await Isolate.run(() => _decode(text))
+        : _decode(text);
     if (body == null) {
       throw ApiException(
         ApiErrorKind.notSubsonic,
@@ -186,6 +192,8 @@ class OpenSubsonicClient implements LibraryApi {
     }
     return body;
   }
+
+  static const _offThreadBytes = 64 * 1024;
 
   static Map<String, dynamic>? _decode(String? text) {
     if (text == null || text.isEmpty) return null;

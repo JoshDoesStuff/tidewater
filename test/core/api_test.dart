@@ -130,6 +130,26 @@ void main() {
     });
   });
 
+  test('a big answer (decoded on another thread) parses like a small one', () async {
+    final songs = [
+      for (var i = 0; i < 800; i++)
+        {'id': 's$i', 'title': 'Song number $i with a longer title', 'album': 'Album ${i ~/ 10}', 'artist': 'Artist', 'duration': 200},
+    ];
+    final body = jsonEncode({
+      'subsonic-response': {
+        'status': 'ok',
+        'version': '1.16.1',
+        'searchResult3': {'song': songs},
+      },
+    });
+    expect(body.length, greaterThan(64 * 1024));
+    final client = _client(StubAdapter((_) => StubResponse(body)));
+    final got = await client.getSongs();
+    expect(got, hasLength(800));
+    expect(got.last.id, 's799');
+    expect(got.last.title, 'Song number 799 with a longer title');
+  });
+
   group('library', () {
     late OpenSubsonicClient client;
     late StubAdapter adapter;
