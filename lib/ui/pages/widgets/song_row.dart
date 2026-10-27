@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/perf_stats.dart';
 import '../../../app/providers/playback_providers.dart';
 import '../../../app/providers/selection.dart';
 import '../../../app/theme/motion.dart';
@@ -58,6 +59,7 @@ class SongRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    PerfStats.rowBuilds++;
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final current = ref.watch(currentTrackIdProvider) == track.id;

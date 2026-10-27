@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart' show WidgetsBinding, WidgetsBindingObserver, AppLifecycleState;
 
 import '../core/api/cover_cache.dart' show CoverCacheStats;
 import 'perf_stats.dart';
@@ -27,6 +29,7 @@ void logSlowFrames() {
     _out!.writeStringSync('# Tidewater profile log, started ${DateTime.now()}\n');
   } catch (_) {}
   debugPrint('PERF LOG: ${file.path}');
+  WidgetsBinding.instance.addObserver(_WindowWatch());
 
   final clock = _clock..start();
   final build = <double>[];
@@ -45,6 +48,7 @@ void logSlowFrames() {
     final disk = CoverCacheStats.diskReads, down = CoverCacheStats.downloads, decodes = CoverCacheStats.decodes, decodeUs = PerfStats.decodeMicros;
     CoverCacheStats.diskReads = CoverCacheStats.downloads = CoverCacheStats.decodes = 0;
     final entr = PerfStats.entrances, failed = PerfStats.bakesFailed;
+    final cardBuilds = PerfStats.cardBuilds, rowBuilds = PerfStats.rowBuilds;
     PerfStats.reset();
     wBuilt += built;
     wBaked += baked;
@@ -57,6 +61,9 @@ void logSlowFrames() {
     wEntr += entr;
 
     final cache = PaintingBinding.instance.imageCache;
+    final rss = ProcessInfo.currentRss ~/ 1048576;
+    final rssDelta = rss - _lastRss;
+    _lastRss = rss;
     for (final t in timings) {
       final b = t.buildDuration.inMicroseconds / 1000;
       final r = t.rasterDuration.inMicroseconds / 1000;
@@ -69,11 +76,12 @@ void logSlowFrames() {
           ..write('| rasterCache layers=${t.layerCacheCount} (${(t.layerCacheBytes / 1048576).toStringAsFixed(1)} MB) ')
           ..write('pictures=${t.pictureCacheCount} (${(t.pictureCacheBytes / 1048576).toStringAsFixed(1)} MB) ')
           ..write('| since last: cardsBuilt=$built pictured=$baked (${f(bakeUs / 1000)} ms) bakeFailed=$failed ')
-          ..write('coversShown=$shown (fromMemory=$mem) diskReads=$disk downloads=$down decodes=$decodes (${f(decodeUs / 1000)} ms) entrances=$entr ')
+          ..write('cardBuilds=$cardBuilds rowBuilds=$rowBuilds coversShown=$shown (fromMemory=$mem) diskReads=$disk downloads=$down decodes=$decodes (${f(decodeUs / 1000)} ms) entrances=$entr ')
           ..write('| now: liveCards=${PerfStats.liveCards} pictureCards=${PerfStats.pictureCards} ')
           ..write('coversWaiting=${CoverCacheStats.waiting} coversLoading=${CoverCacheStats.loading} ')
           ..write('imageCache=${cache.currentSize} (${(cache.currentSizeBytes / 1048576).toStringAsFixed(0)} MB) live=${cache.liveImageCount} pending=${cache.pendingImageCount} ')
-          ..write('scrolling=${PerfStats.scrolling} speed=${PerfStats.scrollSpeed.toStringAsFixed(0)}px/s');
+          ..write('scrolling=${PerfStats.scrolling} speed=${PerfStats.scrollSpeed.toStringAsFixed(0)}px/s ')
+          ..write('memory=${rss}MB (${rssDelta >= 0 ? '+' : ''}$rssDelta)${PerfStats.recoloring ? ' RECOLORING' : ''} | at: ${PerfStats.screen} | ${_sinceNote.elapsedMilliseconds} ms after: $_lastNote');
         try {
           _out!.writeStringSync('$line\n');
           unflushed++;
@@ -97,9 +105,10 @@ void logSlowFrames() {
       final summary = 'FRAMES 3s: ${raster.length} drawn, $slow over 16.7 ms | build avg ${f(avg(build))} max ${f(build.reduce((a, b) => a > b ? a : b))}'
           ' | raster avg ${f(avg(raster))} p90 ${f(sorted[(sorted.length * .9).floor()])} max ${f(sorted.last)}';
       debugPrint(summary);
+      final where = 'memory=${ProcessInfo.currentRss ~/ 1048576}MB at: ${PerfStats.screen}';
       try {
         _out?.writeStringSync('$summary | cardsBuilt=$wBuilt pictured=$wBaked (${f(wBakeUs / 1000)} ms) coversShown=$wShown '
-            'diskReads=$wDisk downloads=$wDown decodes=$wDecodes (${f(wDecodeUs / 1000)} ms) entrances=$wEntr\n');
+            'diskReads=$wDisk downloads=$wDown decodes=$wDecodes (${f(wDecodeUs / 1000)} ms) entrances=$wEntr | $where\n');
         _out?.flushSync();
       } catch (_) {}
     }
@@ -110,12 +119,17 @@ void logSlowFrames() {
 }
 
 RandomAccessFile? _out;
+var _lastRss = 0;
+var _lastNote = 'start';
+final _sinceNote = Stopwatch()..start();
 final _clock = Stopwatch();
 var _marks = 0;
 
 /// Writes a line to the console and the profile log file (switch changes, marks).
 void perfNote(String message) {
   if (!kProfileMode) return;
+  _lastNote = message;
+  _sinceNote..reset()..start();
   debugPrint(message);
   try {
     _out?.writeStringSync('NOTE t=${(_clock.elapsedMilliseconds / 1000).toStringAsFixed(2)}s $message\n');
@@ -125,3 +139,22 @@ void perfNote(String message) {
 
 /// Ctrl+Alt+M: a numbered mark in the log, to split it into the steps of a test run.
 void perfMark() => perfNote('MARK ${++_marks}');
+
+/// Window size changes (a resize redraws every card) and focus or minimize, into the log.
+class _WindowWatch with WidgetsBindingObserver {
+  Timer? _settle;
+
+  @override
+  void didChangeMetrics() {
+    _settle?.cancel();
+    _settle = Timer(const Duration(milliseconds: 300), () {
+      final view = WidgetsBinding.instance.platformDispatcher.implicitView;
+      if (view == null) return;
+      final size = view.physicalSize / view.devicePixelRatio;
+      perfNote('WINDOW ${size.width.round()}x${size.height.round()} at ${view.devicePixelRatio}x');
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) => perfNote('APP ${state.name}');
+}

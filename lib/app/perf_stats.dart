@@ -21,6 +21,8 @@ class PerfStats {
   static int decodes = 0;
   static int decodeMicros = 0;
   static int entrances = 0;
+  static int cardBuilds = 0; // every build of a card, not only new ones
+  static int rowBuilds = 0;
 
   // Running totals / current state.
   static int coversWaiting = 0;
@@ -29,6 +31,15 @@ class PerfStats {
   static int pictureCards = 0;
   static double scrollSpeed = 0;
   static bool scrolling = false;
+
+  /// Where the user is (page, tab, Now Playing...), kept by `perf_watch.dart`.
+  static String screen = '?';
+
+  static final _recolor = Stopwatch();
+  static void recolorStarted() => _recolor..reset()..start();
+
+  /// Whether the app is in the middle of recoloring (800 ms after a new album's colors).
+  static bool get recoloring => _recolor.isRunning && _recolor.elapsedMilliseconds < 900;
 
   static void reset() {
     cardsBuilt = 0;
@@ -42,5 +53,7 @@ class PerfStats {
     decodes = 0;
     decodeMicros = 0;
     entrances = 0;
+    cardBuilds = 0;
+    rowBuilds = 0;
   }
 }

@@ -39,6 +39,25 @@ Do it on the **monitor** at fullscreen first; the laptop afterwards if there is 
 Then tell Claude "the log is ready". The file is at the path printed at start
 (normally `C:\Users\Josh\AppData\Local\Temp\tidewater_perf.log`).
 
+### Round 2 run (after the recolor, decode and logging changes)
+
+The log now writes these on its own, so marks are only needed to split steps: `PAGE`, `TAB`, `NOW PLAYING`,
+`IDLE`, `LYRICS`, `VISUALIZER`, `QUEUE`, `TRACK`, `RECOLOR`, `WINDOW` (resize) and `APP` (focus, minimize) lines.
+Every slow frame also says where it happened (`at:`), how long after the last of those lines (`ms after:`),
+memory and its change, card and row builds, and `RECOLORING` while the colors move.
+
+1. Library, Albums, fullscreen. Play an album, then skip tracks a few times (Next, by an album change each time)
+   while the grid is on screen, and again while scrolling slowly. (Recolor test.)
+2. Same on the Songs tab. (Rows still follow the moving colors; this shows whether that matters.)
+3. Settings: refresh the library lists (the song list comes from the server, decoded on another thread).
+   Go to the Songs tab while it loads.
+4. Steps 1, 3, 5 and 6 of the run above (the Albums fling, Artists, Home, Now Playing).
+5. Quit.
+
+Then the same again with Impeller, if it starts (it is experimental on Windows):
+`flutter run -d windows --profile --enable-impeller`. Rename the first log before the second run
+overwrites it (for example `tidewater_perf_skia.log`).
+
 ## 3. A DevTools trace of one bad moment (the most useful single thing)
 
 1. In the `flutter run` console, find the line

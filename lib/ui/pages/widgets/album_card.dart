@@ -493,6 +493,7 @@ class _MediaCardState extends State<MediaCard> {
 
   Widget _buildCard(BuildContext context) {
     // The settled colors: a recolor redraws the card once, not on every frame of it.
+    PerfStats.cardBuilds++;
     final theme = SettledTheme.of(context);
     final scheme = theme.colorScheme;
     final text = theme.textTheme;

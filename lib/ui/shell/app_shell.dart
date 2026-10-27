@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/frame_log.dart' show perfMark, perfNote;
+import '../../app/perf_watch.dart';
 import '../../app/perf_flags.dart';
 import '../../app/destinations.dart';
 import '../../app/providers/library_providers.dart';
@@ -206,6 +207,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget build(BuildContext context) {
     ref.watch(scrobbleServiceProvider); // keeps plays reported for as long as the shell lives
     ref.watch(coverPrefetchProvider); // decodes upcoming covers ahead of time
+    ref.watch(perfWatchProvider); // profile builds: where the user is, for the profile log
     ref.watch(sessionPersistenceProvider); // saves and restores the queue
     ref.watch(systemMediaServiceProvider); // Windows media overlay and media keys
     final scheme = Theme.of(context).colorScheme;
