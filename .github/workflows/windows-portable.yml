@@ -1,5 +1,6 @@
 # Builds the portable Windows zip (tool/release/build_portable.ps1) on a Windows runner.
-# Every run uploads the Tidewater-portable artifact; a v* tag also attaches Tidewater-portable.zip to a Release:
+# Every run uploads the Tidewater-portable (folder) and Tidewater-exe (one-exe launcher) artifacts;
+# a v* tag also attaches Tidewater-portable.zip and Tidewater.exe to a Release:
 #   curl -LO https://github.com/JoshDoesStuff/tidewater/releases/latest/download/Tidewater-portable.zip
 name: Windows portable
 
@@ -40,6 +41,29 @@ jobs:
           name: Tidewater-portable
           path: dist/Tidewater
           retention-days: 30
+      - name: Pack one-exe build
+        run: ./tool/release/pack_launcher.ps1
+      - name: One-exe smoke test (unpack only)
+        timeout-minutes: 5
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          $dumpbin = Get-ChildItem "$vs\VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe" | Select-Object -Last 1
+          $deps = & $dumpbin.FullName /dependents build/launcher/Release/tidewater_launcher.exe | Out-String
+          Write-Host $deps
+          if ($deps -match 'vcruntime|msvcp') { throw 'The launcher needs the MSVC runtime (it must be built with /MT)' }
+          $env:TIDEWATER_UNPACK_ONLY = '1'
+          $p = Start-Process (Resolve-Path dist/Tidewater.exe).Path -Wait -PassThru
+          if ($p.ExitCode) { throw "Unpack failed (exit $($p.ExitCode))" }
+          $dir = Get-ChildItem "$env:LOCALAPPDATA\Tidewater\versions" -Directory | Select-Object -First 1
+          $want = @(Get-ChildItem dist/Tidewater -Recurse -File | Where-Object { $_.Name -notin 'Install.cmd', 'install-user.ps1' }).Count + 1
+          $got = @(Get-ChildItem $dir.FullName -Recurse -File -Force).Count
+          Write-Host "Unpacked to $($dir.FullName): $got files (want $want, counting .complete)"
+          if (-not (Test-Path "$($dir.FullName)\tidewater.exe") -or $got -ne $want) { throw 'The unpacked folder is incomplete' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Tidewater-exe
+          path: dist/Tidewater.exe
+          retention-days: 30
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -52,7 +76,12 @@ jobs:
         with:
           name: Tidewater-portable
           path: Tidewater
+      - uses: actions/download-artifact@v4
+        with:
+          name: Tidewater-exe
       - run: zip -r Tidewater-portable.zip Tidewater
       - uses: softprops/action-gh-release@v2
         with:
-          files: Tidewater-portable.zip
+          files: |
+            Tidewater-portable.zip
+            Tidewater.exe
