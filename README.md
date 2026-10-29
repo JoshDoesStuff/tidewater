@@ -55,6 +55,8 @@ flutter build windows --release
 No admin on the PC? Download a portable build: the `Tidewater-portable` artifact of any
 [Windows portable](.github/workflows/windows-portable.yml) run, or `Tidewater-portable.zip` from the latest Release
 (tagged `v*`). Unzip it and run `Install.cmd` (per-user install). `tool/release/build_portable.ps1` makes the same zip locally.
+The `Tidewater-exe` artifact is the same app as one file: double-click `Tidewater.exe`. The first run unpacks it to
+`%LOCALAPPDATA%\Tidewater\versions\` (a few seconds), and later runs start it straight away. `tool/release/pack_launcher.ps1` builds it.
 
 ## Project notes
 
