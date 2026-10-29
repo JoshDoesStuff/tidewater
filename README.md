@@ -52,6 +52,10 @@ flutter test
 flutter build windows --release
 ```
 
+No admin on the PC? Download a portable build: the `Tidewater-portable` artifact of any
+[Windows portable](.github/workflows/windows-portable.yml) run, or `Tidewater-portable.zip` from the latest Release
+(tagged `v*`). Unzip it and run `Install.cmd` (per-user install). `tool/release/build_portable.ps1` makes the same zip locally.
+
 ## Project notes
 
 | File | What's in it |
