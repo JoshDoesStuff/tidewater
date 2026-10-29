@@ -46,3 +46,6 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Portable zips (tool/release/build_portable.ps1)
+/dist/
