@@ -4,7 +4,8 @@
 #   .\tool\release\build_portable.ps1 -NoBuild   (zip the last release build)
 param([switch]$NoBuild, [string]$OutDir = 'dist')
 $ErrorActionPreference = 'Stop'
-$env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+# Append (never replace): CI adds flutter to the process PATH only; a fresh rustup install is only in the registry.
+$env:Path += ";" + [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User") + ";$env:USERPROFILE\.cargo\bin"
 $root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 Set-Location $root
 
